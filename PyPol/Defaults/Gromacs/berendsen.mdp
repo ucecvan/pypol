@@ -1,0 +1,55 @@
+; NPT with Berendsen barostat
+integrator                      = md
+nsteps                          = 500000
+dt                              = 0.002
+
+; Output
+nstxout-compressed              = 5000
+nstenergy                       = 5000
+nstlog                          = 5000
+
+; Neighborsearching
+cutoff-scheme                   = Verlet
+ns_type                         = grid
+nstlist                         = 10
+rlist                           = 1.0
+
+; Electrostatics
+coulombtype                     = PME
+pme_order                       = 4
+fourierspacing                  = 0.16
+rcoulomb                        = 1.0
+
+; Lennard-Jones PME
+vdwtype                         = PME
+vdw-modifier                    = Potential-shift
+rvdw                            = 1.0
+lj-pme-comb-rule                = Lorentz-Berthelot
+
+; Dispersion correction
+; DispCorr                        = EnerPres
+
+; Temperature coupling is on
+tcoupl                          = V-rescale
+tc-grps                         = System
+tau_t                           = 0.1
+ref_t                           = 300
+
+; Pressure coupling is off
+pcoupl                          = Berendsen
+pcoupltype                      = anisotropic
+tau_p                           = 2.0
+ref_p                           = 1.0 1.0 1.0 0.0 0.0 0.0
+compressibility                 = 4.5e-5 4.5e-5 4.5e-5 4.5e-5 4.5e-5 4.5e-5
+
+; Periodic boundary conditions
+pbc                             = xyz
+
+; Velocity generation
+gen_vel                         = no
+
+; Constrain
+constraint_algorithm            = lincs
+constraints                     = h-bonds
+lincs_iter                      = 1
+lincs_order                     = 4

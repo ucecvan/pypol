@@ -1,0 +1,25 @@
+units real
+atom_style full
+
+dimension 3
+box tilt large
+pair_style lj/cut/coul/cut  10.0
+
+boundary s s s
+
+bond_style hybrid harmonic
+angle_style hybrid harmonic
+dihedral_style hybrid multi/harmonic
+special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.8333
+
+read_data data.lmp
+
+thermo_style custom ebond eangle edihed eimp epair evdwl ecoul elong etail pe
+
+min_style    sd
+min_modify   dmax 0.01
+neigh_modify every 10
+thermo       10
+minimize     1.0e-12 1.0e-12 100000 1000000
+
+write_data em.output.lmp

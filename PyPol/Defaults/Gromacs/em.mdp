@@ -1,0 +1,19 @@
+integrator      = steep
+emtol           = 1e-12
+emstep          = 0.01
+nsteps          = 50000
+energygrps      = system
+nstxout         = 100
+
+cutoff-scheme   = Verlet
+nstlist         = 10
+ns_type         = grid
+rlist           = 1.40
+coulombtype     = pme
+rcoulomb        = 1.40
+; DispCorr        = EnerPres
+vdwtype         = pme
+vdw-modifier    = Potential-shift
+lj-pme-comb-rule = Lorentz-Berthelot
+rvdw            = 1.40
+pbc             = xyz

@@ -1,0 +1,7 @@
+integrator      = steep
+nsteps          = 100000
+pbc             = no
+emtol           = 1e-12
+emstep          = 0.01
+cutoff-scheme   = group
+comm-mode       = Angular

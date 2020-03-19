@@ -1,0 +1,40 @@
+units real
+atom_style full
+
+dimension 3
+box tilt large
+pair_style lj/cut/coul/long 10.0 10.0
+
+boundary p p p
+
+bond_style hybrid harmonic
+angle_style hybrid harmonic
+dihedral_style hybrid multi/harmonic
+special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.8333
+
+read_data
+
+pair_modify tail yes
+kspace_style pppm 1e-8
+
+thermo_style custom step ebond eangle edihed eimp epair evdwl ecoul elong etail pe
+run 0
+
+thermo_style custom step pe fmax
+min_style    sd
+min_modify   dmax 0.1
+neigh_modify every 10 check yes
+thermo       10
+minimize     1.0e-12 1.0e-12 5000 50000
+
+dump  1 all xtc 10000 coordinates.xtc # File used for conversion to gromacs .gro file
+thermo_style custom step pe vol density fmax lx ly lz xy xz yz
+fix          1 all box/relax tri 1.0
+min_style    sd
+min_modify   dmax 0.1
+neigh_modify every 10 check yes
+thermo       10
+minimize     1.0e-12 1.0e-12 50000 500000
+undump 1
+
+write_data save.lmp pair ij
