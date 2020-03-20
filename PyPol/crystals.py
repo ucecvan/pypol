@@ -398,7 +398,6 @@ class Atom(object):
 
         :param name:
         """
-        import numpy as np
         self.index = None
         self.label = name
         self.ff_type = None

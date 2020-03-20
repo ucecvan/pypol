@@ -30,7 +30,6 @@ class Method(object):
         :param simulation_name:
         :return:
         """
-        from PyPol.utilities import create
         if self.energy_minimisation:
             for existing_simulation in self.energy_minimisation:
                 if existing_simulation.name == simulation_name:
@@ -45,7 +44,7 @@ class Method(object):
                     return existing_simulation
         print("No method found with name {}".format(simulation_name))
 
-    def import_molecule(self, path_itp, path_crd=False, name="", potential_energy=0.0):
+    def import_molecule(self, path_itp, path_crd, name="", potential_energy=0.0):
         """
 
         :param path_itp:
@@ -91,11 +90,11 @@ class Method(object):
             if file_format.startswith("."):
                 file_format = file_format[1:]
             from openbabel import openbabel
-            obConversion = openbabel.OBConversion()
-            obConversion.SetInAndOutFormats(file_format, "mol2")
+            ob_conversion = openbabel.OBConversion()
+            ob_conversion.SetInAndOutFormats(file_format, "mol2")
             mol = openbabel.OBMol()
-            obConversion.ReadFile(mol, working_directory + file_name + "." + file_format)
-            obConversion.WriteFile(mol, working_directory + "PyPol_Temporary_" + file_name + ".mol2")
+            ob_conversion.ReadFile(mol, working_directory + file_name + "." + file_format)
+            ob_conversion.WriteFile(mol, working_directory + "PyPol_Temporary_" + file_name + ".mol2")
             file_name = "PyPol_Temporary_" + file_name + ".mol2"
 
             path_file_ac = working_directory + file_name[:-4] + ".ac"
@@ -166,8 +165,9 @@ class Method(object):
             else:
                 atom_types[atom.type]['number'] += 1
                 atom_types[atom.type]['atoms'].append(atom.index)
-        return sorted(atom_types.items(), key=lambda t: (t[1]['number'], t[1]['connections'], t[0]))[0][1]['atoms'], \
-               atom_types
+
+        starting = sorted(atom_types.items(), key=lambda t: (t[1]['number'], t[1]['connections'], t[0]))[0][1]['atoms']
+        return starting, atom_types
 
     @staticmethod
     def _merge_atom(mol_atom, ref_atom):
@@ -285,7 +285,8 @@ class Method(object):
         for molecule in new_crystal.load_molecules():
             if molecule.centroid is None:  # Error: should be already defined!
                 molecule.calculate_centroid()
-            molecule = translate_molecule(molecule, new_crystal.box)
+            translate_molecule(molecule, new_crystal.box)
+            # molecule = translate_molecule(molecule, new_crystal.box)
         return new_crystal
 
     @staticmethod
@@ -412,7 +413,7 @@ class Method(object):
         :return:
         """
         from PyPol.utilities import create
-        from PyPol.crystals import Crystal
+        # from PyPol.crystals import Crystal
         import numpy as np
 
         print("Generating inputs for {}".format(self.name))
@@ -955,8 +956,8 @@ class CellRelaxation(object):
             # Save new lmp file
             file_lmp_ff = open(moleculetype.lmp_forcefield)
             file_lmp_ff_new = open(working_directory + os.path.basename(moleculetype.lmp_forcefield), "w")
-            write_at, write_vel, write_bon, write_ang, write_dih, write_imp = False, False, False, False, False, False
-            atoms, velocities, bonds, angles, dihs, imp = [], [], [], [], [], []
+            # write_at, write_vel, write_bon, write_ang, write_dih, write_imp = False, False, False, False, False, False
+            atoms, velocities, bonds, angles, dihs, imps = [], [], [], [], [], []
             number_of_atoms, number_of_bonds, number_of_angles, number_of_dihedrals, number_of_impropers = 0, 0, 0, 0, 0
             for line in file_lmp_ff:
                 # Change header of LAMMPS
@@ -990,8 +991,8 @@ class CellRelaxation(object):
                 # Change body of LAMMPS
                 elif "Atoms" in line:
                     file_lmp_ff_new.write("Atoms\n\n")
-                    line = next(file_lmp_ff)
-
+                    # line = next(file_lmp_ff)
+                    next(file_lmp_ff)
                     for atom in range(moleculetype.natoms):
                         line = next(file_lmp_ff)
                         atoms.append(line.split()[2:4])
@@ -1006,7 +1007,8 @@ class CellRelaxation(object):
 
                 elif "Velocities" in line:
                     file_lmp_ff_new.write("Velocities\n\n")
-                    line = next(file_lmp_ff)
+                    # line = next(file_lmp_ff)
+                    next(file_lmp_ff)
                     for vel in range(moleculetype.natoms):
                         line = next(file_lmp_ff)
                         velocities.append(line.split()[1:4])
@@ -1019,7 +1021,8 @@ class CellRelaxation(object):
 
                 elif "Bonds" in line:
                     file_lmp_ff_new.write("Bonds\n\n")
-                    line = next(file_lmp_ff)
+                    # line = next(file_lmp_ff)
+                    next(file_lmp_ff)
                     bonds_in_molecule = int(number_of_bonds / molecules_in_crystal)
                     for bond in range(bonds_in_molecule):
                         line = next(file_lmp_ff)
@@ -1037,7 +1040,8 @@ class CellRelaxation(object):
 
                 elif "Angles" in line:
                     file_lmp_ff_new.write("Angles\n\n")
-                    line = next(file_lmp_ff)
+                    # line = next(file_lmp_ff)
+                    next(file_lmp_ff)
                     ang_in_molecule = int(number_of_angles / molecules_in_crystal)
                     for angle in range(ang_in_molecule):
                         line = next(file_lmp_ff)
@@ -1057,7 +1061,8 @@ class CellRelaxation(object):
 
                 elif "Dihedrals" in line:
                     file_lmp_ff_new.write("Dihedrals\n\n")
-                    line = next(file_lmp_ff)
+                    # line = next(file_lmp_ff)
+                    next(file_lmp_ff)
                     dihs_in_molecule = int(number_of_dihedrals / molecules_in_crystal)
                     for dih in range(dihs_in_molecule):
                         line = next(file_lmp_ff)
@@ -1075,7 +1080,8 @@ class CellRelaxation(object):
 
                 elif "Impropers" in line:
                     file_lmp_ff_new.write("Impropers\n\n")
-                    line = next(file_lmp_ff)
+                    # line = next(file_lmp_ff)
+                    next(file_lmp_ff)
                     imps_in_molecule = int(number_of_impropers / molecules_in_crystal)
                     for imp in range(imps_in_molecule):
                         line = next(file_lmp_ff)
@@ -1223,9 +1229,8 @@ class CellRelaxation(object):
                 for line in file_output:
                     if "Energy initial, next-to-last, final =" in line:
                         line = next(file_output)
-                        lattice_energy = float(line.split()[-1]) * 4.184 / crystal.Z - \
-                                         self.method.molecules[0].potential_energy
-                        crystal.Potential = lattice_energy
+                        ref_pot = self.method.molecules[0].potential_energy
+                        crystal.Potential = float(line.split()[-1]) * 4.184 / crystal.Z - ref_pot
                         crystal.completed = True
                         break
 
@@ -1268,7 +1273,6 @@ class MolecularDynamics(object):
         :param name:
         :param path_mdp:
         """
-        import os
         self.type = "Molecular Dynamics"
         self.project = None
         self.method = None

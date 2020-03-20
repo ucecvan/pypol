@@ -312,21 +312,21 @@ def sort_groups(grid_min, grid_max, groups, tolerance=0.01):
         for cvrange in cvranges:
             ranges.append(cvrange)
     ranges.sort(key=lambda x: x[0])
-    min = grid_min
+    gmin = grid_min
     new_groups["Others"] = list()
     for cvrange in ranges:
-        if cvrange[0] > min and cvrange[0] - min > tolerance:
-            new_groups["Others"].append((min, cvrange[0]))
-            min = cvrange[1]
+        if cvrange[0] > gmin and cvrange[0] - gmin > tolerance:
+            new_groups["Others"].append((gmin, cvrange[0]))
+            gmin = cvrange[1]
         else:
-            min = cvrange[1]
+            gmin = cvrange[1]
         if cvrange == ranges[-1] and cvrange[1] < grid_max and grid_max - cvrange[1] > tolerance:
-            new_groups["Others"].append((min, grid_max))
+            new_groups["Others"].append((gmin, grid_max))
 
     return new_groups
 
 
-def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=[]):
+def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None):
     """
 
     :param atoms:
@@ -336,6 +336,8 @@ def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=[]):
     :param lines:
     :return:
     """
+    if lines is None:
+        lines = []
     idx_mol = len(lines) + 1
     for mol in crystal.load_molecules():
         if molecule.residue == mol.residue:

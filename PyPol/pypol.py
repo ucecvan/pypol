@@ -6,7 +6,6 @@ class Project(object):
         :param path_working_directory:
         :param name:
         """
-        import os
         from PyPol.Defaults.defaults import package_paths, pypol_info
         if path_working_directory.rstrip().endswith("/"):
             path_working_directory = path_working_directory.rstrip()[:-1]
@@ -41,7 +40,6 @@ class Project(object):
         """
         import os
         from PyPol.utilities import create
-        import pickle
 
         print("PyPol {}\nNew Project: {}".format(self.version, self.name))
         print("=" * 100)
@@ -194,7 +192,6 @@ class Project(object):
         from openbabel import openbabel
         from PyPol.utilities import create, get_identifier
         from PyPol.crystals import Crystal
-        import pickle
 
         if not path_structures.endswith("/"):
             path_structures += "/"
@@ -229,11 +226,11 @@ class Project(object):
                 self._file2pdb(path_structure)
 
                 # Convert structure to mol2 to identify atomtype
-                obConversion = openbabel.OBConversion()
-                obConversion.SetInAndOutFormats("pdb", "mol2")
+                ob_conversion = openbabel.OBConversion()
+                ob_conversion.SetInAndOutFormats("pdb", "mol2")
                 mol = openbabel.OBMol()
-                obConversion.ReadFile(mol, path_structure_pdb)
-                obConversion.WriteFile(mol, path_structure_mol2)
+                ob_conversion.ReadFile(mol, path_structure_pdb)
+                ob_conversion.WriteFile(mol, path_structure_mol2)
                 os.system(self.atomtype + " -i " + path_structure_mol2 + " -f mol2 -p gaff -o " + path_structure_ac)
 
                 new_crystal = Crystal.loadfrompdb(id_name, path_structure_pdb, include_atomtype=True)
@@ -251,7 +248,6 @@ class Project(object):
         :param method_name:
         :return:
         """
-        from PyPol.utilities import create
         if self.methods:
             for existing_method in self.methods:
                 if existing_method.name == method_name:
@@ -264,7 +260,6 @@ class Project(object):
         :param method_name:
         :return:
         """
-        import os
         import shutil
         for method in self.methods:
             if method.name == method_name:
@@ -281,7 +276,6 @@ class Project(object):
         :param method:
         :return:
         """
-        import pickle
         import copy
         from PyPol.utilities import create
         if self.methods:
