@@ -9,6 +9,7 @@ class Method(object):
         self.command = None
         self.mdrun_options = "-nt 1"
         self.atomtype = None
+
         self.pypol_directory = None
         self.project = None
         self.path_data = None
@@ -16,13 +17,17 @@ class Method(object):
         self.path_input = None
         self.name = name
         self.initial_crystals = list()
+
         self.molecules = list()
         self.topology = False
         self.topology_lammps = False
         self.nmolecules = 0
+
         self.energy_minimisation = list()
         self.molecular_dynamics = list()
         self.metadynamics = list()
+
+        self.cv = list()
 
     def simulation(self, simulation_name):
         """
@@ -688,7 +693,9 @@ class EnergyMinimization(object):
         :return:
         """
         import os
-        from PyPol.utilities import get_list
+        from PyPol.utilities import get_list, box2cell
+        import numpy as np
+
         if crystals == "all":
             list_crystals = self.crystals
         elif crystals == "incomplete":
@@ -713,7 +720,6 @@ class EnergyMinimization(object):
                                              self.method.molecules[0].potential_energy
                             crystal.Potential = lattice_energy
                             crystal.completed = True
-
                             break
                 else:
                     print("An error has occurred with Gromacs. Check simulation {} in folder {}."
@@ -728,6 +734,13 @@ class EnergyMinimization(object):
         for crystal in self.crystals:
             if crystal.completed:
                 new_rank[crystal.name] = crystal.Potential
+                file_gro = open(crystal.path + self.name + ".gro", "r")
+                new_box = file_gro.readlines()[-1].split()
+                file_gro.close()
+                idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
+                crystal.box = np.array([new_box[ii] for ii in idx_gromacs]).reshape((3, 3))
+                crystal.cell_parameters = box2cell(crystal.box)
+                crystal.volume = np.linalg.det(crystal.box)
             else:
                 incompleated_simulations = True
                 break
@@ -1208,7 +1221,9 @@ class CellRelaxation(object):
         :return:
         """
         import os
-        from PyPol.utilities import get_list
+        from PyPol.utilities import get_list, box2cell
+        import numpy as np
+
         if crystals == "all":
             list_crystals = self.crystals
         elif crystals == "incomplete":
@@ -1248,6 +1263,13 @@ class CellRelaxation(object):
         for crystal in self.crystals:
             if crystal.completed:
                 new_rank[crystal.name] = crystal.Potential
+                file_gro = open(crystal.path + self.name + ".gro", "r")
+                new_box = file_gro.readlines()[-1].split()
+                file_gro.close()
+                idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
+                crystal.box = np.array([new_box[ii] for ii in idx_gromacs]).reshape((3, 3))
+                crystal.cell_parameters = box2cell(crystal.box)
+                crystal.volume = np.linalg.det(crystal.box)
             else:
                 incompleated_simulations = True
                 break
@@ -1345,7 +1367,9 @@ class MolecularDynamics(object):
         :return:
         """
         import os
-        from PyPol.utilities import get_list
+        from PyPol.utilities import get_list, box2cell
+        import numpy as np
+
         if crystals == "all":
             list_crystals = self.crystals
         elif crystals == "incomplete":
@@ -1387,6 +1411,13 @@ class MolecularDynamics(object):
         for crystal in self.crystals:
             if crystal.completed:
                 new_rank[crystal.name] = crystal.Potential
+                file_gro = open(crystal.path + self.name + ".gro", "r")
+                new_box = file_gro.readlines()[-1].split()
+                file_gro.close()
+                idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
+                crystal.box = np.array([new_box[ii] for ii in idx_gromacs]).reshape((3, 3))
+                crystal.cell_parameters = box2cell(crystal.box)
+                crystal.volume = np.linalg.det(crystal.box)
             else:
                 incomplete_simulations = True
                 break

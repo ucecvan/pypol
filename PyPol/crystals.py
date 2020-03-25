@@ -8,9 +8,11 @@ class Crystal(object):
         self.name = name
         self.index = None
         self.path = None
+
         self.box = None
         self.cell_parameters = None
         self.volume = None
+
         self.molecules = list()
         self.Z = 0
         self.nmoleculestypes = list()
@@ -307,8 +309,8 @@ class Crystal(object):
         tot_atoms = 0
         for molecule in self.load_molecules():
             tot_atoms += molecule.natoms
-        file_gro.write("{:>5}\n".format(tot_atoms))
 
+        file_gro.write("{:>5}\n".format(tot_atoms))
         for molecule in self.load_molecules():
             for atom in molecule.atoms:
                 atom_index = atom.index + 1 + (molecule.index * molecule.natoms)
