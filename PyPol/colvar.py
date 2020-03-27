@@ -279,6 +279,83 @@ class MolecularOrientation(object):
         print("=" * 100)
 
 
+class Combine(object):
+
+    def __init__(self, name, cvs):
+        self.name = name
+        self.cvs = cvs
+
+        self.kernel = cvs[0].kernel
+
+    def set_kernel(self, kernel="GAUSSIAN"):
+        """
+
+        :param kernel:
+        :return:
+        """
+        self.kernel = kernel.upper()
+
+    def generate_input(self, simulation):
+        idx_cv = 0
+
+        grid_min, grid_max, grid_bin, bandwidth, args = ("", "", "", "", "")
+
+        for cv in self.cvs:
+            if not cv.atoms:
+                print("Error: no atoms found in CV {}. select atoms with the set_atoms module.".format(cv.name))
+                exit()
+            print("=" * 100)
+            print("Generate plumed input files")
+            print("CV{}: {} ({})".format(idx_cv, cv.name, cv.type))
+            print("Atoms:", end=" ")
+            for idx_mol in range(len(cv.molecules)):
+                print("\nMolecule '{}': ".format(cv.molecules[idx_mol].residue))
+                for atom in cv.atoms[idx_mol]:
+                    print("{}({})".format(atom, cv.molecules[idx_mol].atoms[atom].label), end="  ")
+
+            grid_min += "{:.3f},".format(cv.grid_min)
+            grid_max += "{:.3f},".format(cv.grid_max)
+            grid_bin += "{},".format(cv.grid_min)
+            bandwidth += "{:.3f},".format(cv.grid_min)
+            args += "ARG{}=ang_mat_{} ".format(idx_cv + 1, cv.name)  # ARG1=ang_mat_{0}
+            idx_cv += 1
+
+        print("\nClustering type: {5}-D Distribution\n"
+              "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2} UPPER={3} LOWER={4}"
+              "".format(self.kernel, grid_bin, bandwidth, grid_max, grid_min, len(self.cvs)))
+
+        for crystal in simulation.crystals:
+            print(crystal.name)
+            file_plumed = open(crystal.path + "plumed_" + self.name + ".dat", "w")
+            variables = list()
+            for cv in self.cvs:
+                # Select atoms and molecules
+                lines_atoms = []
+                for idx_mol in range(len(cv.molecules)):
+                    lines_atoms = generate_atom_list(cv.atoms[idx_mol], cv.molecules[idx_mol], crystal,
+                                                     keyword="ATOMS", lines=lines_atoms)
+
+
+                file_plumed.write("DISTANCE ...\n")
+                for line in lines_atoms:
+                    file_plumed.write(line)
+                file_plumed.write("LABEL=dd_{0}\n"
+                                  "COMPONENTS\n"
+                                  "... DISTANCE\n\n"
+                                  "vv_{0}: NORMALIZE ARG1=dd_{0}.x ARG2=dd_{0}.y ARG3=dd_{0}.z\n"
+                                  "dp_mat_{0}: DOTPRODUCT_MATRIX GROUP1=vv_{0}.x GROUP2=vv_{0}.y GROUP3=vv_{0}.z\n"
+                                  "ang_mat_{0}: MATHEVAL ARG1=dp_mat_{0} FUNC=acos(x) PERIODIC=NO\n\n"
+                                  "".format(cv.name))
+
+            file_plumed.write("valg_{0}: KDE {7} GRID_MIN={1} GRID_MAX={2} "
+                              "GRID_BIN={3} BANDWIDTH={4} KERNEL={5}\n\n"
+                              "PRINT ARG=valg_{0} FILE=plumed_{6}_{0}.dat\n"
+                              "".format(self.name, grid_min, grid_max,
+                                        grid_bin, bandwidth, self.kernel, simulation.name, args))
+            file_plumed.close()
+        print("=" * 100)
+
+
 class RDF(object):
 
     def __init__(self, name, method, center="geometrical"):
