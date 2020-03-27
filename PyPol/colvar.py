@@ -284,7 +284,6 @@ class Combine(object):
     def __init__(self, name, cvs):
         self.name = name
         self.cvs = cvs
-
         self.kernel = cvs[0].kernel
 
     def set_kernel(self, kernel="GAUSSIAN"):
