@@ -20,8 +20,22 @@ class Torsions(object):
         self.grid_min = -np.pi
         self.grid_max = np.pi
         self.grid_bin = 36
+        self.timeinterval = 200
 
         self.groups = {}
+
+        for cv in self.method.cvs:
+            if cv.name == self.name:
+                print("Error: CV with label {} already present in this method. Remove it with 'del method.cvs[{}]' or "
+                      "change CV label".format(self.name, self.method.cvs.index(cv)))
+                exit()
+        self.method.cvs.append(self)
+
+    def set_time_interval(self, time, time2=False):
+        if time2:
+            self.timeinterval = (time, time2)
+        else:
+            self.timeinterval = time
 
     def set_atoms(self, atoms, molecule):
         """
@@ -103,7 +117,7 @@ class Torsions(object):
         if sort_group:
             self.groups = sort_groups(self.grid_min, self.grid_max, self.groups)
 
-    def generate_input(self, simulation):
+    def generate_input(self, simulation, bash_script=True):
         """
 
         :return:
@@ -151,6 +165,47 @@ class Torsions(object):
             file_plumed.write("LABEL={0}\n... TORSIONS\n\n"
                               "PRINT ARG={0}.* FILE=plumed_{1}_{0}.dat\n".format(self.name, simulation.name))
             file_plumed.close()
+
+        if bash_script:
+            dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
+
+            file_mdp = open(simulation.mdp)
+            for line in file_mdp:
+                if line.startswith('dt '):
+                    dt = float(line.split()[2])
+                elif line.startswith(("nstxout", "nstxout-compressed")):
+                    traj_stride = int(line.split()[2])
+                elif line.startswith('nsteps '):
+                    nsteps = float(line.split()[2])
+            file_mdp.close()
+
+            traj_time = int(nsteps * dt)
+            if isinstance(self.timeinterval, tuple):
+                traj_start = self.timeinterval[0]
+                traj_end = self.timeinterval[1]
+            elif isinstance(self.timeinterval, int):
+                traj_start = traj_time - self.timeinterval
+                traj_end = traj_time
+            else:
+                print("Error: No suitable time interval.")
+                exit()
+
+            file_script = open(simulation.path_data + "/run_plumed_" + self.name + ".sh", "w")
+            file_script.write('#!/bin/bash\n\n'
+                              'crystal_paths="\n')
+            for crystal in simulation.crystals:
+                file_script.write(crystal.path + "\n")
+            file_script.write('"\n\n'
+                              'for crystal in $crystal_paths ; do\n'
+                              'cd "$crystal" || exit \n'
+                              '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                              '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                              '--trajectory-stride {7} --mc mc.dat\n'
+                              'rm plumed_{1}.xtc\n'
+                              'done\n'
+                              ''.format(simulation.command, simulation.name, traj_start, traj_end,
+                                        self.method.project.htt_plumed, self.name, dt, traj_stride))
+            file_script.close()
         print("=" * 100)
 
 
@@ -177,6 +232,22 @@ class MolecularOrientation(object):
         self.grid_min = 0.0
         self.grid_max = np.pi
         self.grid_bin = 18
+
+        self.timeinterval = 200
+
+        for cv in self.method.cvs:
+            if cv.name == self.name:
+                print("Error: CV with label {} already present in this method. Remove it with 'del method.cvs[{}]' or "
+                      "change CV label".format(self.name, self.method.cvs.index(cv)))
+                exit()
+        self.method.cvs.append(self)
+
+
+    def set_time_interval(self, time, time2=False):
+        if time2:
+            self.timeinterval = (time, time2)
+        else:
+            self.timeinterval = time
 
     def set_atoms(self, atoms, molecule):
         """
@@ -230,7 +301,7 @@ class MolecularOrientation(object):
         if bandwidth:
             self.bandwidth = bandwidth
 
-    def generate_input(self, simulation):
+    def generate_input(self, simulation, bash_script=True):
         """
         Error: Modify for N-Dimensional CV
         :return:
@@ -276,15 +347,73 @@ class MolecularOrientation(object):
                               "".format(self.name, self.grid_min, self.grid_max,
                                         self.grid_bin, self.bandwidth, self.kernel, simulation.name))
             file_plumed.close()
+
+        if bash_script:
+            dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
+
+            file_mdp = open(simulation.mdp)
+            for line in file_mdp:
+                if line.startswith('dt '):
+                    dt = float(line.split()[2])
+                elif line.startswith(("nstxout", "nstxout-compressed")):
+                    traj_stride = int(line.split()[2])
+                elif line.startswith('nsteps '):
+                    nsteps = float(line.split()[2])
+            file_mdp.close()
+
+            traj_time = int(nsteps * dt)
+            if isinstance(self.timeinterval, tuple):
+                traj_start = self.timeinterval[0]
+                traj_end = self.timeinterval[1]
+            elif isinstance(self.timeinterval, int):
+                traj_start = traj_time - self.timeinterval
+                traj_end = traj_time
+            else:
+                print("Error: No suitable time interval.")
+                exit()
+
+            file_script = open(simulation.path_data + "/run_plumed_" + self.name + ".sh", "w")
+            file_script.write('#!/bin/bash\n\n'
+                              'crystal_paths="\n')
+            for crystal in simulation.crystals:
+                file_script.write(crystal.path + "\n")
+            file_script.write('"\n\n'
+                              'for crystal in $crystal_paths ; do\n'
+                              'cd "$crystal" || exit \n'
+                              '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                              '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                              '--trajectory-stride {7} --mc mc.dat\n'
+                              'rm plumed_{1}.xtc\n'
+                              'done\n'
+                              ''.format(simulation.command, simulation.name, traj_start, traj_end,
+                                        self.method.project.htt_plumed, self.name, dt, traj_stride))
+            file_script.close()
+
         print("=" * 100)
 
 
 class Combine(object):
 
-    def __init__(self, name, cvs):
+    def __init__(self, name, method, cvs):
         self.name = name
+        self.method = method
         self.cvs = cvs
+
         self.kernel = cvs[0].kernel
+        self.timeinterval = cvs[0].timeinterval
+
+        for cv in self.method.cvs:
+            if cv.name == self.name:
+                print("Error: CV with label {} already present in this method. Remove it with 'del method.cvs[{}]' or "
+                      "change CV label".format(self.name, self.method.cvs.index(cv)))
+                exit()
+        self.method.cvs.append(self)
+
+    def set_time_interval(self, time, time2=False):
+        if time2:
+            self.timeinterval = (time, time2)
+        else:
+            self.timeinterval = time
 
     def set_kernel(self, kernel="GAUSSIAN"):
         """
@@ -294,7 +423,7 @@ class Combine(object):
         """
         self.kernel = kernel.upper()
 
-    def generate_input(self, simulation):
+    def generate_input(self, simulation, bash_script=False):
         idx_cv = 0
 
         grid_min, grid_max, grid_bin, bandwidth, args = ("", "", "", "", "")
@@ -352,6 +481,49 @@ class Combine(object):
                               "".format(self.name, grid_min, grid_max,
                                         grid_bin, bandwidth, self.kernel, simulation.name, args))
             file_plumed.close()
+
+        if bash_script:
+
+            dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
+
+            file_mdp = open(simulation.mdp)
+            for line in file_mdp:
+                if line.startswith('dt '):
+                    dt = float(line.split()[2])
+                elif line.startswith(("nstxout", "nstxout-compressed")):
+                    traj_stride = int(line.split()[2])
+                elif line.startswith('nsteps '):
+                    nsteps = float(line.split()[2])
+            file_mdp.close()
+
+            traj_time = int(nsteps * dt)
+            if isinstance(self.timeinterval, tuple):
+                traj_start = self.timeinterval[0]
+                traj_end = self.timeinterval[1]
+            elif isinstance(self.timeinterval, int):
+                traj_start = traj_time - self.timeinterval
+                traj_end = traj_time
+            else:
+                print("Error: No suitable time interval.")
+                exit()
+
+            file_script = open(simulation.path_data + "/run_plumed_" + self.name + ".sh", "w")
+            file_script.write('#!/bin/bash\n\n'
+                              'crystal_paths="\n')
+            for crystal in simulation.crystals:
+                file_script.write(crystal.path + "\n")
+            file_script.write('"\n\n'
+                              'for crystal in $crystal_paths ; do\n'
+                              'cd "$crystal" || exit \n'
+                              '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                              '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                              '--trajectory-stride {7} --mc mc.dat\n'
+                              'rm plumed_{1}.xtc\n'
+                              'done\n'
+                              ''.format(simulation.command, simulation.name, traj_start, traj_end,
+                                        self.method.project.htt_plumed, self.name, dt, traj_stride))
+            file_script.close()
+
         print("=" * 100)
 
 
@@ -365,8 +537,13 @@ class RDF(object):
         """
         self.name = name
         self.center = center
-        method.cv.append(self)  # Check if cv exists
         self.method = method
+
+        for cv in self.method.cvs:
+            if cv.name == self.name:
+                print("Error: CV with label {} already present in this method. Remove it with 'del method.cvs[{}]' or "
+                      "change CV label".format(self.name, self.method.cvs.index(cv)))
+                exit()
 
         self.atoms = list()
         self.molecules = list()
@@ -379,6 +556,16 @@ class RDF(object):
         self.kernel = "GAUSSIAN"
         self.binspace = 0.01
         self.bandwidth = 0.01
+
+        self.timeinterval = 200
+
+        self.method.cvs.append(self)
+
+    def set_time_interval(self, time, time2=False):
+        if time2:
+            self.timeinterval = (time, time2)
+        else:
+            self.timeinterval = time
 
     def set_kernel(self, kernel="GAUSSIAN", bandwidth=None, binspace=None):
         """
@@ -442,7 +629,7 @@ class RDF(object):
         else:
             print("Error: not clear which set of atoms you want to delete.")
 
-    def generate_input(self, simulation):
+    def generate_input(self, simulation, bash_script=False):
         """
 
         :param simulation:
@@ -501,6 +688,48 @@ class RDF(object):
                               "".format(self.name, str_group, self.r_0, d_max, self.bandwidth,
                                         nbins, self.kernel, simulation.name))
             file_plumed.close()
+
+        if bash_script:
+
+            dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
+
+            file_mdp = open(simulation.mdp)
+            for line in file_mdp:
+                if line.startswith('dt '):
+                    dt = float(line.split()[2])
+                elif line.startswith(("nstxout", "nstxout-compressed")):
+                    traj_stride = int(line.split()[2])
+                elif line.startswith('nsteps '):
+                    nsteps = float(line.split()[2])
+            file_mdp.close()
+
+            traj_time = int(nsteps * dt)
+            if isinstance(self.timeinterval, tuple):
+                traj_start = self.timeinterval[0]
+                traj_end = self.timeinterval[1]
+            elif isinstance(self.timeinterval, int):
+                traj_start = traj_time - self.timeinterval
+                traj_end = traj_time
+            else:
+                print("Error: No suitable time interval.")
+                exit()
+
+            file_script = open(simulation.path_data + "/run_plumed_" + self.name + ".sh", "w")
+            file_script.write('#!/bin/bash\n\n'
+                              'crystal_paths="\n')
+            for crystal in simulation.crystals:
+                file_script.write(crystal.path + "\n")
+            file_script.write('"\n\n'
+                              'for crystal in $crystal_paths ; do\n'
+                              'cd "$crystal" || exit \n'
+                              '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                              '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                              '--trajectory-stride {7} --mc mc.dat\n'
+                              'rm plumed_{1}.xtc\n'
+                              'done\n'
+                              ''.format(simulation.command, simulation.name, traj_start, traj_end,
+                                        self.method.project.plumed, self.name, dt, traj_stride))
+            file_script.close()
 
 
 def sort_groups(grid_min, grid_max, groups, tolerance=0.01):
