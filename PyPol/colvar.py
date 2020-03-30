@@ -117,6 +117,30 @@ class Torsions(object):
         if sort_group:
             self.groups = sort_groups(self.grid_min, self.grid_max, self.groups)
 
+    def write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write("\nCV: {} ({})".format(self.name, self.type))
+        if self.atoms:
+            file_output.write("Atoms:  ")
+            for atom in self.atoms:
+                file_output.write("{}({})  ".format(atom, self.molecule.atoms[atom].label))
+        else:
+            file_output.write("No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n"
+                              "".format(self.name))
+
+        if self.clustering_type == "distribution":
+            file_output.write("\nClustering type: Distribution\n"
+                              "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2:.3f} UPPER={3:.3f} LOWER={4:.3f}\n"
+                              "".format(self.kernel, self.grid_bin, self.bandwidth, self.grid_max, self.grid_min))
+        elif self.clustering_type == "classification":
+            file_output.write("\nClustering type: Classification\n")
+            for group in self.groups.keys():
+                file_output.write("Group {}: ".format(group))
+                for boundary in self.groups[group]:
+                    file_output.write("{} ".format(boundary))
+                file_output.write("\n")
+        file_output.close()
+
     def generate_input(self, simulation, bash_script=True):
         """
 
@@ -242,7 +266,6 @@ class MolecularOrientation(object):
                 exit()
         self.method.cvs.append(self)
 
-
     def set_time_interval(self, time, time2=False):
         if time2:
             self.timeinterval = (time, time2)
@@ -300,6 +323,24 @@ class MolecularOrientation(object):
 
         if bandwidth:
             self.bandwidth = bandwidth
+
+    def write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write("CV: {} ({})\n".format(self.name, self.type))
+        if self.atoms:
+            file_output.write("Atoms: ")
+            for idx_mol in range(len(self.molecules)):
+                file_output.write("\nMolecule '{}': ".format(self.molecules[idx_mol].residue))
+                for atom in self.atoms[idx_mol]:
+                    file_output.write("{}({})".format(atom, self.molecules[idx_mol].atoms[atom].label))
+        else:
+            file_output.write("No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n"
+                              "".format(self.name))
+
+        file_output.write("\nClustering type: Distribution\n"
+                          "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2:.3f} UPPER={3:.3f} LOWER={4:.3f}\n"
+                          "".format(self.kernel, self.grid_bin, self.bandwidth, self.grid_max, self.grid_min))
+        file_output.close()
 
     def generate_input(self, simulation, bash_script=True):
         """
@@ -396,6 +437,7 @@ class Combine(object):
 
     def __init__(self, name, method, cvs):
         self.name = name
+        self.type = "N-Dimensional CV"
         self.method = method
         self.cvs = cvs
 
@@ -423,17 +465,45 @@ class Combine(object):
         """
         self.kernel = kernel.upper()
 
+    def write_output(self, path_output):
+        idx_cv = 0
+        grid_min, grid_max, grid_bin, bandwidth, args = ("", "", "", "", "")
+        file_output = open(path_output, "a")
+        file_output.write("\nCV: {} ({})".format(self.name, self.type))
+        for cv in self.cvs:
+            file_output.write("CV{}: {} ({})".format(idx_cv, cv.name, cv.type))
+            if not cv.atoms:
+                file_output.write("No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n"
+                                  "".format(cv.name))
+            else:
+                file_output.write("Atoms:\n")
+                for idx_mol in range(len(cv.molecules)):
+                    file_output.write("\nMolecule '{}': ".format(cv.molecules[idx_mol].residue))
+                    for atom in cv.atoms[idx_mol]:
+                        file_output.write("{}({})  ".format(atom, cv.molecules[idx_mol].atoms[atom].label))
+            grid_min += "{:.3f},".format(cv.grid_min)
+            grid_max += "{:.3f},".format(cv.grid_max)
+            grid_bin += "{},".format(cv.grid_min)
+            bandwidth += "{:.3f},".format(cv.grid_min)
+            idx_cv += 1
+
+        file_output.write("\nClustering type: {5}-D Distribution\n"
+                          "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2} UPPER={3} LOWER={4}"
+                          "".format(self.kernel, grid_bin, bandwidth, grid_max, grid_min, len(self.cvs)))
+        file_output.close()
+
     def generate_input(self, simulation, bash_script=False):
         idx_cv = 0
 
         grid_min, grid_max, grid_bin, bandwidth, args = ("", "", "", "", "")
-
+        print("=" * 100)
+        print("Generate plumed input files")
+        print("CV: {} ({})".format(idx_cv, self.name, self.type))
         for cv in self.cvs:
             if not cv.atoms:
                 print("Error: no atoms found in CV {}. select atoms with the set_atoms module.".format(cv.name))
                 exit()
-            print("=" * 100)
-            print("Generate plumed input files")
+
             print("CV{}: {} ({})".format(idx_cv, cv.name, cv.type))
             print("Atoms:", end=" ")
             for idx_mol in range(len(cv.molecules)):
@@ -445,7 +515,7 @@ class Combine(object):
             grid_max += "{:.3f},".format(cv.grid_max)
             grid_bin += "{},".format(cv.grid_min)
             bandwidth += "{:.3f},".format(cv.grid_min)
-            args += "ARG{}=ang_mat_{} ".format(idx_cv + 1, cv.name)  # ARG1=ang_mat_{0}
+            args += "ARG{}=ang_mat_{} ".format(idx_cv + 1, cv.name)
             idx_cv += 1
 
         print("\nClustering type: {5}-D Distribution\n"
@@ -455,14 +525,12 @@ class Combine(object):
         for crystal in simulation.crystals:
             print(crystal.name)
             file_plumed = open(crystal.path + "plumed_" + self.name + ".dat", "w")
-            variables = list()
             for cv in self.cvs:
                 # Select atoms and molecules
                 lines_atoms = []
                 for idx_mol in range(len(cv.molecules)):
                     lines_atoms = generate_atom_list(cv.atoms[idx_mol], cv.molecules[idx_mol], crystal,
                                                      keyword="ATOMS", lines=lines_atoms)
-
 
                 file_plumed.write("DISTANCE ...\n")
                 for line in lines_atoms:
@@ -629,9 +697,27 @@ class RDF(object):
         else:
             print("Error: not clear which set of atoms you want to delete.")
 
+    def write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write("CV: {} ({})".format(self.name, self.type))
+        if self.atoms:
+            file_output.write("Atoms: ")
+            for idx_mol in range(len(self.molecules)):
+                file_output.write("\nMolecule '{}': ".format(self.molecules[idx_mol].residue))
+                for atom in self.atoms[idx_mol]:
+                    file_output.write("{}({})".format(atom, self.molecules[idx_mol].atoms[atom].label))
+        else:
+            file_output.write("No atoms found in CV {}. Select atoms with the 'set_atoms' module."
+                              "".format(self.name))
+        file_output.write("\nClustering type: Distribution\n"
+                          "Parameters: KERNEL={0} BANDWIDTH={1:.3f} LOWER={2:.3f} BIN_SPACE={3:.3f}\n"
+                          "".format(self.kernel, self.bandwidth, self.r_0, self.binspace))
+        file_output.close()
+
     def generate_input(self, simulation, bash_script=False):
         """
 
+        :param bash_script:
         :param simulation:
         :return:
         """
@@ -661,7 +747,7 @@ class RDF(object):
             print(crystal.name)
 
             d_max = 0.5 * np.min(np.array([crystal.box[0:0], crystal.box[1:1], crystal.box[2:2]]))
-            nbins = int(round((d_max - self.r_0)/self.binspace, 0))
+            nbins = int(round((d_max - self.r_0) / self.binspace, 0))
 
             lines_atoms = []
             for idx_mol in range(len(self.molecules)):

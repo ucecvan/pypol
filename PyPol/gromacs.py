@@ -27,7 +27,7 @@ class Method(object):
         self.molecular_dynamics = list()
         self.metadynamics = list()
 
-        self.cv = list()
+        self.cvs = list()
 
     def simulation(self, simulation_name):
         """
@@ -384,6 +384,13 @@ class Method(object):
             for atom in molecule.atoms:
                 file_output.write("  {:<8} {:<8} {:<8} {:<8}\n".format(atom.index, atom.label, atom.type,
                                                                        " ".join(str(bond) for bond in atom.bonds)))
+
+        file_output.write("\nCollective Variables:\n")
+        file_output.close()
+        for cv in self.cvs:
+            cv.write_output(path_output)
+        file_output = open(path_output, "a")
+
         file_output.write("\nSimulations:\n{:<20} ".format("IDs"))
         for simulation in self.energy_minimisation:
             if simulation.completed and not simulation.hide:
