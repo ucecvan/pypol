@@ -1396,9 +1396,10 @@ class MolecularDynamics(object):
             if os.path.exists(path_output):
                 file_output = open(path_output)
                 lines = file_output.readlines()
-                if "Finished mdrun" in lines[-1]:
+                if "Finished mdrun" in lines[-1] or "Finished mdrun" in lines[-2]:
                     os.chdir(crystal.path)
-                    os.system('{} energy -f {}.edr <<< "Potential" > PyPol_Temporary_Potential.txt')
+                    os.system('{} energy -f {}.edr <<< "Potential" > PyPol_Temporary_Potential.txt'
+                              ''.format(self.command, self.name))
                     file_pot = open(crystal.path + 'PyPol_Temporary_Potential.txt')
                     for line in file_pot:
                         if line.startswith("Potential"):
