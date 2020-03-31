@@ -100,6 +100,7 @@ class Project(object):
         :param reset_program_paths:
         :return:
         """
+        print("Changing project directory from:\n'{}'\nto:\n'{}'".format(self.working_directory, path))
         self.working_directory = path
         self.path_progress = self.working_directory + "/" + self.name + "_output.dat"
         self.path_pickle = self.working_directory + "/.pypol.pkl"
