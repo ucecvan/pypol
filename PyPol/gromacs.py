@@ -743,6 +743,7 @@ class EnergyMinimization(object):
                 new_rank[crystal.name] = crystal.Potential
                 file_gro = open(crystal.path + self.name + ".gro", "r")
                 new_box = file_gro.readlines()[-1].split()
+                print(new_box)
                 file_gro.close()
                 idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
                 crystal.box = np.array([float(new_box[ii]) for ii in idx_gromacs]).reshape((3, 3))
