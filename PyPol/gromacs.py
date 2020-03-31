@@ -743,8 +743,9 @@ class EnergyMinimization(object):
                 new_rank[crystal.name] = crystal.Potential
                 file_gro = open(crystal.path + self.name + ".gro", "r")
                 new_box = file_gro.readlines()[-1].split()
-                print(new_box)
                 file_gro.close()
+                if len(new_box) == 3:
+                    new_box = [float(ii) for ii in new_box] + [0., 0., 0., 0., 0., 0.]
                 idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
                 crystal.box = np.array([float(new_box[ii]) for ii in idx_gromacs]).reshape((3, 3))
                 crystal.cell_parameters = box2cell(crystal.box)
@@ -1274,6 +1275,8 @@ class CellRelaxation(object):
                 file_gro = open(crystal.path + self.name + ".gro", "r")
                 new_box = file_gro.readlines()[-1].split()
                 file_gro.close()
+                if len(new_box) == 3:
+                    new_box = [float(ii) for ii in new_box] + [0., 0., 0., 0., 0., 0.]
                 idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
                 crystal.box = np.array([float(new_box[ii]) for ii in idx_gromacs]).reshape((3, 3))
                 crystal.cell_parameters = box2cell(crystal.box)
@@ -1422,6 +1425,8 @@ class MolecularDynamics(object):
                 file_gro = open(crystal.path + self.name + ".gro", "r")
                 new_box = file_gro.readlines()[-1].split()
                 file_gro.close()
+                if len(new_box) == 3:
+                    new_box = [float(ii) for ii in new_box] + [0., 0., 0., 0., 0., 0.]
                 idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
                 crystal.box = np.array([float(new_box[ii]) for ii in idx_gromacs]).reshape((3, 3))
                 crystal.cell_parameters = box2cell(crystal.box)
