@@ -128,10 +128,11 @@ class Project(object):
                 simulation.project = method.project
                 simulation.method = method
                 for crystal in simulation.crystals:
-                    if simulation.type == "Cell Relaxation":
-                        crystal.path = method.path_data + crystal.name + "/lammps/"
-                    else:
-                        crystal.path = method.path_data + crystal.name + "/"
+                    crystal.path = method.path_data + crystal.name + "/"
+                    # if simulation.type == "Cell Relaxation":
+                    #     crystal.path = method.path_data + crystal.name + "/lammps/"
+                    # else:
+                    #     crystal.path = method.path_data + crystal.name + "/"
 
         if reset_program_paths:
             from PyPol.Defaults.defaults import package_paths, pypol_info
