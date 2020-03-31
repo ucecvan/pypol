@@ -148,8 +148,10 @@ class Project(object):
             self.htt_plumed = package_paths["htt_plumed"]
             for method in self.methods:
                 if method.package == "Gromacs":
+                    method.pypol_directory = pypol_info["path"]
                     method.command = self.gromacs
                 if method.package == "LAMMPS":
+                    method.pypol_directory = pypol_info["path"]
                     method.command = self.lammps
                 for simulation in method.energy_minimisation + method.molecular_dynamics:
                     simulation.command = method.command
