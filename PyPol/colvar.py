@@ -15,7 +15,7 @@ class Torsions(object):
         self.molecule = None
 
         self.kernel = "GAUSSIAN"
-        self.bandwidth = 0.5
+        self.bandwidth = 0.3
 
         self.grid_min = -np.pi
         self.grid_max = np.pi
@@ -30,12 +30,14 @@ class Torsions(object):
                       "change CV label".format(self.name, self.method.cvs.index(cv)))
                 exit()
         self.method.cvs.append(self)
+        self.method.project.save()
 
     def set_time_interval(self, time, time2=False):
         if time2:
             self.timeinterval = (time, time2)
         else:
             self.timeinterval = time
+        self.method.project.save()
 
     def set_atoms(self, atoms, molecule):
         """
@@ -49,6 +51,7 @@ class Torsions(object):
         """
         self.atoms = list(atoms)
         self.molecule = molecule
+        self.method.project.save()
 
     def set_grid(self, grid_min, grid_max, grid_bin):
         """
@@ -61,14 +64,16 @@ class Torsions(object):
         self.grid_min = grid_min
         self.grid_max = grid_max
         self.grid_bin = grid_bin
+        self.method.project.save()
 
-    def set_bandwidth(self, bandwidth=0.5):
+    def set_bandwidth(self, bandwidth=0.3):
         """
 
         :param bandwidth:
         :return:
         """
         self.bandwidth = bandwidth
+        self.method.project.save()
 
     def set_kernel(self, kernel="GAUSSIAN"):
         """
@@ -77,6 +82,7 @@ class Torsions(object):
         :return:
         """
         self.kernel = kernel
+        self.method.project.save()
 
     def set_clusteringtype(self, clusteringtype):
         """
@@ -90,6 +96,7 @@ class Torsions(object):
         self.clustering_type = clusteringtype
         if clusteringtype == "classification" and not self.groups:
             self.add_group((self.grid_min, self.grid_max), "Others", sort_group=False)
+        self.method.project.save()
 
     def add_group(self, groups, name=None, sort_group=True):
         """
@@ -112,10 +119,12 @@ class Torsions(object):
                     self.groups[name].append(groups)
                     if sort_group:
                         self.groups = sort_groups(self.grid_min, self.grid_max, self.groups)
+                    self.method.project.save()
                     return
             self.groups[name] = [groups]
         if sort_group:
             self.groups = sort_groups(self.grid_min, self.grid_max, self.groups)
+        self.method.project.save()
 
     def write_output(self, path_output):
         file_output = open(path_output, "a")
@@ -230,6 +239,7 @@ class Torsions(object):
                               ''.format(simulation.command, simulation.name, traj_start, traj_end,
                                         self.method.project.htt_plumed, self.name, dt, traj_stride))
             file_script.close()
+        self.method.project.save()
         print("=" * 100)
 
 
@@ -251,7 +261,7 @@ class MolecularOrientation(object):
         self.molecules = list()
 
         self.kernel = "GAUSSIAN"
-        self.bandwidth = 0.5
+        self.bandwidth = 0.3
 
         self.grid_min = 0.0
         self.grid_max = np.pi
@@ -265,12 +275,14 @@ class MolecularOrientation(object):
                       "change CV label".format(self.name, self.method.cvs.index(cv)))
                 exit()
         self.method.cvs.append(self)
+        self.method.project.save()
 
     def set_time_interval(self, time, time2=False):
         if time2:
             self.timeinterval = (time, time2)
         else:
             self.timeinterval = time
+        self.method.project.save()
 
     def set_atoms(self, atoms, molecule):
         """
@@ -281,6 +293,7 @@ class MolecularOrientation(object):
         """
         self.atoms.append(list(atoms))
         self.molecules.append(molecule)
+        self.method.project.save()
 
     def remove_atoms(self, index="all"):
         if index == "all":
@@ -291,6 +304,7 @@ class MolecularOrientation(object):
             del self.molecules[index]
         else:
             print("Error: not clear which set of atoms you want to delete.")
+        self.method.project.save()
 
     def set_grid(self, grid_min, grid_max, grid_bin):
         """
@@ -303,14 +317,16 @@ class MolecularOrientation(object):
         self.grid_min = grid_min
         self.grid_max = grid_max
         self.grid_bin = grid_bin
+        self.method.project.save()
 
-    def set_bandwidth(self, bandwidth=0.5):
+    def set_bandwidth(self, bandwidth=0.3):
         """
 
         :param bandwidth:
         :return:
         """
         self.bandwidth = bandwidth
+        self.method.project.save()
 
     def set_kernel(self, kernel="GAUSSIAN", bandwidth=None):
         """
@@ -323,6 +339,7 @@ class MolecularOrientation(object):
 
         if bandwidth:
             self.bandwidth = bandwidth
+        self.method.project.save()
 
     def write_output(self, path_output):
         file_output = open(path_output, "a")
@@ -429,7 +446,7 @@ class MolecularOrientation(object):
                               ''.format(simulation.command, simulation.name, traj_start, traj_end,
                                         self.method.project.htt_plumed, self.name, dt, traj_stride))
             file_script.close()
-
+        self.method.project.save()
         print("=" * 100)
 
 
@@ -450,12 +467,14 @@ class Combine(object):
                       "change CV label".format(self.name, self.method.cvs.index(cv)))
                 exit()
         self.method.cvs.append(self)
+        self.method.project.save()
 
     def set_time_interval(self, time, time2=False):
         if time2:
             self.timeinterval = (time, time2)
         else:
             self.timeinterval = time
+        self.method.project.save()
 
     def set_kernel(self, kernel="GAUSSIAN"):
         """
@@ -464,6 +483,7 @@ class Combine(object):
         :return:
         """
         self.kernel = kernel.upper()
+        self.method.project.save()
 
     def write_output(self, path_output):
         idx_cv = 0
@@ -591,6 +611,7 @@ class Combine(object):
                               ''.format(simulation.command, simulation.name, traj_start, traj_end,
                                         self.method.project.htt_plumed, self.name, dt, traj_stride))
             file_script.close()
+        self.method.project.save()
 
         print("=" * 100)
 
@@ -628,12 +649,14 @@ class RDF(object):
         self.timeinterval = 200
 
         self.method.cvs.append(self)
+        self.method.project.save()
 
     def set_time_interval(self, time, time2=False):
         if time2:
             self.timeinterval = (time, time2)
         else:
             self.timeinterval = time
+        self.method.project.save()
 
     def set_kernel(self, kernel="GAUSSIAN", bandwidth=None, binspace=None):
         """
@@ -649,6 +672,7 @@ class RDF(object):
             self.bandwidth = bandwidth
         if binspace:
             self.binspace = binspace
+        self.method.project.save()
 
     def set_switching_function(self, switching_function="RATIONAL", r_0=None):
         """
@@ -660,6 +684,7 @@ class RDF(object):
         self.switching_function = switching_function.upper()
         if r_0:
             self.r_0 = r_0
+        self.method.project.save()
 
     def set_atoms(self, atoms, molecule, overwrite=True):
         """
@@ -686,6 +711,7 @@ class RDF(object):
                     atoms.append(atom.index)
         self.atoms.append(list(atoms))
         self.molecules.append(molecule)
+        self.method.project.save()
 
     def remove_atoms(self, index="all"):
         if index == "all":
@@ -696,6 +722,7 @@ class RDF(object):
             del self.molecules[index]
         else:
             print("Error: not clear which set of atoms you want to delete.")
+        self.method.project.save()
 
     def write_output(self, path_output):
         file_output = open(path_output, "a")
@@ -816,6 +843,7 @@ class RDF(object):
                               ''.format(simulation.command, simulation.name, traj_start, traj_end,
                                         self.method.project.plumed, self.name, dt, traj_stride))
             file_script.close()
+        self.method.project.save()
 
 
 def sort_groups(grid_min, grid_max, groups, tolerance=0.01):

@@ -65,13 +65,13 @@ class Project(object):
         """
         import pickle
         import os
-        print("Saving updates...", end="")
+        # print("Saving updates...", end="")
         if os.path.exists(self.working_directory + "/.pypol.pkl"):
             os.rename(self.working_directory + "/.pypol.pkl", self.working_directory + "/.pypol.bck.pkl")
         with open(self.path_pickle, "wb") as file_pickle:
             pickle.dump(self, file_pickle)
         self.write_output()
-        print("done")
+        # print("done")
 
     def write_output(self):
         """
