@@ -512,7 +512,7 @@ class Combine(object):
                           "".format(self.kernel, grid_bin, bandwidth, grid_max, grid_min, len(self.cvs)))
         file_output.close()
 
-    def generate_input(self, simulation, bash_script=False):
+    def generate_input(self, simulation, bash_script=True):
         idx_cv = 0
 
         grid_min, grid_max, grid_bin, bandwidth, args = ("", "", "", "", "")
