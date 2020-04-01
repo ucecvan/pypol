@@ -592,32 +592,39 @@ class Method(object):
             simulation.method = self
 
             if not os.path.exists(simulation.mdp):
+                from shutil import copyfile
                 if simulation.name == "nvt" and not simulation.mdp:
                     print("Default file {} will be used".format(self.pypol_directory + "Defaults/Gromacs/nvt.mdp"))
-                    simulation.mdp = self.pypol_directory + "Defaults/Gromacs/nvt.mdp"
+                    copyfile(self.pypol_directory + "Defaults/Gromacs/nvt.mdp", self.path_input + "nvt.mdp")
+                    simulation.mdp = self.path_input + "nvt.mdp"
                 elif simulation.name == "berendsen" and not simulation.mdp:
                     print("Default file {} will be used"
                           "".format(self.pypol_directory + "Defaults/Gromacs/berendsen.mdp"))
-                    simulation.mdp = self.pypol_directory + "Defaults/Gromacs/berendsen.mdp"
+                    copyfile(self.pypol_directory + "Defaults/Gromacs/berendsen.mdp", self.path_input + "berendsen.mdp")
+                    simulation.mdp = self.path_input + "berendsen.mdp"
                 elif simulation.name == "parrinello" and not simulation.mdp:
                     print("Default file {} will be used"
                           "".format(self.pypol_directory + "Defaults/Gromacs/parrinello.mdp"))
-                    simulation.mdp = self.pypol_directory + "Defaults/Gromacs/parrinello.mdp"
+                    copyfile(self.pypol_directory + "Defaults/Gromacs/parrinello.mdp", self.path_input + "parrinello.mdp")
+                    simulation.mdp = self.path_input + "parrinello.mdp"
                 elif simulation.index == 0 and not simulation.mdp:
                     print("No mdp file has been specified.\n"
                           "File {} will be used".format(self.pypol_directory + "Defaults/Gromacs/nvt.mdp"))
                     simulation.name = "nvt"
-                    simulation.mdp = self.pypol_directory + "Defaults/Gromacs/nvt.mdp"
+                    copyfile(self.pypol_directory + "Defaults/Gromacs/nvt.mdp", self.path_input + "nvt.mdp")
+                    simulation.mdp = self.path_input + "nvt.mdp"
                 elif simulation.index == 1 and not simulation.mdp and simulation.previous_name == "nvt":
                     print("No mdp file has been specified.\n"
                           "File {} will be used".format(self.pypol_directory + "Defaults/Gromacs/berendsen.mdp"))
                     simulation.name = "berendsen"
-                    simulation.mdp = self.pypol_directory + "Defaults/Gromacs/berendsen.mdp"
+                    copyfile(self.pypol_directory + "Defaults/Gromacs/berendsen.mdp", self.path_input + "berendsen.mdp")
+                    simulation.mdp = self.path_input + "berendsen.mdp"
                 elif simulation.index == 2 and not simulation.mdp and simulation.previous_name == "berendsen":
                     print("No mdp file has been specified.\n"
                           "File {} will be used".format(self.pypol_directory + "Defaults/Gromacs/parrinello.mdp"))
                     simulation.name = "parrinello"
-                    simulation.mdp = self.pypol_directory + "Defaults/Gromacs/parrinello.mdp"
+                    copyfile(self.pypol_directory + "Defaults/Gromacs/parrinello.mdp", self.path_input + "parrinello.mdp")
+                    simulation.mdp = self.path_input + "parrinello.mdp"
                 else:
                     print("Error: No mdp file has been found.\n"
                           "You can use the defaults mdp parameters by using the names "
@@ -637,6 +644,9 @@ class EnergyMinimization(object):
         :param name:
         :param path_mdp:
         """
+        import os
+        from shutil import copyfile
+
         self.type = "Energy Minimisation"
         self.project = None
         self.method = None
@@ -646,7 +656,12 @@ class EnergyMinimization(object):
         self.index = 0
         self.previous_name = None
         self.name = name
-        self.mdp = path_mdp
+        if os.path.exists(path_mdp):
+            copyfile(path_mdp, self.path_input + name + ".mdp")
+            self.mdp = self.path_input + name + ".mdp"
+        else:
+            print("Error: File '{}' not found".format(path_mdp))
+            exit()
         self.command = None
         self.mdrun_options = ""
         self.crystals = list()
@@ -770,17 +785,19 @@ class EnergyMinimization(object):
 
 class CellRelaxation(object):
     """
-    Error: not suitable for more than 1 molecule!
+    Error: not suitable for more than 1 molecule + not possible to define user input and forcefield.
     Divide bonded from non-bonded parameters and add read_data at the end with the LJ coeff.
     """
 
-    def __init__(self, name, path_lmp_in=None, path_lmp_ff=None):
+    def __init__(self, name, path_lmp_in=None, path_lmp_ff=None):  # Transform path_lmp_ff in iterable obj for all mol
         """
 
         :param name:
         :param path_lmp_in:
         :param path_lmp_ff:
         """
+        import os
+        from shutil import copyfile
         self.type = "Cell Relaxation"
         self.project = None
         self.method = None
@@ -790,8 +807,18 @@ class CellRelaxation(object):
         self.index = 0
         self.previous_name = None
         self.name = name
-        self.path_lmp_in = path_lmp_in
-        self.path_lmp_ff = path_lmp_ff
+        if path_lmp_in:
+            if os.path.exists(path_lmp_in) and os.path.exists(path_lmp_ff):
+                copyfile(path_lmp_in, self.path_input + "input.in")
+                self.path_lmp_in = self.path_input + "input.in"
+                copyfile(path_lmp_ff, self.path_input + self.method.molecules[0].name + ".lmp")  # Iter here
+                self.path_lmp_ff = self.path_input + self.method.molecules[0].name + ".lmp"
+            else:
+                print("Error: File '{}' or '{}' not found".format(path_lmp_in, path_lmp_ff))
+                exit()
+        else:
+            self.path_lmp_in = None
+            self.path_lmp_ff = None
         self.command = None
         self.intermol = None
         self.lammps = None
@@ -1306,6 +1333,8 @@ class MolecularDynamics(object):
         :param name:
         :param path_mdp:
         """
+        import os
+        from shutil import copyfile
         self.type = "Molecular Dynamics"
         self.project = None
         self.method = None
@@ -1315,7 +1344,15 @@ class MolecularDynamics(object):
         self.index = 0
         self.previous_name = None
         self.name = name
-        self.mdp = path_mdp
+        if path_mdp:
+            if os.path.exists(path_mdp):
+                copyfile(path_mdp, self.path_input + name + ".mdp")
+                self.mdp = self.path_input + name + ".mdp"
+            else:
+                print("Error: File '{}' not found".format(path_mdp))
+                exit()
+        else:
+            self.mdp = path_mdp
         self.command = None
         self.mdrun_options = ""
         self.crystals = list()
