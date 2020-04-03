@@ -20,7 +20,7 @@ class Crystal(object):
         self.completed = False
         self.Potential = None
         self.rank = 0
-        self.CVs = list()
+        self.cvs = dict()
 
     def save(self, remove_molecules=True):
         """
@@ -87,7 +87,7 @@ class Crystal(object):
         new_crystal.path = crystal.path
         new_crystal.cell_parameters = copy.deepcopy(crystal.cell_parameters)
         new_crystal.box = copy.deepcopy(crystal.box)
-        new_crystal.CVs = copy.deepcopy(crystal.CVs)
+        new_crystal.cvs = copy.deepcopy(crystal.CVs)
         return new_crystal
 
     @staticmethod

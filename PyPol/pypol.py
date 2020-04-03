@@ -127,6 +127,7 @@ class Project(object):
                 simulation.path_input = method.path_input
                 simulation.project = method.project
                 simulation.method = method
+                simulation.mdp = simulation.path_input + simulation.name + ".mdp"
                 for crystal in simulation.crystals:
                     crystal.path = method.path_data + crystal.name + "/"
                     # if simulation.type == "Cell Relaxation":

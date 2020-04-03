@@ -538,6 +538,7 @@ class Method(object):
                 for crystal in self.energy_minimisation[-1].crystals:
                     if crystal.completed and not crystal.melted:
                         simulation_crystal = Crystal.copy_properties(crystal)
+                        simulation_crystal.CVs = dict()
                         simulation.crystals.append(simulation_crystal)
 
             simulation.command = self.command
@@ -560,6 +561,7 @@ class Method(object):
                     simulation.previous_name = "sc"
                     for crystal in self.initial_crystals:
                         simulation_crystal = Crystal.copy_properties(crystal)
+                        simulation_crystal.CVs = dict()
                         simulation.crystals.append(simulation_crystal)
                 else:
                     simulation.previous_name = self.energy_minimisation[-1].name
@@ -581,6 +583,7 @@ class Method(object):
                 for crystal in self.molecular_dynamics[-1].crystals:
                     if crystal.completed and not crystal.melted:
                         simulation_crystal = Crystal.copy_properties(crystal)
+                        simulation_crystal.CVs = dict()
                         simulation.crystals.append(simulation_crystal)
 
             simulation.command = self.command
@@ -605,7 +608,8 @@ class Method(object):
                 elif simulation.name == "parrinello" and not simulation.mdp:
                     print("Default file {} will be used"
                           "".format(self.pypol_directory + "Defaults/Gromacs/parrinello.mdp"))
-                    copyfile(self.pypol_directory + "Defaults/Gromacs/parrinello.mdp", self.path_input + "parrinello.mdp")
+                    copyfile(self.pypol_directory + "Defaults/Gromacs/parrinello.mdp", self.path_input +
+                             "parrinello.mdp")
                     simulation.mdp = self.path_input + "parrinello.mdp"
                 elif simulation.index == 0 and not simulation.mdp:
                     print("No mdp file has been specified.\n"
@@ -623,7 +627,8 @@ class Method(object):
                     print("No mdp file has been specified.\n"
                           "File {} will be used".format(self.pypol_directory + "Defaults/Gromacs/parrinello.mdp"))
                     simulation.name = "parrinello"
-                    copyfile(self.pypol_directory + "Defaults/Gromacs/parrinello.mdp", self.path_input + "parrinello.mdp")
+                    copyfile(self.pypol_directory + "Defaults/Gromacs/parrinello.mdp", self.path_input +
+                             "parrinello.mdp")
                     simulation.mdp = self.path_input + "parrinello.mdp"
                 else:
                     print("Error: No mdp file has been found.\n"
@@ -723,7 +728,7 @@ class EnergyMinimization(object):
         elif crystals == "incomplete":
             list_crystals = list()
             for crystal in self.crystals:
-                if crystal.completed:
+                if not crystal.completed:
                     list_crystals.append(crystal)
         else:
             list_crystals = get_list(crystals)
@@ -1405,7 +1410,6 @@ class MolecularDynamics(object):
                                   'done \n'
                                   ''.format(self.command, self.name, self.previous_name, self.mdrun_options))
             file_script.close()
-
         self.project.save()
 
     def check_normal_termination(self, crystals="all"):
@@ -1423,7 +1427,7 @@ class MolecularDynamics(object):
         elif crystals == "incomplete":
             list_crystals = list()
             for crystal in self.crystals:
-                if crystal.completed:
+                if not crystal.completed:
                     list_crystals.append(crystal)
         else:
             list_crystals = get_list(crystals)

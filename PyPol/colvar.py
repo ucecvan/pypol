@@ -23,6 +23,7 @@ class Torsions(object):
         self.timeinterval = 200
 
         self.groups = {}
+        self.group_bins = {}
 
         for cv in self.method.cvs:
             if cv.name == self.name:
@@ -96,6 +97,7 @@ class Torsions(object):
         self.clustering_type = clusteringtype
         if clusteringtype == "classification" and not self.groups:
             self.add_group((self.grid_min, self.grid_max), "Others", sort_group=False)
+            self.groups["Others"] = list()
         self.method.project.save()
 
     def add_group(self, groups, name=None, sort_group=True):
@@ -121,7 +123,9 @@ class Torsions(object):
                         self.groups = sort_groups(self.grid_min, self.grid_max, self.groups)
                     self.method.project.save()
                     return
+
             self.groups[name] = [groups]
+
         if sort_group:
             self.groups = sort_groups(self.grid_min, self.grid_max, self.groups)
         self.method.project.save()
@@ -191,7 +195,9 @@ class Torsions(object):
             elif self.clustering_type == "classification":
                 idx_boundaries = 1
                 for group in self.groups.keys():
+                    self.group_bins[group] = list()
                     for boundary in self.groups[group]:
+                        self.group_bins[group].append(idx_boundaries - 1)
                         file_plumed.write("BETWEEN{0}={{{{{1} LOWER={2:.3f} UPPER={3:.3f}}}}}\n"
                                           "".format(idx_boundaries, self.kernel, boundary[0], boundary[1]))
                         idx_boundaries += 1
@@ -241,6 +247,38 @@ class Torsions(object):
             file_script.close()
         self.method.project.save()
         print("=" * 100)
+
+    def check_normal_termination(self, simulation, crystals="all"):
+        import numpy as np
+        import os
+        from PyPol.utilities import get_list
+
+        if crystals == "all":
+            list_crystals = list()
+            for crystal in simulation.crystals:
+                if crystal.completed:
+                    list_crystals.append(crystal)
+        else:
+            list_crystals = get_list(crystals)
+
+        for crystal in list_crystals:
+            path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
+            if os.path.exists(path_output):
+                cv = np.genfromtxt(path_output, skip_header=1)[:, 1:]
+                cv = np.average(cv, axis=1)
+                if self.clustering_type == "distribution":
+                    crystal.cvs[self.name] = cv
+                elif self.clustering_type == "classification":
+                    group_bin = np.argmax(cv)
+                    for group_name in self.group_bins.keys():
+                        if group_bin in self.group_bins[group_name]:
+                            crystal.cvs[self.name] = group_name
+                            break
+
+            else:
+                print("An errlist_binsor has occurred with Plumed. Check file {} in folder {}."
+                      "".format(path_output, crystal.path))
+        self.method.project.save()
 
 
 class MolecularOrientation(object):
@@ -434,7 +472,8 @@ class MolecularOrientation(object):
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
             for crystal in simulation.crystals:
-                file_script.write(crystal.path + "\n")
+                if crystal.completed:
+                    file_script.write(crystal.path + "\n")
             file_script.write('"\n\n'
                               'for crystal in $crystal_paths ; do\n'
                               'cd "$crystal" || exit \n'
@@ -449,6 +488,30 @@ class MolecularOrientation(object):
         self.method.project.save()
         print("=" * 100)
 
+    def check_normal_termination(self, simulation, crystals="all"):
+        import numpy as np
+        import os
+        from PyPol.utilities import get_list
+
+        if crystals == "all":
+            list_crystals = list()
+            for crystal in simulation.crystals:
+                if crystal.completed:
+                    list_crystals.append(crystal)
+        else:
+            list_crystals = get_list(crystals)
+
+        for crystal in list_crystals:
+            path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
+            if os.path.exists(path_output):
+                cv = np.genfromtxt(path_output, skip_header=1)[:, 1:]
+                cv = np.average(cv, axis=1)
+                crystal.cvs[self.name] = cv
+            else:
+                print("An error has occurred with Plumed. Check file {} in folder {}."
+                      "".format(path_output, crystal.path))
+        self.method.project.save()
+
 
 class Combine(object):
 
@@ -460,6 +523,7 @@ class Combine(object):
 
         self.kernel = cvs[0].kernel
         self.timeinterval = cvs[0].timeinterval
+        self.list_bins = ()
 
         for cv in self.method.cvs:
             if cv.name == self.name:
@@ -514,7 +578,7 @@ class Combine(object):
 
     def generate_input(self, simulation, bash_script=True):
         idx_cv = 0
-
+        list_bins = list()
         grid_min, grid_max, grid_bin, bandwidth, args = ("", "", "", "", "")
         print("=" * 100)
         print("Generate plumed input files")
@@ -533,11 +597,12 @@ class Combine(object):
 
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
-            grid_bin += "{},".format(cv.grid_min)
-            bandwidth += "{:.3f},".format(cv.grid_min)
+            grid_bin += "{},".format(cv.grid_bin)
+            list_bins.append(int(grid_bin))
+            bandwidth += "{:.3f},".format(cv.bandwidth)
             args += "ARG{}=ang_mat_{} ".format(idx_cv + 1, cv.name)
             idx_cv += 1
-
+        self.list_bins = tuple(list_bins)
         print("\nClustering type: {5}-D Distribution\n"
               "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2} UPPER={3} LOWER={4}"
               "".format(self.kernel, grid_bin, bandwidth, grid_max, grid_min, len(self.cvs)))
@@ -614,6 +679,30 @@ class Combine(object):
         self.method.project.save()
 
         print("=" * 100)
+
+    def check_normal_termination(self, simulation, crystals="all"):
+        import numpy as np
+        import os
+        from PyPol.utilities import get_list
+
+        if crystals == "all":
+            list_crystals = list()
+            for crystal in simulation.crystals:
+                if crystal.completed:
+                    list_crystals   .append(crystal)
+        else:
+            list_crystals = get_list(crystals)
+
+        for crystal in list_crystals:
+            path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
+            if os.path.exists(path_output):
+                cv_dist = np.genfromtxt(path_output, skip_header=1)[:, 1:]
+                cv_dist = np.average(cv_dist, axis=1)
+                crystal.cvs[self.name] = cv_dist.reshape(self.list_bins)
+            else:
+                print("An error has occurred with Plumed. Check file {} in folder {}."
+                      "".format(path_output, crystal.path))
+        self.method.project.save()
 
 
 class RDF(object):
@@ -843,6 +932,37 @@ class RDF(object):
                               ''.format(simulation.command, simulation.name, traj_start, traj_end,
                                         self.method.project.plumed, self.name, dt, traj_stride))
             file_script.close()
+        self.method.project.save()
+
+    def check_normal_termination(self, simulation, crystals="all"):
+        import numpy as np
+        import os
+        from PyPol.utilities import get_list
+
+        if crystals == "all":
+            list_crystals = list()
+            for crystal in simulation.crystals:
+                if crystal.completed:
+                    list_crystals.append(crystal)
+        else:
+            list_crystals = get_list(crystals)
+
+        for crystal in list_crystals:
+            path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
+            if os.path.exists(path_output):
+                dn_r = np.genfromtxt(path_output, skip_header=1)[:, 1:]
+                dn_r = np.average(dn_r, axis=1)
+
+                d_max = 0.5 * np.min(np.array([crystal.box[0:0], crystal.box[1:1], crystal.box[2:2]]))
+                nbins = int(round((d_max - self.r_0) / self.binspace, 0))
+                r = np.linspace(self.r_0, d_max, nbins)
+                rho = crystal.Z / crystal.volume  # Modify for more than one molecule?
+
+                cv = np.where(r > 0, dn_r / (4 * np.pi * rho * r**2 * self.binspace), 0.)
+                crystal.cvs[self.name] = cv
+            else:
+                print("An error has occurred with Plumed. Check file {} in folder {}."
+                      "".format(path_output, crystal.path))
         self.method.project.save()
 
 
