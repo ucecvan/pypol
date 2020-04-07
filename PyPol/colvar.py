@@ -1,3 +1,7 @@
+#
+# Collective Variables
+#
+
 class Torsions(object):
 
     def __init__(self, name, method):
@@ -512,6 +516,33 @@ class MolecularOrientation(object):
                       "".format(path_output, crystal.path))
         self.method.project.save()
 
+    def identify_melted_structures(self, simulation, crystals="all", tolerance=0.1):
+        import numpy as np
+        from PyPol.utilities import get_list
+
+        if self.grid_min != 0. and self.grid_max != np.pi:
+            print("Error: A range between 0 and pi must be used to identify melted structures.")
+            exit()
+
+        if crystals == "all":
+            list_crystals = list()
+            for crystal in simulation.crystals:
+                if crystal.completed:
+                    list_crystals.append(crystal)
+        else:
+            list_crystals = get_list(crystals)
+
+        ref = np.sin(np.linspace(0., np.pi, self.grid_bin)) # No need to divide it by 2 as it is normalised later
+        for crystal in list_crystals:
+            if not self.name in crystal.cvs:
+                print("Error: A distribution for this simulation has not been generated.\n"
+                      "Remember to run the check_normal_termination after running plumed.")
+                exit()
+
+            if hellinger(crystal.cvs[self.name], ref) < tolerance:
+                crystal.melted = True
+        self.method.project.save()
+
 
 class Combine(object):
 
@@ -1023,3 +1054,62 @@ def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None):
             idx_mol += 1
     crystal.molecules = list()
     return lines
+
+
+def hellinger(y1, y2, int_type="discrete"):
+    """
+
+    :param y1:
+    :param y2:
+    :param int_type:
+    :return:
+    """
+    import numpy as np
+
+    if int_type == "discrete":
+        # Normalise Distributions
+
+        y1 /= np.sum(y1)
+        y2 /= np.sum(y2)
+
+        BC = np.sum(np.sqrt(np.multiply(y1, y2)))
+        HD = round(np.sqrt(1 - BC), 5)
+        return HD
+
+    elif int_type == "simps":
+        from scipy.integrate import simps
+
+        # Normalise Distributions
+        N1, N2 = (y1, y2)
+        for x in y1.shape:
+            N1 = simps(N1, np.linspace(0, x-1, x))
+            N2 = simps(N2, np.linspace(0, x-1, x))
+        y1 /= N1
+        y2 /= N2
+
+        BC = np.sqrt(np.multiply(y1, y2))
+        for x in y1.shape:
+            BC = simps(BC, np.linspace(0, x-1, x))
+        HD = round(np.sqrt(1 - BC), 5)
+        return HD
+
+    elif int_type == "trapz":
+        from scipy.integrate import trapz
+
+        # Normalise Distributions
+        N1, N2 = (y1, y2)
+        for x in y1.shape:
+            N1 = trapz(N1, np.linspace(0, x-1, x))
+            N2 = trapz(N2, np.linspace(0, x-1, x))
+        y1 /= N1
+        y2 /= N2
+
+        BC = np.sqrt(np.multiply(y1, y2))
+        for x in y1.shape:
+            BC = trapz(BC, np.linspace(0, x-1, x))
+        HD = round(np.sqrt(1 - BC), 5)
+        return HD
+
+    else:
+        print("Error: choose integration type among 'simps', 'trapz' or 'discrete'.")
+        exit()
