@@ -757,7 +757,7 @@ class EnergyMinimization(object):
                       "".format(self.name, crystal.path))
 
         new_rank = dict()
-        incompleated_simulations = False
+        incomplete_simulations = False
         for crystal in self.crystals:
             if crystal.completed:
                 new_rank[crystal.name] = crystal.Potential
@@ -771,10 +771,10 @@ class EnergyMinimization(object):
                 crystal.cell_parameters = box2cell(crystal.box)
                 crystal.volume = np.linalg.det(crystal.box)
             else:
-                incompleated_simulations = True
+                incomplete_simulations = True
                 break
 
-        if not incompleated_simulations and crystals == "all":
+        if not incomplete_simulations:
             rank = 1
             for crystal_name in sorted(new_rank, key=lambda c: new_rank[c]):
                 for crystal in list_crystals:
@@ -1300,7 +1300,7 @@ class CellRelaxation(object):
                       "".format(self.name, crystal.path + "lammps/"))
 
         new_rank = dict()
-        incompleated_simulations = False
+        incomplete_simulations = False
         for crystal in self.crystals:
             if crystal.completed:
                 new_rank[crystal.name] = crystal.Potential
@@ -1314,10 +1314,10 @@ class CellRelaxation(object):
                 crystal.cell_parameters = box2cell(crystal.box)
                 crystal.volume = np.linalg.det(crystal.box)
             else:
-                incompleated_simulations = True
+                incomplete_simulations = True
                 break
 
-        if not incompleated_simulations:
+        if not incomplete_simulations:
             rank = 1
             for crystal_name in sorted(new_rank, key=lambda c: new_rank[c]):
                 for crystal in list_crystals:
@@ -1437,7 +1437,7 @@ class MolecularDynamics(object):
             if os.path.exists(path_output):
                 file_output = open(path_output)
                 lines = file_output.readlines()
-                if "Finished mdrun" in lines[-1] or "Finished mdrun" in lines[-2]:
+                if any("Finished mdrun" in string for string in lines[-30:]):
                     os.chdir(crystal.path)
                     os.system('{} energy -f {}.edr <<< "Potential" > PyPol_Temporary_Potential.txt'
                               ''.format(self.command, self.name))
@@ -1477,7 +1477,7 @@ class MolecularDynamics(object):
                 incomplete_simulations = True
                 break
 
-        if not incomplete_simulations and crystals == "all":
+        if not incomplete_simulations:
             rank = 1
             for crystal_name in sorted(new_rank, key=lambda c: new_rank[c]):
                 for crystal in list_crystals:
