@@ -777,7 +777,7 @@ class EnergyMinimization(object):
         if not incomplete_simulations:
             rank = 1
             for crystal_name in sorted(new_rank, key=lambda c: new_rank[c]):
-                for crystal in list_crystals:
+                for crystal in self.crystals:
                     if crystal.name == crystal_name:
                         crystal.rank = rank
                         if rank == 1:
@@ -1320,7 +1320,7 @@ class CellRelaxation(object):
         if not incomplete_simulations:
             rank = 1
             for crystal_name in sorted(new_rank, key=lambda c: new_rank[c]):
-                for crystal in list_crystals:
+                for crystal in self.crystals:
                     if crystal.name == crystal_name:
                         crystal.rank = rank
                         if rank == 1:
@@ -1480,7 +1480,7 @@ class MolecularDynamics(object):
         if not incomplete_simulations:
             rank = 1
             for crystal_name in sorted(new_rank, key=lambda c: new_rank[c]):
-                for crystal in list_crystals:
+                for crystal in self.crystals:
                     if crystal.name == crystal_name:
                         crystal.rank = rank
                         if rank == 1:
