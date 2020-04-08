@@ -2,6 +2,7 @@
 # Collective Variables
 #
 
+
 class Torsions(object):
 
     def __init__(self, name, method):
@@ -269,7 +270,7 @@ class Torsions(object):
             path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
             if os.path.exists(path_output):
                 cv = np.genfromtxt(path_output, skip_header=1)[:, 1:]
-                cv = np.average(cv, axis=1)
+                cv = np.average(cv, axis=0)
                 if self.clustering_type == "distribution":
                     crystal.cvs[self.name] = cv
                 elif self.clustering_type == "classification":
@@ -509,7 +510,7 @@ class MolecularOrientation(object):
             path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
             if os.path.exists(path_output):
                 cv = np.genfromtxt(path_output, skip_header=1)[:, 1:]
-                cv = np.average(cv, axis=1)
+                cv = np.average(cv, axis=0)
                 crystal.cvs[self.name] = cv
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
@@ -532,7 +533,7 @@ class MolecularOrientation(object):
         else:
             list_crystals = get_list(crystals)
 
-        ref = np.sin(np.linspace(0., np.pi, self.grid_bin)) # No need to divide it by 2 as it is normalised later
+        ref = np.sin(np.linspace(0., np.pi, self.grid_bin + 1))  # No need to divide it by 2 as it is normalised later
         for crystal in list_crystals:
             if not self.name in crystal.cvs:
                 print("Error: A distribution for this simulation has not been generated.\n"
@@ -720,7 +721,7 @@ class Combine(object):
             list_crystals = list()
             for crystal in simulation.crystals:
                 if crystal.completed:
-                    list_crystals   .append(crystal)
+                    list_crystals.append(crystal)
         else:
             list_crystals = get_list(crystals)
 
@@ -728,7 +729,7 @@ class Combine(object):
             path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
             if os.path.exists(path_output):
                 cv_dist = np.genfromtxt(path_output, skip_header=1)[:, 1:]
-                cv_dist = np.average(cv_dist, axis=1)
+                cv_dist = np.average(cv_dist, axis=0)
                 crystal.cvs[self.name] = cv_dist.reshape(self.list_bins)
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
@@ -982,14 +983,14 @@ class RDF(object):
             path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
             if os.path.exists(path_output):
                 dn_r = np.genfromtxt(path_output, skip_header=1)[:, 1:]
-                dn_r = np.average(dn_r, axis=1)
+                dn_r = np.average(dn_r, axis=0)
 
                 d_max = 0.5 * np.min(np.array([crystal.box[0:0], crystal.box[1:1], crystal.box[2:2]]))
                 nbins = int(round((d_max - self.r_0) / self.binspace, 0))
                 r = np.linspace(self.r_0, d_max, nbins)
                 rho = crystal.Z / crystal.volume  # Modify for more than one molecule?
 
-                cv = np.where(r > 0, dn_r / (4 * np.pi * rho * r**2 * self.binspace), 0.)
+                cv = np.where(r > 0, dn_r / (4 * np.pi * rho * r ** 2 * self.binspace), 0.)
                 crystal.cvs[self.name] = cv
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
@@ -1068,7 +1069,6 @@ def hellinger(y1, y2, int_type="discrete"):
 
     if int_type == "discrete":
         # Normalise Distributions
-
         y1 /= np.sum(y1)
         y2 /= np.sum(y2)
 
@@ -1078,35 +1078,33 @@ def hellinger(y1, y2, int_type="discrete"):
 
     elif int_type == "simps":
         from scipy.integrate import simps
-
         # Normalise Distributions
         N1, N2 = (y1, y2)
         for x in y1.shape:
-            N1 = simps(N1, np.linspace(0, x-1, x))
-            N2 = simps(N2, np.linspace(0, x-1, x))
+            N1 = simps(N1, np.linspace(0, x - 1, x))
+            N2 = simps(N2, np.linspace(0, x - 1, x))
         y1 /= N1
         y2 /= N2
 
         BC = np.sqrt(np.multiply(y1, y2))
         for x in y1.shape:
-            BC = simps(BC, np.linspace(0, x-1, x))
+            BC = simps(BC, np.linspace(0, x - 1, x))
         HD = round(np.sqrt(1 - BC), 5)
         return HD
 
     elif int_type == "trapz":
         from scipy.integrate import trapz
-
         # Normalise Distributions
         N1, N2 = (y1, y2)
         for x in y1.shape:
-            N1 = trapz(N1, np.linspace(0, x-1, x))
-            N2 = trapz(N2, np.linspace(0, x-1, x))
+            N1 = trapz(N1, np.linspace(0, x - 1, x))
+            N2 = trapz(N2, np.linspace(0, x - 1, x))
         y1 /= N1
         y2 /= N2
 
         BC = np.sqrt(np.multiply(y1, y2))
         for x in y1.shape:
-            BC = trapz(BC, np.linspace(0, x-1, x))
+            BC = trapz(BC, np.linspace(0, x - 1, x))
         HD = round(np.sqrt(1 - BC), 5)
         return HD
 

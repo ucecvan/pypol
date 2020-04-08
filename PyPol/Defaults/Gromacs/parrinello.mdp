@@ -38,7 +38,7 @@ ref_t                           = 300
 ; Pressure coupling is off
 pcoupl                          = Parrinello-Rahman
 pcoupltype                      = anisotropic
-tau_p                           = 4.0
+tau_p                           = 10.0
 ref_p                           = 1.0 1.0 1.0 0.0 0.0 0.0
 compressibility                 = 4.5e-5 4.5e-5 4.5e-5 4.5e-5 4.5e-5 4.5e-5
 
