@@ -509,7 +509,7 @@ class MolecularOrientation(object):
         for crystal in list_crystals:
             path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
             if os.path.exists(path_output):
-                cv = np.genfromtxt(path_output, skip_header=1)[:, 1:]
+                cv = np.genfromtxt(path_output, skip_header=2)[:, 1:]
                 cv = np.average(cv, axis=0)
                 crystal.cvs[self.name] = cv
             else:

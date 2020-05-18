@@ -2,7 +2,7 @@ class Project(object):
 
     def __init__(self, path_working_directory, name="project"):
         """
-
+        Define a new project name and location.
         :param path_working_directory:
         :param name:
         """
@@ -60,7 +60,7 @@ class Project(object):
 
     def save(self):
         """
-
+        Save project to project folder.
         :return:
         """
         import pickle
@@ -75,7 +75,7 @@ class Project(object):
 
     def write_output(self):
         """
-
+        Write main features of the currect project to the project output file.
         :return:
         """
         import datetime
@@ -95,7 +95,7 @@ class Project(object):
 
     def change_working_directory(self, path, reset_program_paths=False):
         """
-
+        Change the working directory and all the paths in the project.
         :param path:
         :param reset_program_paths:
         :return:
@@ -188,7 +188,7 @@ class Project(object):
 
     def add_structures(self, path_structures):
         """
-        Error: Use the CSD Python API only if the asymmetric unit is given.
+        Error: Use the CSD Python API only if the asymmetric unit is given (use openbabel otherwise).
         Add a new set of structures in the project_folder/Input/Sets/Set_name directory.
         :param path_structures:
         :return:
@@ -249,7 +249,7 @@ class Project(object):
 
     def method(self, method_name):
         """
-
+        Find an existing method by its name.
         :param method_name:
         :return:
         """
@@ -261,7 +261,7 @@ class Project(object):
 
     def delete_method(self, method_name):
         """
-
+        Delete an existing method.
         :param method_name:
         :return:
         """
@@ -277,7 +277,7 @@ class Project(object):
 
     def add_method(self, method):
         """
-
+        Add a method to the project.
         :param method:
         :return:
         """
@@ -313,7 +313,7 @@ class Project(object):
 
 def load_project(project_folder, use_backup=False):
     """
-
+    Load an existing project.
     :param project_folder:
     :param use_backup:
     :return:

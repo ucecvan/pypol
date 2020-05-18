@@ -1,8 +1,8 @@
 # General
 def create(path, arg_type, backup=True):
     """
-    Error: Rewrite in a more compact way. Use os.remove instead of os.system(rm ...)
     Generate a new directory or a new file.
+    Error: Rewrite in a more compact way. Use os.remove instead of os.system(rm ...)
     :param path: Path of the directory/file to generate
     :param arg_type: Is it a file or directory?
     :param backup: If the directory/file already exists, create a backup directory/file
@@ -77,8 +77,8 @@ def get_identifier(target_path):
 
 def get_list(elements):
     """
-
-    :param elements:
+    Return a list from set, tuple or single item
+    :param elements: list, tuple, set, single obj
     :return:
     """
     if isinstance(elements, list):
@@ -92,9 +92,9 @@ def get_list(elements):
 # Cell parameters - Box matrix interconversion
 def cell2box(cell):
     """
-
-    :param cell:
-    :return:
+    Convert cell parameters to 3x3 box matrix.
+    :param cell: Iterable obj with 6 cell parameters, [a, b, c, alpha, beta, gamma]
+    :return: box matrix
     """
     import numpy as np
     box = np.full((3, 3), 0.)
@@ -109,9 +109,9 @@ def cell2box(cell):
 
 def box2cell(box):
     """
-
-    :param box:
-    :return:
+    Convert box matrix to cell parameters.
+    :param box: 3x3 box matrix
+    :return: list with the 6 cell parameters [a, b, c, alpha, beta, gamma]
     """
     import numpy as np
     cell = [None, None, None, None, None, None]
@@ -127,7 +127,7 @@ def box2cell(box):
 # Simulation box variations
 def best_c(box, max_replica, toll=0.08):
     """
-
+    Return c vector of a non-primitive cell with minimum angle with respect to z axis.
     :param box:
     :param max_replica:
     :param toll:
@@ -151,6 +151,13 @@ def best_c(box, max_replica, toll=0.08):
 
 
 def best_b(box, max_replica, toll=0.08):
+    """
+    Return b vector of a non-primitive cell with minimum angle with respect to y axis.
+    :param box:
+    :param max_replica:
+    :param toll:
+    :return:
+    """
     import numpy as np
     new_b = box[:, 1]
     distance_min = np.absolute(new_b[0])
@@ -168,6 +175,12 @@ def best_b(box, max_replica, toll=0.08):
 
 
 def translate_molecule(molecule, box):
+    """
+    Translate a molecule whose center of mass is outside the simulation box, inside it.
+    :param molecule:
+    :param box:
+    :return:
+    """
     import numpy as np
 
     point = molecule.centroid
@@ -238,6 +251,12 @@ def translate_molecule(molecule, box):
 
 
 def point_in_box(point, cell):
+    """
+    Check if a point (molecule centre of mass) is inside the simulation box.
+    :param point:
+    :param cell:
+    :return:
+    """
     import numpy as np
 
     a = cell[:, 0]
