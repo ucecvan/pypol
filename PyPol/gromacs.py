@@ -2,8 +2,8 @@ class Method(object):
 
     def __init__(self, name):
         """
-
-        :param name:
+        Create a new method that uses the Gromacs MD package.
+        :param name: name of the new method
         """
         self.package = "Gromacs"
         self.command = None
@@ -19,7 +19,7 @@ class Method(object):
         self.initial_crystals = list()
 
         self.molecules = list()
-        self.topology = False
+        self.topology = ""
         self.topology_lammps = False
         self.nmolecules = 0
 
@@ -31,7 +31,7 @@ class Method(object):
 
     def simulation(self, simulation_name):
         """
-
+        Find an existing simulation by its name.
         :param simulation_name:
         :return:
         """
@@ -51,7 +51,8 @@ class Method(object):
 
     def import_molecule(self, path_itp, path_crd, name="", potential_energy=0.0):
         """
-
+        Define the molecular forcefield. The coordinate file used to generate the force field is necessary to
+        identify atom properties, index order and bonds.
         :param path_itp:
         :param path_crd:
         :param name:
@@ -159,8 +160,8 @@ class Method(object):
     @staticmethod
     def _sort_atom_types(molecularproperties):
         """
-
-        :param molecularproperties:
+        Identify the least recurring atom type in the molecule.
+        :param molecularproperties: molecule obj
         :return:
         """
         atom_types = {}
@@ -177,10 +178,10 @@ class Method(object):
     @staticmethod
     def _merge_atom(mol_atom, ref_atom):
         """
-
+        Merge coordinates of the atom with the properties from the forcefield.
         :param mol_atom:
         :param ref_atom:
-        :return:
+        :return: atom obj
         """
         from PyPol.crystals import Atom
         new_atom = Atom.loadfromcrd(ref_atom.index, ref_atom.label, ref_atom.ff_type, ref_atom.type,
@@ -193,7 +194,7 @@ class Method(object):
 
     def _recursive_index_search(self, molecule, reference, start_1=0, start_2=0, output=None):
         """
-
+        Sort atom index by checking the connection between each pair of bonded atoms and their atom types. (Algorithm)
         :param molecule:
         :param reference:
         :param start_1:
@@ -232,7 +233,7 @@ class Method(object):
 
     def _reassign_atom_index(self, molecule, reference):
         """
-
+        Sort atom index by checking the connection between each pair of bonded atoms and their atom types.
         :param molecule:
         :param reference:
         :return:
@@ -265,7 +266,8 @@ class Method(object):
 
     def _orthogonalize(self, crystal, target_lengths=(60., 60.)):
         """
-
+        Find the most orthogonal, non-primitive cell starting from the CSP-generated cell.
+        Cell vector length are limited by the target length parameters defined in the generate_input module.
         :param crystal:
         :param target_lengths:
         :return:
@@ -297,7 +299,7 @@ class Method(object):
     @staticmethod
     def generate_masscharge(crystal):
         """
-
+        Generates the mass-charge file used by plumed.
         :param crystal:
         :return:
         """
@@ -315,7 +317,7 @@ class Method(object):
     @staticmethod
     def _supercell_generator(crystal, box=False, replica=(1, 1, 1)):
         """
-
+        Replicate the cell in each direction.
         :param crystal:
         :param box:
         :param replica:
@@ -365,7 +367,7 @@ class Method(object):
 
     def write_output(self, path_output):
         """
-
+        Write main features of the currect method to the project output file.
         :param path_output:
         :return:
         """
@@ -419,6 +421,7 @@ class Method(object):
 
     def generate_input(self, box=(4., 4., 4.), orthogonalize=False):
         """
+        Generate the coordinate and the topology files to be used for energy minimization simulations.
         Error: not suitable for more than 1 molecule!
         :param box:
         :param orthogonalize:
@@ -498,6 +501,7 @@ class Method(object):
     def add_topology(self, path_top):
         """
         Error: not suitable for more than 1 molecule!
+        Add the topology file to the project. Only the [ defaults ] section should be included.
         :param path_top:
         :return:
         """
@@ -509,7 +513,7 @@ class Method(object):
 
     def add_simulation(self, simulation, overwrite=False):
         """
-
+        Add a simulation object to the method used.
         :param simulation:
         :param overwrite:
         :return:
@@ -645,7 +649,7 @@ class EnergyMinimization(object):
 
     def __init__(self, name, path_mdp):
         """
-
+        Perform an energy minimisation simulation.
         :param name:
         :param path_mdp:
         """
@@ -676,7 +680,7 @@ class EnergyMinimization(object):
 
     def generate_input(self, bash_script=False, crystals="all"):
         """
-
+        Copy the Gromacs .mdp file to each crystal path
         :param bash_script:
         :param crystals:
         :return:
@@ -715,7 +719,7 @@ class EnergyMinimization(object):
 
     def check_normal_termination(self, crystals="all"):
         """
-
+        Verify if the simulation ended correctly and upload new crystal properties.
         :param crystals:
         :return:
         """
@@ -796,7 +800,7 @@ class CellRelaxation(object):
 
     def __init__(self, name, path_lmp_in=None, path_lmp_ff=None):  # Transform path_lmp_ff in iterable obj for all mol
         """
-
+        Convert Gromacs input files to the LAMMPS ones and perform a cell relaxation.
         :param name:
         :param path_lmp_in:
         :param path_lmp_ff:
@@ -834,7 +838,7 @@ class CellRelaxation(object):
 
     def convert_topology(self, path_gmx, molecule):
         """
-
+        Convert the gromacs topology file to the LAMMPS ones with InterMol.
         :param path_gmx:
         :param molecule:
         :return:
@@ -951,7 +955,8 @@ class CellRelaxation(object):
 
     def check_lmp_input(self):
         """
-
+        Check if conversion is done correctly.
+        Error: Add energy check.
         :return:
         """
         import os
@@ -976,7 +981,7 @@ class CellRelaxation(object):
 
     def generate_lammps_topology(self, crystal):
         """
-
+        Check InterMol output and modify it according to crystal properties.
         :param crystal:
         :return:
         """
@@ -1158,7 +1163,7 @@ class CellRelaxation(object):
 
     def generate_input(self, bash_script=False, crystals="all"):
         """
-
+        Generate LAMMPS inputs.
         :param bash_script:
         :param crystals:
         :return:
@@ -1257,7 +1262,8 @@ class CellRelaxation(object):
 
     def check_normal_termination(self, crystals="all"):
         """
-
+        Verify if the simulation ended correctly and upload new crystal properties.
+        Convert files back to the Gromacs file format.
         :param crystals:
         :return:
         """
@@ -1334,7 +1340,7 @@ class MolecularDynamics(object):
 
     def __init__(self, name=None, path_mdp=""):
         """
-
+        Generates input for MD simulations with Gromacs.
         :param name:
         :param path_mdp:
         """
@@ -1414,7 +1420,7 @@ class MolecularDynamics(object):
 
     def check_normal_termination(self, crystals="all"):
         """
-
+        Verify if the simulation ended correctly and upload new crystal properties.
         :param crystals:
         :return:
         """
