@@ -186,10 +186,11 @@ class Project(object):
 
         os.system(self.run_csd_python_api + " < " + file_python)
 
-    def add_structures(self, path_structures):
+    def add_structures(self, path_structures, asymmetric_unit=True):
         """
         Error: Use the CSD Python API only if the asymmetric unit is given (use openbabel otherwise).
         Add a new set of structures in the project_folder/Input/Sets/Set_name directory.
+        :param asymmetric_unit:
         :param path_structures:
         :return:
         """
@@ -201,8 +202,23 @@ class Project(object):
         if not path_structures.endswith("/"):
             path_structures += "/"
 
-        available_file_formats = ("aser", "cif", "csdsql", "csdsqlx", "identifiers", "mariadb", "mol", "mol2", "res",
-                                  "sdf", "sqlite", "sqlmol2", "pdb")  # change for openbabel
+        available_file_formats_csd = ("aser", "cif", "csdsql", "csdsqlx", "identifiers", "mariadb", "mol", "mol2",
+                                      "res", "sdf", "sqlite", "sqlmol2", "pdb")  # change for openbabel
+        available_file_formats_ob = ("abinit", "acesout", "acr", "adfband", "adfdftb", "adfout", "alc", "aoforce",
+                                     "arc", "axsf", "bgf", "box", "bs", "c09out", "c3d1", "c3d2", "caccrt", "can",
+                                     "car", "castep", "ccc", "cdjson", "cdx", "cdxml", "cif", "ck", "cml", "cmlr",
+                                     "cof", "CONFIG", "CONTCAR", "CONTFF", "crk2d", "crk3d", "ct", "cub", "cube",
+                                     "dallog", "dalmol", "dat", "dmol", "dx", "ent", "exyz", "fa", "fasta", "fch",
+                                     "fchk", "fck", "feat", "fhiaims", "fract", "fs", "fsa", "g03", "g09", "g16",
+                                     "g92", "g94", "g98", "gal", "gam", "gamess", "gamin", "gamout", "got", "gpr",
+                                     "gro", "gukin", "gukout", "gzmat", "hin", "HISTORY", "inchi", "inp", "ins", "jin",
+                                     "jout", "log", "lpmd", "mcdl", "mcif", "MDFF", "mdl", "ml2", "mmcif", "mmd",
+                                     "mmod", "mol", "mol2", "mold", "molden", "molf", "moo", "mop", "mopcrt", "mopin",
+                                     "mopout", "mpc", "mpo", "mpqc", "mrv", "msi", "nwo", "orca", "out", "outmol",
+                                     "output", "pc", "pcjson", "pcm", "pdb", "pdbqt", "png", "pos", "POSCAR", "POSFF",
+                                     "pqr", "pqs", "prep", "pwscf", "qcout", "res", "rsmi", "rxn", "sd", "sdf",
+                                     "siesta", "smi", "smiles", "smy", "sy2", "t41", "tdd", "text", "therm", "tmol",
+                                     "txt", "txyz", "unixyz", "VASP", "vmol", "xml", "xsf", "xtc", "xyz", "yob")
 
         items = list()
         if os.path.isdir(path_structures):
@@ -214,36 +230,55 @@ class Project(object):
             print("No such file or directory")
 
         for item in items:
-            if item.endswith(available_file_formats):
-                id_name = get_identifier(path_structures + item)
-                path_id = self.path_input_structures + id_name
-                path_structure_pdb = path_id + "/pc.pdb"
-                path_structure_mol2 = path_id + "/pc.mol2"
-                path_structure_ac = path_id + "/pc.ac"
-                path_structure = path_id + "/" + item
 
+            id_name, extension = get_identifier(path_structures + item)
+            path_id = self.path_input_structures + id_name
+            path_structure_pdb = path_id + "/pc.pdb"
+            path_structure_mol2 = path_id + "/pc.mol2"
+            path_structure_ac = path_id + "/pc.ac"
+            path_structure = path_id + "/" + item
+
+            if asymmetric_unit:
+                if extension in available_file_formats_csd:
+                    # Create folder in Input
+                    create(path_id, arg_type='dir', backup=True)
+                    os.chdir(path_id)
+                    os.system("cp {}{} {}".format(path_structures, item, path_id))
+                    # Change fileformat to pdb
+                    self._file2pdb(path_structure)
+                else:
+                    print("Ignore structure '{}': unknown file format".format(item))
+                    continue
+
+            elif extension in available_file_formats_ob:
                 # Create folder in Input
                 create(path_id, arg_type='dir', backup=True)
                 os.chdir(path_id)
                 os.system("cp {}{} {}".format(path_structures, item, path_id))
-
-                # Change fileformat to pdb
-                self._file2pdb(path_structure)
-
-                # Convert structure to mol2 to identify atomtype
+                # Change file format to pdb
                 ob_conversion = openbabel.OBConversion()
-                ob_conversion.SetInAndOutFormats("pdb", "mol2")
+                ob_conversion.SetInAndOutFormats(extension, "pdb")
                 mol = openbabel.OBMol()
-                ob_conversion.ReadFile(mol, path_structure_pdb)
-                ob_conversion.WriteFile(mol, path_structure_mol2)
-                os.system(self.atomtype + " -i " + path_structure_mol2 + " -f mol2 -p gaff -o " + path_structure_ac)
+                ob_conversion.ReadFile(mol, path_structures+item)
+                ob_conversion.WriteFile(mol, path_structure_pdb)
 
-                new_crystal = Crystal.loadfrompdb(id_name, path_structure_pdb, include_atomtype=True)
-                new_crystal.index = len(self.initial_crystals)
-                self.initial_crystals.append(new_crystal)
-                new_crystal.save()
             else:
                 print("Ignore structure '{}': unknown file format".format(item))
+                continue
+
+            # Convert structure to mol2 to identify atomtype
+            ob_conversion = openbabel.OBConversion()
+            ob_conversion.SetInAndOutFormats("pdb", "mol2")
+            mol = openbabel.OBMol()
+            ob_conversion.ReadFile(mol, path_structure_pdb)
+            ob_conversion.WriteFile(mol, path_structure_mol2)
+            os.system(self.atomtype + " -i " + path_structure_mol2 + " -f mol2 -p gaff -o " + path_structure_ac)
+
+            new_crystal = Crystal.loadfrompdb(id_name, path_structure_pdb, include_atomtype=True)
+            new_crystal.index = len(self.initial_crystals)
+            self.initial_crystals.append(new_crystal)
+            new_crystal.save()
+
         self.save()
         print("=" * 100)
 

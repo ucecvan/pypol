@@ -65,14 +65,11 @@ def get_identifier(target_path):
     :return: identifier name
     """
     import os
-    target_identifier = ""
-    available_file_formats = (".aser", ".cif", ".csdsql", ".csdsqlx", ".identifiers", ".mariadb", ".mol", ".mol2",
-                              ".res", ".sdf", ".sqlite", ".sqlmol2", ".pdb")
+
     basename = os.path.basename(target_path)
-    for suffix in available_file_formats:
-        if basename.endswith(suffix):
-            target_identifier = basename[:-len(suffix)]
-    return target_identifier
+    target_identifier, extension = os.path.splitext(basename)
+    extension = extension[1:]
+    return target_identifier, extension
 
 
 def get_list(elements):
