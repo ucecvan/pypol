@@ -519,6 +519,7 @@ class Method(object):
         :return:
         """
         from PyPol.crystals import Crystal
+        from shutil import copyfile
         import os
 
         if simulation.type == "Energy Minimisation" or simulation.type == "Cell Relaxation":
@@ -527,7 +528,9 @@ class Method(object):
                 simulation.previous_name = "sc"
                 for crystal in self.initial_crystals:
                     simulation_crystal = Crystal.copy_properties(crystal)
+                    simulation_crystal.CVs = dict()
                     simulation.crystals.append(simulation_crystal)
+
             else:
                 for previous_simulation in self.energy_minimisation:
                     if previous_simulation.name == simulation.name and not overwrite:
@@ -552,9 +555,20 @@ class Method(object):
             simulation.path_input = self.path_input
             simulation.project = self.project
             simulation.method = self
-            if simulation.type == "Cell Relaxation":
+
+            if simulation.type == "Energy Minimisation":
+                copyfile(simulation.mdp, self.path_input + simulation.name + ".mdp")
+                simulation.mdp = self.path_input + simulation.name + ".mdp"
+
+            elif simulation.type == "Cell Relaxation":
+                if simulation.path_lmp_in:
+                    copyfile(simulation.path_lmp_in, self.path_input + "input.in")
+                    simulation.path_lmp_in = self.path_input + "input.in"
+                    copyfile(path_lmp_ff, self.path_input + simulation.method.molecules[0].name + ".lmp")  # Iter here
+                    simulation.path_lmp_ff = self.path_input + simulation.method.molecules[0].name + ".lmp"
                 simulation.lammps = self.project.lammps
                 simulation.intermol = self.project.intermol
+
             self.energy_minimisation.append(simulation)
 
         elif simulation.type == "Molecular Dynamics":
@@ -597,8 +611,10 @@ class Method(object):
             simulation.path_input = self.path_input
             simulation.project = self.project
             simulation.method = self
-
-            if not os.path.exists(simulation.mdp):
+            if os.path.exists(simulation.mdp):
+                copyfile(simulation.mdp, self.path_input + simulation.name + ".mdp")
+                simulation.mdp = self.path_input + simulation.name + ".mdp"
+            elif not os.path.exists(simulation.mdp):
                 from shutil import copyfile
                 if simulation.name == "nvt" and not simulation.mdp:
                     print("Default file {} will be used".format(self.pypol_directory + "Defaults/Gromacs/nvt.mdp"))
@@ -665,12 +681,10 @@ class EnergyMinimization(object):
         self.index = 0
         self.previous_name = None
         self.name = name
-        if os.path.exists(path_mdp):
-            copyfile(path_mdp, self.path_input + name + ".mdp")
-            self.mdp = self.path_input + name + ".mdp"
-        else:
+        if not os.path.exists(path_mdp):
             print("Error: File '{}' not found".format(path_mdp))
             exit()
+        self.mdp = path_mdp
         self.command = None
         self.mdrun_options = ""
         self.crystals = list()
@@ -742,7 +756,8 @@ class EnergyMinimization(object):
             if os.path.exists(path_output):
                 file_output = open(path_output)
                 lines = file_output.readlines()
-                if "Finished mdrun" in lines[-1]:
+                print(lines[-1])
+                if "Finished mdrun" in lines[-3:]:
                     for i in range(-2, -15, -1):
                         line = lines[i]
                         if line.lstrip().startswith("Potential Energy  ="):
@@ -817,17 +832,11 @@ class CellRelaxation(object):
         self.previous_name = None
         self.name = name
         if path_lmp_in:
-            if os.path.exists(path_lmp_in) and os.path.exists(path_lmp_ff):
-                copyfile(path_lmp_in, self.path_input + "input.in")
-                self.path_lmp_in = self.path_input + "input.in"
-                copyfile(path_lmp_ff, self.path_input + self.method.molecules[0].name + ".lmp")  # Iter here
-                self.path_lmp_ff = self.path_input + self.method.molecules[0].name + ".lmp"
-            else:
+            if not os.path.exists(path_lmp_in) and not os.path.exists(path_lmp_ff):
                 print("Error: File '{}' or '{}' not found".format(path_lmp_in, path_lmp_ff))
                 exit()
-        else:
-            self.path_lmp_in = None
-            self.path_lmp_ff = None
+        self.path_lmp_in = path_lmp_in
+        self.path_lmp_ff = path_lmp_ff
         self.command = None
         self.intermol = None
         self.lammps = None
@@ -1356,10 +1365,10 @@ class MolecularDynamics(object):
         self.previous_name = None
         self.name = name
         if path_mdp:
-            if os.path.exists(path_mdp):
-                copyfile(path_mdp, self.path_input + name + ".mdp")
-                self.mdp = self.path_input + name + ".mdp"
-            else:
+            if not os.path.exists(path_mdp):
+            #     copyfile(path_mdp, self.path_input + name + ".mdp")
+            #     self.mdp = self.path_input + name + ".mdp"
+            # else:
                 print("Error: File '{}' not found".format(path_mdp))
                 exit()
         else:

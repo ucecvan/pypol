@@ -87,7 +87,8 @@ class Crystal(object):
         new_crystal.path = crystal.path
         new_crystal.cell_parameters = copy.deepcopy(crystal.cell_parameters)
         new_crystal.box = copy.deepcopy(crystal.box)
-        new_crystal.cvs = copy.deepcopy(crystal.CVs)
+        if new_crystal.cvs:
+            new_crystal.cvs = copy.deepcopy(crystal.CVs)
         return new_crystal
 
     @staticmethod

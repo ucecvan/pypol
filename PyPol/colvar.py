@@ -874,7 +874,7 @@ class RDF(object):
         if not self.atoms:
             print("Error: no atoms found. Select atoms with the set_atoms module.")
             exit()
-        if simulation not in self.method.energy_minimisation+self.method.molecular_dynamics+self.method.metadynamics:
+        if simulation not in self.method.energy_minimisation + self.method.molecular_dynamics + self.method.metadynamics:
             print("Error: simulation {} not found in method {}.".format(simulation.name, self.method.name))
             exit()
 
@@ -1111,3 +1111,9 @@ def hellinger(y1, y2, int_type="discrete"):
     else:
         print("Error: choose integration type among 'simps', 'trapz' or 'discrete'.")
         exit()
+
+
+class Clustering(object):
+
+    def __init__(self):
+        pass
