@@ -874,7 +874,8 @@ class RDF(object):
         if not self.atoms:
             print("Error: no atoms found. Select atoms with the set_atoms module.")
             exit()
-        if simulation not in self.method.energy_minimisation + self.method.molecular_dynamics + self.method.metadynamics:
+        if simulation not in self.method.energy_minimisation + self.method.molecular_dynamics + \
+                self.method.metadynamics:
             print("Error: simulation {} not found in method {}.".format(simulation.name, self.method.name))
             exit()
 
@@ -1057,6 +1058,11 @@ def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None):
     return lines
 
 
+#
+# Clustering analysis
+#
+
+
 def hellinger(y1, y2, int_type="discrete"):
     """
 
@@ -1111,6 +1117,101 @@ def hellinger(y1, y2, int_type="discrete"):
     else:
         print("Error: choose integration type among 'simps', 'trapz' or 'discrete'.")
         exit()
+
+
+def decision_graph(x, y):
+    class PointPicker(object):
+        def __init__(self, ax, scat, clicklim=0.05):
+            self.fig = ax.figure
+            self.ax = ax
+            self.scat = scat
+            self.clicklim = clicklim
+            self.sigma_cutoff = 0.1
+            self.horizontal_line = ax.axhline(y=.1, color='red', alpha=0.5)
+            self.text = ax.text(0, 0.5, "")
+            self.fig.canvas.mpl_connect('button_press_event', self.onclick)
+
+        def onclick(self, event):
+            if event.inaxes == self.ax:
+                self.sigma_cutoff = event.ydata
+                xlim0, xlim1 = ax.get_xlim()
+                self.horizontal_line.set_ydata(self.sigma_cutoff)
+                self.text.set_text(str(round(self.sigma_cutoff, 5)))
+                self.text.set_position((xlim0, self.sigma_cutoff))
+                colors = []
+                for i in self.scat.get_offsets():
+                    if i[1] >= self.sigma_cutoff:
+                        colors.append("C0")
+                    else:
+                        colors.append("C1")
+                self.scat.set_color(colors)
+                self.fig.canvas.draw()
+
+    fig = plt.figure()
+
+    ax = fig.add_subplot(111)
+    scat = ax.scatter(x, y, color="C0")
+
+    plt.title(r"Select $\sigma$-cutoff and quit to continue", fontsize=20)
+    plt.xlabel(r"$\rho$", fontsize=20)
+    plt.ylabel(r"$\delta$", fontsize=20)
+    p = PointPicker(ax, scat)
+    plt.show()
+    return p.sigma_cutoff
+
+
+def FSFDP(dmat, d_c="auto", kernel="gaussian"):
+    import matplotlib as mpl
+    mpl.use('Agg')
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+
+    if dc == "auto":
+        d_c = np.sort(dmat.values.flatten())[int(dmat.values.size * 0.02) + dmat.values.shape[0]]
+
+    # Find density vector
+    rho = np.zeros(dmat.values.shape[0])
+    if kernel == "gaussian":
+        kernel_function = lambda d_ij: np.exp(-(d_ij / d_c) * (d_ij / d_c))
+    elif kernel == "cutoff":
+        kernel_function = lambda d_ij: 1 if d_ij < d_c else 0
+    else:
+        kernel_function = lambda d_ij: np.exp(-(d_ij / d_c) * (d_ij / d_c))
+        print("Kernel Function not recognized, switching to 'gaussian'")
+
+    for i in range(dmat.values.shape[0] - 1):
+        for j in range(i + 1, dmat.values.shape[0]):
+            rho[i] += kernel_function(dmat.values[i][j])
+            rho[j] += kernel_function(dmat.values[i][j])
+
+    rho = pd.Series(rho, index=dmat.index)
+
+    # Find sigma vector
+    sigma = pd.Series(np.full(rho.shape, -1.), dmat.index, name="sigma")
+    nn = pd.Series(np.full(rho.shape, pd.NA), dmat.index, dtype="string", name="NN")
+    for i in sigma.index:
+        if rho[i] == np.max(rho.values):
+            continue
+        else:
+            sigma[i] = np.nanmin(np.where(rho > rho[i], dmat[i].values, np.nan))
+            nn[i] = str(dmat.index[np.nanargmin(np.where(rho > rho[i], dmat[i].values, np.nan))])
+    sigma[rho.idxmax()] = np.nanmax(sigma.values)
+
+    # plot results
+    sigma_cutoff = decision_graph(rho, sigma)
+
+    # Assign structures to cluster centers
+    dataset = pd.concat((rho, sigma, nn, pd.Series(np.full(rho.shape, pd.NA), dmat.index, name="cluster")),
+                        axis=1).sort_values(by="rho", ascending=False)
+
+    for i in dataset.index:
+        if dataset.loc[i, "sigma"] >= sigma_cutoff:
+            dataset.at[i, "cluster"] = i
+        else:
+            dataset.at[i, "cluster"] = dataset.loc[dataset.loc[i]["NN"]]["cluster"]
+
+    return dataset
 
 
 class Clustering(object):

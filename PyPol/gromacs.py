@@ -756,9 +756,7 @@ class EnergyMinimization(object):
             if os.path.exists(path_output):
                 file_output = open(path_output)
                 lines = file_output.readlines()
-                print(lines[-1])
-                print(lines[-2])
-                if "Finished mdrun" in lines[-2]:
+                if "Finished mdrun" in lines[-2] or "Finished mdrun" in lines[-1]:
                     for i in range(-2, -15, -1):
                         line = lines[i]
                         if line.lstrip().startswith("Potential Energy  ="):
