@@ -412,7 +412,7 @@ class Method(object):
             for simulation in self.molecular_dynamics:
                 if simulation.completed and not simulation.hide:
                     for scrystal in simulation.crystals:
-                        if scrystal.name == crystal.name:
+                        if scrystal.name == crystal.name and not scrystal.melted:
                             file_output.write("{:10.2f} "
                                               "".format(scrystal.Potential - simulation.global_minima.Potential))
                             break
