@@ -271,17 +271,21 @@ class Torsions(object):
             if os.path.exists(path_output):
                 cv = np.genfromtxt(path_output, skip_header=1)[:, 1:]
                 cv = np.average(cv, axis=0)
+                cv /= cv.sum()
                 if self.clustering_type == "distribution":
                     crystal.cvs[self.name] = cv
-                elif self.clustering_type == "classification":
-                    group_bin = np.argmax(cv)
+                elif self.clustering_type == "classification":  # Introduce a treshold? ---> In Clustering
+                    crystal.cvs[self.name] = {}
                     for group_name in self.group_bins.keys():
-                        if group_bin in self.group_bins[group_name]:
-                            crystal.cvs[self.name] = group_name
-                            break
+                        crystal.cvs[self.name][group_name] = np.sum(cv[self.group_bins[group]])
+                    # group_bin = np.argmax(cv)
+                    # for group_name in self.group_bins.keys():
+                    #     if group_bin in self.group_bins[group_name]:
+                    #         crystal.cvs[self.name] = group_name
+                    #         break
 
             else:
-                print("An errlist_binsor has occurred with Plumed. Check file {} in folder {}."
+                print("An error has occurred with Plumed. Check file {} in folder {}."
                       "".format(path_output, crystal.path))
         self.method.project.save()
 
@@ -533,15 +537,21 @@ class MolecularOrientation(object):
         else:
             list_crystals = get_list(crystals)
 
+        file_hd = open("{}/HD_{}.dat".format(simulation.path_output, simulation.name), "w")
+        file_hd.write("# Tolerance = {}\n#\n# Structures HD".format(round(tolerance, 5)))
         ref = np.sin(np.linspace(0., np.pi, self.grid_bin + 1))  # No need to divide it by 2 as it is normalised later
         for crystal in list_crystals:
             if not self.name in crystal.cvs:
                 print("Error: A distribution for this simulation has not been generated.\n"
                       "Remember to run the check_normal_termination after running plumed.")
                 exit()
-
-            if hellinger(crystal.cvs[self.name], ref) < tolerance:
+            hd = hellinger(crystal.cvs[self.name], ref)
+            file_hd.write("{:35} {:3.3f}\n".format(crystal.name, hd))
+            if hd < tolerance:
                 crystal.melted = True
+            else:
+                crystal.melted = False
+        file_hd.close()
         self.method.project.save()
 
 
@@ -1160,7 +1170,7 @@ def decision_graph(x, y):
     return p.sigma_cutoff
 
 
-def FSFDP(dmat, d_c="auto", kernel="gaussian"):
+def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02):
     import matplotlib as mpl
     mpl.use('Agg')
     import matplotlib.pyplot as plt
@@ -1168,7 +1178,7 @@ def FSFDP(dmat, d_c="auto", kernel="gaussian"):
     import pandas as pd
 
     if dc == "auto":
-        d_c = np.sort(dmat.values.flatten())[int(dmat.values.size * 0.02) + dmat.values.shape[0]]
+        d_c = np.sort(dmat.values.flatten())[int(dmat.values.size * cutoff_factor) + dmat.values.shape[0]]
 
     # Find density vector
     rho = np.zeros(dmat.values.shape[0])
@@ -1202,19 +1212,100 @@ def FSFDP(dmat, d_c="auto", kernel="gaussian"):
     sigma_cutoff = decision_graph(rho, sigma)
 
     # Assign structures to cluster centers
-    dataset = pd.concat((rho, sigma, nn, pd.Series(np.full(rho.shape, pd.NA), dmat.index, name="cluster")),
+    dataset = pd.concat((rho, sigma, nn,
+                         pd.Series(np.full(rho.shape, pd.NA), dmat.index, name="cluster"),
+                         pd.Series(np.full(rho.shape, pd.NA), dmat.index, name="distance")),
                         axis=1).sort_values(by="rho", ascending=False)
 
     for i in dataset.index:
         if dataset.loc[i, "sigma"] >= sigma_cutoff:
             dataset.at[i, "cluster"] = i
+            dataset.at[i, "distance"] = 0.0
         else:
             dataset.at[i, "cluster"] = dataset.loc[dataset.loc[i]["NN"]]["cluster"]
+            dataset.at[i, "distance"] = dmat.loc[i, dataset.loc[i, "cluster"]]
 
     return dataset
 
 
 class Clustering(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, method, cvs):
+        self.method = method
+
+        self.cvs = list()
+        for cv in self.method.cvs:
+            if cv.name in cvs:
+                self.cvs.append(cv)
+        if len(self.cvs) != len(cvs):
+            print("Error: Not all CVs present in this method. CVs available:")
+            for cv in self.method.cvs:
+                print(cv.name)
+            exit()
+
+        self.int_type = "discrete"
+        self.fsfdp_kernel = "gaussian"
+        self.centers = "energy"
+
+    def set_center_selection(self, center_selection):
+        if center_selection.lower() in ("energy", "cluster_center"):
+            self.centers = center_selection.lower()
+        else:
+            print("Error: Center selection method not recognized. Choose between:\n"
+                  "'energy'        : select structure with the lower potential energy in the group as cluster center.\n"
+                  "'cluster_center': select the geometrical center resulting from the CVs used.")
+            exit()
+
+    def set_fsfdp_kernel(self, kernel):
+        if kernel.lower() in ("gaussian", "cutoff"):
+            self.centers = center_selection.lower()
+        else:
+            print("Error: Kernel function not recognized. Choose between 'gaussian' and 'cutoff'")
+            exit()
+
+    def set_hellinger_integration_type(self, int_type):
+        if int_type.lower() in ("discrete", "simps", "trapz"):
+            self.int_type = int_type.lower()
+        else:
+            print('Error: Hellinger integration type not recognized. Choose between "discrete", "simps" or "trapz"')
+            exit()
+
+    @staticmethod
+    def sort_crystal(crystal, combinations, treshold=0.8):
+        for i in combinations.index[:-1]:
+            for j in combinations.columns[:-2]:
+                if crystal.results[j][combinations.loc[i, j]] > treshold and j == combinations.columns[-3]:
+                    combinations.loc[i, "Structures"].append(crystal)
+                    combinations.loc[i, "Number of structures"] += 1
+                    return combinations
+                elif crystal.results[j][combinations.loc[i, j]] < treshold:
+                    break
+        combinations.loc["Others", "Structures"].append(crystal)
+        combinations.loc["Others", "Number of structures"] += 1
+        return combinations
+
+    def run(self, simulation, group_treshold=0.8):
+        import numpy as np
+        import pandas as pd
+        import itertools as its
+
+        group_options = []
+        for cv in self.cvs:
+            if cv.clustering_type == "classification":
+                group_options.append(list(cv.groups.keys()))
+
+        group_combinations = list(its.product(*group_options)) + [tuple([None for i in range(len(group_options[0]))])]
+        index = [i for i in range(len(group_combinations) - 1)] + ["Others"]
+        combinations = pd.concat((pd.DataFrame(group_combinations, columns=["CV1", "CV2", "CV3"], index=index),
+                                  pd.Series([0 for i in range(len(group_combinations))], name="Number of structures",
+                                            dtype=int, index=index),
+                                  pd.Series([[] for i in range(len(group_combinations))], name="Structures",
+                                            index=index)), axis=1)
+        combinations.index.name = "Combination"
+
+        for crystal in simulation.crystals:
+            combinations = self.sort_crystal(crystal, combinations, group_treshold)
+
+        for index, row in combinations.iterrows():
+            pass
+
