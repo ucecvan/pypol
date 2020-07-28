@@ -1171,6 +1171,14 @@ def decision_graph(x, y):
 
 
 def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02):
+    """
+    Simplified FSFDP algorithm.
+    :param dmat:
+    :param kernel:
+    :param d_c:
+    :param cutoff_factor:
+    :return:
+    """
     import matplotlib as mpl
     mpl.use('Agg')
     import matplotlib.pyplot as plt
