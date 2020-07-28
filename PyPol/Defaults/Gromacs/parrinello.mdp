@@ -1,7 +1,7 @@
 ; NPT with Berendsen barostat
 integrator                      = md
-nsteps                          = 2500000
-dt                              = 0.002
+nsteps                          = 3000000
+dt                              = 0.001
 
 ; Output
 nstxout-compressed              = 5000
@@ -40,7 +40,7 @@ pcoupl                          = Parrinello-Rahman
 pcoupltype                      = anisotropic
 tau_p                           = 10.0
 ref_p                           = 1.0 1.0 1.0 0.0 0.0 0.0
-compressibility                 = 4.5e-5 4.5e-5 4.5e-5 4.5e-5 4.5e-5 4.5e-5
+compressibility                 = 1.0e-5 1.0e-5 1.0e-5 1.0e-5 1.0e-5 1.0e-5
 
 ; Periodic boundary conditions
 pbc                             = xyz
