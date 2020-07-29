@@ -1307,13 +1307,13 @@ class Clustering(object):
                 group_options.append(list(cv.groups.keys()))
                 group_names.append(cv.name)
         if group_options:
-            group_combinations = list(its.product(*group_options)) + [tuple([None for i in range(len(group_options[0]))])]
+            combinations = list(its.product(*group_options)) + [tuple([None for i in range(len(group_options[0]))])]
 
-            index = [i for i in range(len(group_combinations) - 1)] + ["Others"]
-            combinations = pd.concat((pd.DataFrame(group_combinations, columns=group_names, index=index),
-                                      pd.Series([0 for i in range(len(group_combinations))], name="Number of structures",
+            index = [i for i in range(len(combinations) - 1)] + ["Others"]
+            combinations = pd.concat((pd.DataFrame(combinations, columns=group_names, index=index),
+                                      pd.Series([0 for i in range(len(combinations))], name="Number of structures",
                                                 dtype=int, index=index),
-                                      pd.Series([[] for i in range(len(group_combinations))], name="Structures",
+                                      pd.Series([[] for i in range(len(combinations))], name="Structures",
                                                 index=index)), axis=1)
             combinations.index.name = "Combination"
 
@@ -1348,7 +1348,7 @@ class Clustering(object):
         normalization = []
         for cv in distributions:
             print(n_factors)
-            normalization.append(1./n_factors[cv.name])
+            normalization.append(1. / n_factors[cv.name])
             for index, row in combinations.iterrows():
                 if row["Structures"]:
                     row[cv.name] /= n_factors[cv.name]
@@ -1358,7 +1358,7 @@ class Clustering(object):
             if row["Structures"]:
                 for i in range(row["Number of structures"] - 1):
                     for j in range(i + 1, row["Number of structures"]):
-                        dist_ij = np.linalg.norm([k[i, j] for k in row.loc[distributions]])/ normalization
+                        dist_ij = np.linalg.norm([k[i, j] for k in row.loc[distributions]]) / normalization
                         row["Distance Matrix"][i, j] = row["Distance Matrix"][j, i] = dist_ij
                         self.d_c.append(dist_ij)
 
