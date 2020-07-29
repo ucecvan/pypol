@@ -554,7 +554,7 @@ class Method(object):
             simulation.path_output = self.path_output
             simulation.path_input = self.path_input
             simulation.project = self.project
-            simulation.method = self
+            simulation.Method = self
 
             if simulation.type == "Energy Minimisation":
                 copyfile(simulation.mdp, self.path_input + simulation.name + ".mdp")
@@ -564,8 +564,8 @@ class Method(object):
                 if simulation.path_lmp_in:
                     copyfile(simulation.path_lmp_in, self.path_input + "input.in")
                     simulation.path_lmp_in = self.path_input + "input.in"
-                    copyfile(path_lmp_ff, self.path_input + simulation.method.molecules[0].name + ".lmp")  # Iter here
-                    simulation.path_lmp_ff = self.path_input + simulation.method.molecules[0].name + ".lmp"
+                    copyfile(path_lmp_ff, self.path_input + simulation.Method.molecules[0].name + ".lmp")  # Iter here
+                    simulation.path_lmp_ff = self.path_input + simulation.Method.molecules[0].name + ".lmp"
                 simulation.lammps = self.project.lammps
                 simulation.intermol = self.project.intermol
 
@@ -610,7 +610,7 @@ class Method(object):
             simulation.path_output = self.path_output
             simulation.path_input = self.path_input
             simulation.project = self.project
-            simulation.method = self
+            simulation.Method = self
             if os.path.exists(simulation.mdp):
                 copyfile(simulation.mdp, self.path_input + simulation.name + ".mdp")
                 simulation.mdp = self.path_input + simulation.name + ".mdp"

@@ -1172,7 +1172,7 @@ def decision_graph(x, y):
 
 def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02):
     """
-    Simplified FSFDP algorithm.
+    Simplified FSFDP algorithm. # TODO Instead of halo, use distance of crystals from center.
     :param dmat:
     :param kernel:
     :param d_c:
@@ -1351,7 +1351,6 @@ class Clustering(object):
         # Normalize distances
         normalization = []
         for cv in distributions:
-            print(n_factors)
             normalization.append(1. / n_factors[cv.name])
             for index, row in combinations.iterrows():
                 if row["Structures"]:
@@ -1375,7 +1374,6 @@ class Clustering(object):
                 row["Distance Matrix"] = pd.DataFrame(row["Distance Matrix"], index=index, columns=index)
                 clusters = FSFDP(row["Distance Matrix"], d_c=self.d_c)
                 cluster_centers = list(clusters["cluster"].unique())
-
 
                 for crystal in row["Structures"]:
                     if crystal.name not in cluster_centers:

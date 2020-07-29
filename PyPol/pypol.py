@@ -126,7 +126,7 @@ class Project(object):
                 simulation.path_output = method.path_output
                 simulation.path_input = method.path_input
                 simulation.project = method.project
-                simulation.method = method
+                simulation.Method = method
                 simulation.mdp = simulation.path_input + simulation.name + ".mdp"
                 for crystal in simulation.crystals:
                     crystal.path = method.path_data + crystal.name + "/"
