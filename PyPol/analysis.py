@@ -1300,6 +1300,7 @@ class Clustering(object):
         import itertools as its
         import copy
 
+        # Divide structures in different groups
         group_options = []
         group_names = []
         for cv in self.cvs:
@@ -1330,6 +1331,7 @@ class Clustering(object):
                     combinations.loc["all", "Structures"].append(crystal)
                     combinations.loc["all", "Number of structures"] += 1
 
+        # Generate Distance Matrix of each set of distributions
         distributions = [cv for cv in self.cvs if cv.type != "classification"]
         n_factors = {}
         for cv in distributions:
@@ -1345,6 +1347,8 @@ class Clustering(object):
                             combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
                             if hd > n_factors[cv.name]:
                                 n_factors[cv.name] = hd
+
+        # Normalize distances
         normalization = []
         for cv in distributions:
             print(n_factors)
@@ -1353,6 +1357,7 @@ class Clustering(object):
                 if row["Structures"]:
                     row[cv.name] /= n_factors[cv.name]
 
+        # Generate Distance Matrix
         normalization = np.linalg.norm(np.array(normalization))
         for index, row in combinations.iterrows():
             if row["Structures"]:
@@ -1362,6 +1367,7 @@ class Clustering(object):
                         row["Distance Matrix"][i, j] = row["Distance Matrix"][j, i] = dist_ij
                         self.d_c.append(dist_ij)
 
+        # Remove structures that are not cluster centers
         self.d_c = np.sort(np.array(self.d_c))[int(float(len(self.d_c)) * self.cutoff_factor)]
         for index, row in combinations.iterrows():
             if row["Structures"]:
@@ -1370,7 +1376,10 @@ class Clustering(object):
                 clusters = FSFDP(row["Distance Matrix"], d_c=self.d_c)
                 cluster_centers = list(clusters["cluster"].unique())
 
-                # Create output file. Save cluster results in crystals.
+
                 for crystal in row["Structures"]:
                     if crystal.name not in cluster_centers:
                         crystal.melted = True
+
+        # TODO Create output file. Save cluster results in crystals. List distances with respect to each structure.
+        #  Also, in the FSFDP algorithm, instead of halo calculation, check distance between cluster centers
