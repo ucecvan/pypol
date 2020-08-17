@@ -1365,9 +1365,9 @@ class MolecularDynamics(object):
         self.name = name
         if path_mdp:
             if not os.path.exists(path_mdp):
-            #     copyfile(path_mdp, self.path_input + name + ".mdp")
-            #     self.mdp = self.path_input + name + ".mdp"
-            # else:
+                #     copyfile(path_mdp, self.path_input + name + ".mdp")
+                #     self.mdp = self.path_input + name + ".mdp"
+                # else:
                 print("Error: File '{}' not found".format(path_mdp))
                 exit()
         else:

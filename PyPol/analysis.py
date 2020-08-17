@@ -1281,20 +1281,20 @@ class Clustering(object):
             exit()
 
     @staticmethod
-    def sort_crystal(crystal, combinations, treshold=0.8):
+    def sort_crystal(crystal, combinations, threshold=0.8):
         for i in combinations.index[:-1]:
             for j in combinations.columns[:-2]:
-                if crystal.results[j][combinations.loc[i, j]] > treshold and j == combinations.columns[-3]:
+                if crystal.results[j][combinations.loc[i, j]] > threshold and j == combinations.columns[-3]:
                     combinations.loc[i, "Structures"].append(crystal)
                     combinations.loc[i, "Number of structures"] += 1
                     return combinations
-                elif crystal.results[j][combinations.loc[i, j]] < treshold:
+                elif crystal.results[j][combinations.loc[i, j]] < threshold:
                     break
         combinations.loc["Others", "Structures"].append(crystal)
         combinations.loc["Others", "Number of structures"] += 1
         return combinations
 
-    def run(self, simulation, group_treshold=0.8):
+    def run(self, simulation, group_threshold=0.8):
         import numpy as np
         import pandas as pd
         import itertools as its
@@ -1319,7 +1319,7 @@ class Clustering(object):
             combinations.index.name = "Combination"
 
             for crystal in simulation.crystals:
-                combinations = self.sort_crystal(crystal, combinations, group_treshold)
+                combinations = self.sort_crystal(crystal, combinations, group_threshold)
 
         else:
             index = ["All"]
