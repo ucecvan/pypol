@@ -47,7 +47,7 @@ class Torsions(object):
 
     def set_atoms(self, atoms, molecule):
         """
-        Error: check if 2 atoms are involved.
+        Error: check if 4 atoms are involved.
         Select atom indices of the reference molecule. This is used to identify the torsions of each molecule in the
         crystal.
         :param atoms: list, Atom indices. All atoms indices are available in the project output file after the topology
@@ -333,7 +333,7 @@ class MolecularOrientation(object):
 
     def set_atoms(self, atoms, molecule):
         """
-        Error: check that 2 atoms are involved
+        # TODO check that 2 atoms are involved and that molecule is not already present
         :param atoms:
         :param molecule:
         :return:
@@ -872,7 +872,7 @@ class RDF(object):
                           "".format(self.kernel, self.bandwidth, self.r_0, self.binspace))
         file_output.close()
 
-    def generate_input(self, simulation, bash_script=False):
+    def generate_input(self, simulation, bash_script=True):
         """
 
         :param bash_script:
@@ -905,7 +905,7 @@ class RDF(object):
         for crystal in simulation.crystals:
             print(crystal.name)
 
-            d_max = 0.5 * np.min(np.array([crystal.box[0:0], crystal.box[1:1], crystal.box[2:2]]))
+            d_max = 0.5 * np.min(np.array([crystal.box[0, 0], crystal.box[1, 1], crystal.box[2, 2]]))
             nbins = int(round((d_max - self.r_0) / self.binspace, 0))
 
             lines_atoms = []
