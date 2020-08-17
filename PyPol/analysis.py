@@ -619,6 +619,12 @@ class Combine(object):
         file_output.close()
 
     def generate_input(self, simulation, bash_script=True):
+        """
+        TODO output format, only one cv is printed!
+        :param simulation:
+        :param bash_script:
+        :return:
+        """
         idx_cv = 0
         list_bins = list()
         grid_min, grid_max, grid_bin, bandwidth, args = ("", "", "", "", "")
@@ -640,7 +646,7 @@ class Combine(object):
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
             grid_bin += "{},".format(cv.grid_bin)
-            list_bins.append(int(grid_bin))
+            list_bins.append(int(cv.grid_bin))
             bandwidth += "{:.3f},".format(cv.bandwidth)
             args += "ARG{}=ang_mat_{} ".format(idx_cv + 1, cv.name)
             idx_cv += 1
@@ -920,10 +926,12 @@ class RDF(object):
                 for line in lines_atoms:
                     file_plumed.write("{}_c{}: CENTER {}".format(self.name, idx_com, line))
                     str_group += "{}_c{},".format(self.name, idx_com)
+                    idx_com += 1
             elif self.center.upper() == "COM":
                 for line in lines_atoms:
                     file_plumed.write("{}_c{}: COM {}".format(self.name, idx_com, line))
                     str_group += "{}_c{},".format(self.name, idx_com)
+                    idx_com += 1
 
             str_group = str_group[:-1]
             file_plumed.write("{0}_g: GROUP ATOMS={1}\n"
