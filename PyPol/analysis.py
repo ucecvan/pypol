@@ -917,7 +917,7 @@ class RDF(object):
             lines_atoms = []
             for idx_mol in range(len(self.molecules)):
                 lines_atoms = generate_atom_list(self.atoms[idx_mol], self.molecules[idx_mol], crystal,
-                                                 keyword="ATOMS", lines=lines_atoms)
+                                                 keyword="ATOMS", lines=lines_atoms, indexlines=False)
 
             file_plumed = open(crystal.path + "plumed_" + self.name + ".dat", "w")
             idx_com = 1
@@ -1050,7 +1050,7 @@ def sort_groups(grid_min, grid_max, groups, tolerance=0.01):
     return new_groups
 
 
-def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, enumerate=True):
+def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, indexlines=True):
     """
 
     :param atoms:
@@ -1065,7 +1065,7 @@ def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, en
     idx_mol = len(lines) + 1
     for mol in crystal.load_molecules():
         if molecule.residue == mol.residue:
-            if enumerate:
+            if indexlines:
                 line = "{}{}=".format(keyword, idx_mol)
             else:
                 line = "{}=".format(keyword)
