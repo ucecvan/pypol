@@ -1070,7 +1070,7 @@ def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, in
             else:
                 line = "{}=".format(keyword)
             for atom in atoms:
-                atom_idx = atom + mol.index * mol.natoms
+                atom_idx = atom + mol.index * mol.natoms + 1
                 line += str(atom_idx) + ","
             line = line[:-1] + "\n"
             lines.append(line)
