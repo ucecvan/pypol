@@ -248,7 +248,7 @@ class Torsions(object):
                               'rm plumed_{1}.xtc\n'
                               'done\n'
                               ''.format(simulation.command, simulation.name, traj_start, traj_end,
-                                        self.method.project.htt_plumed, self.name, dt, traj_stride))
+                                        self.method.project.plumed, self.name, dt, traj_stride))
             file_script.close()
         self.method.project.save()
         print("=" * 100)
