@@ -1050,7 +1050,7 @@ def sort_groups(grid_min, grid_max, groups, tolerance=0.01):
     return new_groups
 
 
-def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None):
+def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, enumerate=True):
     """
 
     :param atoms:
@@ -1065,7 +1065,10 @@ def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None):
     idx_mol = len(lines) + 1
     for mol in crystal.load_molecules():
         if molecule.residue == mol.residue:
-            line = "{}{}=".format(keyword, idx_mol)
+            if enumerate:
+                line = "{}{}=".format(keyword, idx_mol)
+            else:
+                line = "{}=".format(keyword)
             for atom in atoms:
                 atom_idx = atom + mol.index * mol.natoms
                 line += str(atom_idx) + ","
