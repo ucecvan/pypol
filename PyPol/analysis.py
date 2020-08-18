@@ -203,7 +203,7 @@ class Torsions(object):
                     self.group_bins[group] = list()
                     for boundary in self.groups[group]:
                         self.group_bins[group].append(idx_boundaries - 1)
-                        file_plumed.write("BETWEEN{0}={{{{{1} LOWER={2:.3f} UPPER={3:.3f}}}}}\n"
+                        file_plumed.write("BETWEEN{0}={{{{{1} LOWER={2:.3f} UPPER={3:.3f} SMEAR=0.1}}}}\n"
                                           "".format(idx_boundaries, self.kernel, boundary[0], boundary[1]))
                         idx_boundaries += 1
             file_plumed.write("LABEL={0}\n... TORSIONS\n\n"
