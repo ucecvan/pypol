@@ -29,6 +29,18 @@ class Method(object):
 
         self.cvs = list()
 
+    def get_cv(self, cv_name):
+        """
+        Find an existing CV by its name.
+        :param cv_name:
+        :return:
+        """
+        if self.cvs:
+            for existing_cv in self.cvs:
+                if existing_cv.name == cv_name:
+                    return existing_cv
+        print("No CV found with name {}".format(cv_name))
+
     def simulation(self, simulation_name):
         """
         Find an existing simulation by its name.
@@ -310,7 +322,7 @@ class Method(object):
         file_mc.write("#! FIELDS index mass charge\n")
         for molecule in crystal.load_molecules():
             for atom in molecule.atoms:
-                file_mc.write("{:5}{:19.3f}{:19.3f}\n".format((atom.index + 1) + molecule.natoms * molecule.index,
+                file_mc.write("{:5}{:19.3f}{:19.3f}\n".format(atom.index + molecule.natoms * molecule.index,
                                                               atom.mass, atom.charge))
         file_mc.close()
 

@@ -24,7 +24,7 @@ class Torsions(object):
 
         self.grid_min = -np.pi
         self.grid_max = np.pi
-        self.grid_bin = 36
+        self.grid_bin = 37
         self.timeinterval = 200
 
         self.groups = {}
@@ -277,7 +277,7 @@ class Torsions(object):
                 elif self.clustering_type == "classification":  # Introduce a treshold? ---> In Clustering
                     crystal.cvs[self.name] = {}
                     for group_name in self.group_bins.keys():
-                        crystal.cvs[self.name][group_name] = np.sum(cv[self.group_bins[group]])
+                        crystal.cvs[self.name][group_name] = np.sum(cv[self.group_bins[group_name]])
                     # group_bin = np.argmax(cv)
                     # for group_name in self.group_bins.keys():
                     #     if group_bin in self.group_bins[group_name]:
@@ -312,7 +312,7 @@ class MolecularOrientation(object):
 
         self.grid_min = 0.0
         self.grid_max = np.pi
-        self.grid_bin = 18
+        self.grid_bin = 19
 
         self.timeinterval = 200
 
@@ -539,7 +539,7 @@ class MolecularOrientation(object):
 
         file_hd = open("{}/HD_{}.dat".format(simulation.path_output, simulation.name), "w")
         file_hd.write("# Tolerance = {}\n#\n# Structures HD".format(round(tolerance, 5)))
-        ref = np.sin(np.linspace(0., np.pi, self.grid_bin + 1))  # No need to divide it by 2 as it is normalised later
+        ref = np.sin(np.linspace(0., np.pi, self.grid_bin))  #  Add "+ 1" ?
         for crystal in list_crystals:
             if not self.name in crystal.cvs:
                 print("Error: A distribution for this simulation has not been generated.\n"
@@ -609,7 +609,7 @@ class Combine(object):
                         file_output.write("{}({})  ".format(atom, cv.molecules[idx_mol].atoms[atom].label))
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
-            grid_bin += "{},".format(cv.grid_min)
+            grid_bin += "{},".format(cv.grid_bin)
             bandwidth += "{:.3f},".format(cv.grid_min)
             idx_cv += 1
 
@@ -684,7 +684,6 @@ class Combine(object):
             file_plumed.close()
 
         if bash_script:
-
             dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
 
             file_mdp = open(simulation.mdp)
@@ -1001,10 +1000,10 @@ class RDF(object):
         for crystal in list_crystals:
             path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
             if os.path.exists(path_output):
-                dn_r = np.genfromtxt(path_output, skip_header=1)[:, 1:]
+                dn_r = np.genfromtxt(path_output, skip_header=1)[:, 2:]
                 dn_r = np.average(dn_r, axis=0)
 
-                d_max = 0.5 * np.min(np.array([crystal.box[0:0], crystal.box[1:1], crystal.box[2:2]]))
+                d_max = 0.5 * np.min(np.array([crystal.box[0, 0], crystal.box[1, 1], crystal.box[2, 2]]))
                 nbins = int(round((d_max - self.r_0) / self.binspace, 0))
                 r = np.linspace(self.r_0, d_max, nbins)
                 rho = crystal.Z / crystal.volume  # Modify for more than one molecule?
