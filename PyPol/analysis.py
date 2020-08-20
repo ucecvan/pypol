@@ -274,15 +274,10 @@ class Torsions(object):
                 cv /= cv.sum()
                 if self.clustering_type == "distribution":
                     crystal.cvs[self.name] = cv
-                elif self.clustering_type == "classification":  # Introduce a treshold? ---> In Clustering
+                elif self.clustering_type == "classification":
                     crystal.cvs[self.name] = {}
                     for group_name in self.group_bins.keys():
                         crystal.cvs[self.name][group_name] = np.sum(cv[self.group_bins[group_name]])
-                    # group_bin = np.argmax(cv)
-                    # for group_name in self.group_bins.keys():
-                    #     if group_bin in self.group_bins[group_name]:
-                    #         crystal.cvs[self.name] = group_name
-                    #         break
 
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
@@ -408,10 +403,13 @@ class MolecularOrientation(object):
 
     def generate_input(self, simulation, bash_script=True):
         """
-        Error: Modify for N-Dimensional CV
+
+        :param simulation:
+        :param bash_script:
         :return:
         """
-        # Change creation of parameters. Depends on molecules and number of vectors for each of them! CAMBIARE!!!
+
+        # TODO Change creation of parameters. Depends on molecules and number of vectors for each of them!
         if not self.atoms:
             print("Error: no atoms found. select atoms with the set_atoms module.")
             exit()
@@ -539,7 +537,7 @@ class MolecularOrientation(object):
 
         file_hd = open("{}/HD_{}.dat".format(simulation.path_output, simulation.name), "w")
         file_hd.write("# Tolerance = {}\n#\n# Structures HD".format(round(tolerance, 5)))
-        ref = np.sin(np.linspace(0., np.pi, self.grid_bin))  #  Add "+ 1" ?
+        ref = np.sin(np.linspace(0., np.pi, self.grid_bin))  # Add "+ 1" ?
         for crystal in list_crystals:
             if not self.name in crystal.cvs:
                 print("Error: A distribution for this simulation has not been generated.\n"
@@ -916,7 +914,7 @@ class RDF(object):
             lines_atoms = []
             for idx_mol in range(len(self.molecules)):
                 lines_atoms = generate_atom_list(self.atoms[idx_mol], self.molecules[idx_mol], crystal,
-                                                 keyword="ATOMS", lines=lines_atoms, indexlines=False)
+                                                 keyword="ATOMS", lines=lines_atoms, index_lines=False)
 
             file_plumed = open(crystal.path + "plumed_" + self.name + ".dat", "w")
             idx_com = 1
@@ -1028,19 +1026,19 @@ def sort_groups(grid_min, grid_max, groups, tolerance=0.01):
     new_groups = {k: groups[k] for k in sorted(groups, key=groups.get) if k != "Others"}
 
     ranges = list()
-    for cvranges in new_groups.values():
-        for cvrange in cvranges:
-            ranges.append(cvrange)
+    for cv_ranges in new_groups.values():
+        for cv_range in cv_ranges:
+            ranges.append(cv_range)
     ranges.sort(key=lambda x: x[0])
     gmin = grid_min
     new_groups["Others"] = list()
-    for cvrange in ranges:
-        if cvrange[0] > gmin and cvrange[0] - gmin > tolerance:
-            new_groups["Others"].append((gmin, cvrange[0]))
-            gmin = cvrange[1]
+    for cv_range in ranges:
+        if cv_range[0] > gmin and cv_range[0] - gmin > tolerance:
+            new_groups["Others"].append((gmin, cv_range[0]))
+            gmin = cv_range[1]
         else:
-            gmin = cvrange[1]
-        if cvrange == ranges[-1] and cvrange[1] < grid_max and grid_max - cvrange[1] > tolerance:
+            gmin = cv_range[1]
+        if cv_range == ranges[-1] and cv_range[1] < grid_max and grid_max - cv_range[1] > tolerance:
             new_groups["Others"].append((gmin, grid_max))
 
     if not new_groups["Others"]:
@@ -1049,9 +1047,10 @@ def sort_groups(grid_min, grid_max, groups, tolerance=0.01):
     return new_groups
 
 
-def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, indexlines=True):
+def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, index_lines=True):
     """
 
+    :param index_lines:
     :param atoms:
     :param molecule:
     :param crystal:
@@ -1064,7 +1063,7 @@ def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, in
     idx_mol = len(lines) + 1
     for mol in crystal.load_molecules():
         if molecule.residue == mol.residue:
-            if indexlines:
+            if index_lines:
                 line = "{}{}=".format(keyword, idx_mol)
             else:
                 line = "{}=".format(keyword)
@@ -1180,9 +1179,10 @@ def decision_graph(x, y):
     return p.sigma_cutoff
 
 
-def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02):
+def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02, sigma_cutoff=False):
     """
     Simplified FSFDP algorithm. # TODO Instead of halo, use distance of crystals from center.
+    :param sigma_cutoff:
     :param dmat:
     :param kernel:
     :param d_c:
@@ -1227,7 +1227,8 @@ def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02):
     sigma[rho.idxmax()] = np.nanmax(sigma.values)
 
     # plot results
-    sigma_cutoff = decision_graph(rho, sigma)
+    if not sigma_cutoff:
+        sigma_cutoff = decision_graph(rho, sigma)
 
     # Assign structures to cluster centers
     dataset = pd.concat((rho, sigma, nn,
@@ -1239,6 +1240,7 @@ def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02):
         if dataset.loc[i, "sigma"] >= sigma_cutoff:
             dataset.at[i, "cluster"] = i
             dataset.at[i, "distance"] = 0.0
+
         else:
             dataset.at[i, "cluster"] = dataset.loc[dataset.loc[i]["NN"]]["cluster"]
             dataset.at[i, "distance"] = dmat.loc[i, dataset.loc[i, "cluster"]]
@@ -1248,8 +1250,10 @@ def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02):
 
 class Clustering(object):
 
-    def __init__(self, method, cvs):
+    def __init__(self, name, method, cvs):
+        self.name = name
         self.method = method
+        self.method.clustering_parameters.append(self)
 
         self.cvs = list()
         for cv in self.method.cvs:
@@ -1265,7 +1269,11 @@ class Clustering(object):
         self.fsfdp_kernel = "gaussian"
         self.centers = "energy"
         self.d_c = []
-        self.cutoff_factor = 0.02
+        self.cutoff_factor = 0.
+
+        self.similarity_matrix = False
+        self.cluster_data = {}
+        self.clusters = {}
 
     def set_center_selection(self, center_selection):
         if center_selection.lower() in ("energy", "cluster_center"):
@@ -1304,90 +1312,143 @@ class Clustering(object):
         combinations.loc["Others", "Number of structures"] += 1
         return combinations
 
-    def run(self, simulation, group_threshold=0.8):
+    def run(self, simulation, group_threshold=0.8, gen_sim_mat=True):
         import numpy as np
         import pandas as pd
         import itertools as its
         import copy
 
-        # Divide structures in different groups
-        group_options = []
-        group_names = []
-        for cv in self.cvs:
-            if cv.clustering_type == "classification":
-                group_options.append(list(cv.groups.keys()))
-                group_names.append(cv.name)
-        if group_options:
-            combinations = list(its.product(*group_options)) + [tuple([None for i in range(len(group_options[0]))])]
+        if gen_sim_mat:
+            import progressbar
+            # Divide structures in different groups
+            group_options = []
+            group_names = []
+            for cv in self.cvs:
+                if cv.clustering_type == "classification":
+                    group_options.append(list(cv.groups.keys()))
+                    group_names.append(cv.name)
+            if group_options:
+                combinations = list(its.product(*group_options)) + [tuple([None for i in range(len(group_options[0]))])]
 
-            index = [i for i in range(len(combinations) - 1)] + ["Others"]
-            combinations = pd.concat((pd.DataFrame(combinations, columns=group_names, index=index),
-                                      pd.Series([0 for i in range(len(combinations))], name="Number of structures",
-                                                dtype=int, index=index),
-                                      pd.Series([[] for i in range(len(combinations))], name="Structures",
-                                                index=index)), axis=1)
-            combinations.index.name = "Combination"
+                index = [i for i in range(len(combinations) - 1)] + ["Others"]
+                combinations = pd.concat((pd.DataFrame(combinations, columns=group_names, index=index),
+                                          pd.Series([0 for i in range(len(combinations))], name="Number of structures",
+                                                    dtype=int, index=index),
+                                          pd.Series([[] for i in range(len(combinations))], name="Structures",
+                                                    index=index)), axis=1)
+                combinations.index.name = "Combination"
 
-            for crystal in simulation.crystals:
-                combinations = self.sort_crystal(crystal, combinations, group_threshold)
+                for crystal in simulation.crystals:
+                    combinations = self.sort_crystal(crystal, combinations, group_threshold)
 
-        else:
-            index = ["All"]
-            combinations = pd.concat((pd.Series(0, name="Number of structures", dtype=int, index=index),
-                                      pd.Series([], name="Structures", index=index)), axis=1)
-            combinations.index.name = "Combination"
-            for crystal in simulation.crystals:
-                if not crystal.melted:
-                    combinations.loc["all", "Structures"].append(crystal)
-                    combinations.loc["all", "Number of structures"] += 1
+            else:
+                index = ["All"]
+                combinations = pd.concat((pd.Series(0, name="Number of structures", dtype=int, index=index),
+                                          pd.Series([], name="Structures", index=index)), axis=1)
+                combinations.index.name = "Combination"
+                for crystal in simulation.crystals:
+                    if not crystal.melted:
+                        combinations.loc["all", "Structures"].append(crystal)
+                        combinations.loc["all", "Number of structures"] += 1
 
-        # Generate Distance Matrix of each set of distributions
-        distributions = [cv for cv in self.cvs if cv.type != "classification"]
-        n_factors = {}
-        for cv in distributions:
-            combinations[cv.name] = pd.Series(copy.deepcopy(combinations["Distance Matrix"].to_dict()),
-                                              index=combinations.index)
-            n_factors[cv.name] = 0.
+            # Generate Distance Matrix of each set of distributions
+            distributions = [cv for cv in self.cvs if cv.type != "classification"]
+            n_factors = {}
+            for cv in distributions:
+                combinations[cv.name] = pd.Series(copy.deepcopy(combinations["Distance Matrix"].to_dict()),
+                                                  index=combinations.index)
+                n_factors[cv.name] = 0.
+
+                for index, row in combinations.iterrows():
+                    if row["Structures"]:
+                        crystals = row["Structures"]
+
+                        print("CV: {} Group: {}".format(cv.name, index))
+                        bar = progressbar.ProgressBar(maxval=len(crystals)*(len(crystals)-1)).start()
+                        bc = 1
+
+                        for i in range(len(crystals) - 1):
+                            for j in range(i + 1, len(crystals)):
+                                hd = hellinger(crystals[i].results[cv.name], crystals[j].results[cv.name])
+                                combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
+                                if hd > n_factors[cv.name]:
+                                    n_factors[cv.name] = hd
+                                bar.update(bc)
+                                bc += 1
+
+            # Normalize distances
+            normalization = []
+            for cv in distributions:
+                normalization.append(1. / n_factors[cv.name])
+                for index, row in combinations.iterrows():
+                    if row["Structures"]:
+                        row[cv.name] /= n_factors[cv.name]
+
+            # Generate Distance Matrix
+            normalization = np.linalg.norm(np.array(normalization))
             for index, row in combinations.iterrows():
                 if row["Structures"]:
-                    crystals = row["Structures"]
-                    for i in range(len(crystals) - 1):
-                        for j in range(i + 1, len(crystals)):
-                            hd = hellinger(crystals[i].results[cv.name], crystals[j].results[cv.name])
-                            combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
-                            if hd > n_factors[cv.name]:
-                                n_factors[cv.name] = hd
+                    for i in range(row["Number of structures"] - 1):
+                        for j in range(i + 1, row["Number of structures"]):
+                            dist_ij = np.linalg.norm([k[i, j] for k in row.loc[distributions]]) / normalization
+                            row["Distance Matrix"][i, j] = row["Distance Matrix"][j, i] = dist_ij
+                            self.d_c.append(dist_ij)
 
-        # Normalize distances
-        normalization = []
-        for cv in distributions:
-            normalization.append(1. / n_factors[cv.name])
             for index, row in combinations.iterrows():
                 if row["Structures"]:
-                    row[cv.name] /= n_factors[cv.name]
+                    idx = [i.name for i in row["Structures"]]
+                    row["Distance Matrix"] = pd.DataFrame(row["Distance Matrix"], index=idx, columns=idx)
 
-        # Generate Distance Matrix
-        normalization = np.linalg.norm(np.array(normalization))
-        for index, row in combinations.iterrows():
-            if row["Structures"]:
-                for i in range(row["Number of structures"] - 1):
-                    for j in range(i + 1, row["Number of structures"]):
-                        dist_ij = np.linalg.norm([k[i, j] for k in row.loc[distributions]]) / normalization
-                        row["Distance Matrix"][i, j] = row["Distance Matrix"][j, i] = dist_ij
-                        self.d_c.append(dist_ij)
+            self.similarity_matrix = combinations
+            list_structures = [[i.name for i in row["Structures"]] for index, row in combinations.iterrows()]
+            file_output = pd.concat((combinations.loc[:, :"Number of structures"],
+                                     pd.Series(list_structures, name="IDs", index=group_df.index)), axis=1)
+            pd.set_option('display.expand_frame_repr', False)
+            with open(simulation.path_output + str(self.name) + "_combinations.dat", 'w') as fo:
+                fo.write(file_output.__str__())
+
+            self.d_c = np.sort(np.array(self.d_c))[int(float(len(self.d_c)) * self.cutoff_factor)]
 
         # Remove structures that are not cluster centers
-        self.d_c = np.sort(np.array(self.d_c))[int(float(len(self.d_c)) * self.cutoff_factor)]
-        for index, row in combinations.iterrows():
+        changes_string = "\n"
+        for index, row in self.similarity_matrix.iterrows():
             if row["Structures"]:
-                index = [i.name for i in row["Structures"]]
-                row["Distance Matrix"] = pd.DataFrame(row["Distance Matrix"], index=index, columns=index)
-                clusters = FSFDP(row["Distance Matrix"], d_c=self.d_c)
-                cluster_centers = list(clusters["cluster"].unique())
+                self.cluster_data[index] = FSFDP(row["Distance Matrix"], d_c=self.d_c)
 
+                with open(simulation.path_output + str(self.name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
+                    fo.write(self.cluster_data[index].__str__())
+
+                self.clusters[index] = {k: clustering.index[clustering["cluster"] == k].tolist()
+                                        for k in list(clustering["cluster"].unique())}
+
+                if energy:
+                    import copy
+                    new_clusters = copy.deepcopy(clusters[index])
+                    energies = {k.name: k.Potential for k in row["Structures"]}
+                    for center in clusters[index].keys():
+                        changes = [center, None]
+                        for crystal in clusters[index][center]:
+                            if energies[crystal] < energies[center]:
+                                changes[1] = crystal
+                        if changes[1]:
+                            new_clusters[changes[1]] = new_clusters.pop(changes[0])
+                            changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
+                    clusters[index] = new_clusters
+        
                 for crystal in row["Structures"]:
-                    if crystal.name not in cluster_centers:
+                    if crystal.name not in clusters[index].keys():
                         crystal.melted = True
 
-        # TODO Create output file. Save cluster results in crystals. List distances with respect to each structure.
-        #  Also, in the FSFDP algorithm, instead of halo calculation, check distance between cluster centers
+        self.clusters = {k: v for g in self.clusters.keys() for k, v in self.clusters[g].items()}
+        self.clusters = pd.concat((
+            pd.Series(data=[len(self.clusters[x]) for x in self.clusters.keys()], index=self.clusters.keys(),
+                      name="Number of Structures"),
+            pd.Series(data=[", ".join(str(y) for y in self.clusters[x]) for x in self.clusters.keys()],
+                      index=self.clusters.keys(), name="Structures")),
+            axis=1).sort_values(by="Number of Structures", ascending=False)
+
+        with open(simulation.path_output + str(self.name) + "_Clusters.dat", 'w') as fo:
+            fo.write(self.clusters.__str__())
+
+        # TODO List distances with respect to each structure.
+        #      Also, in the FSFDP algorithm, instead of halo calculation, check distance with the cluster center

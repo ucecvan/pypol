@@ -28,6 +28,7 @@ class Method(object):
         self.metadynamics = list()
 
         self.cvs = list()
+        self.clustering_parameters = list()
 
     def get_cv(self, cv_name):
         """
@@ -40,6 +41,18 @@ class Method(object):
                 if existing_cv.name == cv_name:
                     return existing_cv
         print("No CV found with name {}".format(cv_name))
+
+    def get_clustering_parameters(self, clustering_parameter_name):
+        """
+        Find an existing clustering parameters by its name.
+        :param clustering_parameter_name:
+        :return:
+        """
+        if self.clustering_parameters:
+            for existing_clustering_parameter in self.clustering_parameters:
+                if existing_clustering_parameter.name == clustering_parameter_name:
+                    return existing_clustering_parameter
+        print("No CV found with name {}".format(clustering_parameter_name))
 
     def simulation(self, simulation_name):
         """
