@@ -1303,11 +1303,11 @@ class Clustering(object):
     def sort_crystal(crystal, combinations, threshold=0.8):
         for i in combinations.index[:-1]:
             for j in combinations.columns[:-2]:
-                if crystal.results[j][combinations.loc[i, j]] > threshold and j == combinations.columns[-3]:
+                if crystal.cvs[j][combinations.loc[i, j]] > threshold and j == combinations.columns[-3]:
                     combinations.loc[i, "Structures"].append(crystal)
                     combinations.loc[i, "Number of structures"] += 1
                     return combinations
-                elif crystal.results[j][combinations.loc[i, j]] < threshold:
+                elif crystal.cvs[j][combinations.loc[i, j]] < threshold:
                     break
         combinations.loc["Others", "Structures"].append(crystal)
         combinations.loc["Others", "Number of structures"] += 1
@@ -1352,8 +1352,13 @@ class Clustering(object):
                         combinations.loc["all", "Structures"].append(crystal)
                         combinations.loc["all", "Number of structures"] += 1
 
+            slist = [np.full((combinations.loc[i, "Number of structures"],
+                              combinations.loc[i, "Number of structures"]), 0.0) for i in combinations.index]
+            combinations = pd.concat((combinations,
+                          pd.Series(slist, name="Distance Matrix", index=combinations.index)), axis=1)
+
             # Generate Distance Matrix of each set of distributions
-            distributions = [cv for cv in self.cvs if cv.type != "classification"]
+            distributions = [cv for cv in self.cvs if cv.clustering_type != "classification"]
             n_factors = {}
             for cv in distributions:
                 combinations[cv.name] = pd.Series(copy.deepcopy(combinations["Distance Matrix"].to_dict()),
@@ -1365,12 +1370,20 @@ class Clustering(object):
                         crystals = row["Structures"]
 
                         print("CV: {} Group: {}".format(cv.name, index))
-                        bar = progressbar.ProgressBar(maxval=len(crystals)*(len(crystals)-1)).start()
+                        bar = progressbar.ProgressBar(maxval=int(len(crystals)*(len(crystals)-1)/2)).start()
                         bc = 1
 
                         for i in range(len(crystals) - 1):
                             for j in range(i + 1, len(crystals)):
-                                hd = hellinger(crystals[i].results[cv.name], crystals[j].results[cv.name])
+                                if cv.type == "Radial Distribution Function":
+                                    if len(crystals[i].cvs[cv.name]) > len(crystals[j].cvs[cv.name]):
+                                        hd = hellinger(crystals[i].cvs[cv.name][:len(crystals[j].cvs[cv.name])],
+                                                       crystals[j].cvs[cv.name])
+                                    else:
+                                        hd = hellinger(crystals[i].cvs[cv.name],
+                                                       crystals[j].cvs[cv.name][:len(crystals[i].cvs[cv.name])])
+                                else:
+                                    hd = hellinger(crystals[i].cvs[cv.name], crystals[j].cvs[cv.name])
                                 combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
                                 if hd > n_factors[cv.name]:
                                     n_factors[cv.name] = hd
@@ -1391,7 +1404,8 @@ class Clustering(object):
                 if row["Structures"]:
                     for i in range(row["Number of structures"] - 1):
                         for j in range(i + 1, row["Number of structures"]):
-                            dist_ij = np.linalg.norm([k[i, j] for k in row.loc[distributions]]) / normalization
+                            dist_ij = np.linalg.norm(
+                                [k[i, j] for k in row.loc[[cv.name for cv in distributions]]]) / normalization
                             row["Distance Matrix"][i, j] = row["Distance Matrix"][j, i] = dist_ij
                             self.d_c.append(dist_ij)
 
