@@ -558,6 +558,7 @@ class Combine(object):
     def __init__(self, name, method, cvs):
         self.name = name
         self.type = "N-Dimensional CV"
+        self.clustering_type = "distribution"
         self.method = method
         self.cvs = cvs
 
@@ -1343,8 +1344,8 @@ class Clustering(object):
 
             else:
                 index = ["All"]
-                combinations = pd.concat((pd.Series(0, name="Number of structures", dtype=int, index=index),
-                                          pd.Series([], name="Structures", index=index)), axis=1)
+                combinations = pd.DataFrame([[0, []]], columns=["Number of structures", "Structures"],
+                                            dtype=None, index=["all"])
                 combinations.index.name = "Combination"
                 for crystal in simulation.crystals:
                     if not crystal.melted:
