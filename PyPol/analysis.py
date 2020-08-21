@@ -1365,7 +1365,8 @@ class Clustering(object):
                                                   index=combinations.index)
                 n_factors[cv.name] = 0.
 
-                for index, row in combinations.iterrows():
+                for index in combinations.index:
+                    row = combinations.loc[index]
                     if row["Structures"]:
                         crystals = row["Structures"]
 
@@ -1389,18 +1390,21 @@ class Clustering(object):
                                     n_factors[cv.name] = hd
                                 bar.update(bc)
                                 bc += 1
+                        bar.finish()
 
             # Normalize distances
             normalization = []
             for cv in distributions:
                 normalization.append(1. / n_factors[cv.name])
-                for index, row in combinations.iterrows():
+                for index in combinations.index:
+                    row = combinations.loc[index]
                     if row["Structures"]:
                         row[cv.name] /= n_factors[cv.name]
 
             # Generate Distance Matrix
             normalization = np.linalg.norm(np.array(normalization))
-            for index, row in combinations.iterrows():
+            for index in combinations.index:
+                row = combinations.loc[index]
                 if row["Structures"]:
                     for i in range(row["Number of structures"] - 1):
                         for j in range(i + 1, row["Number of structures"]):
@@ -1408,26 +1412,35 @@ class Clustering(object):
                                 [k[i, j] for k in row.loc[[cv.name for cv in distributions]]]) / normalization
                             row["Distance Matrix"][i, j] = row["Distance Matrix"][j, i] = dist_ij
                             self.d_c.append(dist_ij)
-
-            for index, row in combinations.iterrows():
+                            
+            self.similarity_matrix = combinations
+            for index in self.similarity_matrix.index:
+                row = combinations.loc[index]
                 if row["Structures"]:
                     idx = [i.name for i in row["Structures"]]
-                    row["Distance Matrix"] = pd.DataFrame(row["Distance Matrix"], index=idx, columns=idx)
+                    for mat in row.loc["Distance Matrix":].columns:
+                        row[mat] = pd.DataFrame(mat, index=idx, columns=idx)
+                        with open(simulation.path_output + str(self.name) + "_similarity_matrix_" +
+                                  mat.replace(" ", "") + ".dat", 'w') as fo:
+                            fo.write(row[mat].__str__())
+                    # row["Distance Matrix"] = pd.DataFrame(row["Distance Matrix"], index=idx, columns=idx)
 
-            self.similarity_matrix = combinations
-            list_structures = [[i.name for i in row["Structures"]] for index, row in combinations.iterrows()]
-            file_output = pd.concat((combinations.loc[:, :"Number of structures"],
-                                     pd.Series(list_structures, name="IDs", index=group_df.index)), axis=1)
+            list_crys = [[i.name for i in row["Structures"]] for index, row in self.similarity_matrix.iterrows()]
+            file_output = pd.concat((self.similarity_matrix.loc[:, :"Number of structures"],
+                                     pd.Series(list_crys, name="IDs", index=self.similarity_matrix.index)), axis=1)
             pd.set_option('display.expand_frame_repr', False)
-            with open(simulation.path_output + str(self.name) + "_combinations.dat", 'w') as fo:
+            with open(simulation.path_output + str(self.name) + "_similarity_matrix_groups.dat", 'w') as fo:
                 fo.write(file_output.__str__())
 
             self.d_c = np.sort(np.array(self.d_c))[int(float(len(self.d_c)) * self.cutoff_factor)]
 
         # Remove structures that are not cluster centers
         changes_string = "\n"
-        for index, row in self.similarity_matrix.iterrows():
+        for index in self.similarity_matrix.index:
+            row = self.similarity_matrix.loc[index]
             if row["Structures"]:
+                # idx = [i.name for i in row["Structures"]]
+                # row["Distance Matrix"] = pd.DataFrame(row["Distance Matrix"], index=idx, columns=idx)
                 self.cluster_data[index] = FSFDP(row["Distance Matrix"], d_c=self.d_c)
 
                 with open(simulation.path_output + str(self.name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
