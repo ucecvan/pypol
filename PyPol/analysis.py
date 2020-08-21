@@ -1180,6 +1180,33 @@ def decision_graph(x, y):
     return p.sigma_cutoff
 
 
+def save_decision_graph(rho, sigma, sigma_cutoff, path):
+    import matplotlib.pyplot as plt
+    for i in range(len(rho)):
+        if sigma[i] >= sigma_cutoff:
+            if rho[i] < rho.max() / 100.0:
+                plt.scatter(rho[i], sigma[i], s=20, marker='o', c=(0.77, 0.1, 0.2), edgecolor='none')
+            else:
+                plt.scatter(rho[i], sigma[i], s=20, marker='o', c=(30. / 255., 144. / 255., 255. / 255.),
+                            edgecolor='none')
+        else:
+            plt.scatter(rho[i], sigma[i], s=20, marker='o', c=(255. / 255., 120. / 255., 10. / 255.),
+                        edgecolor='none')
+
+    plt.fill_between(np.array([-max(rho), max(rho) + 0.25]), np.array([sigma_cutoff, sigma_cutoff]),
+                     color=(30. / 255., 144. / 255., 255. / 255.), alpha=0.1)
+
+    plt.xlim(0.0, max(rho) + 0.25)
+    plt.ylim(0.0, max(sigma) + 0.1)
+
+    plt.xlabel(r"$\rho$", fontsize=20)
+    plt.ylabel(r"$\sigma$", fontsize=20)
+
+    plt.tight_layout()
+    plt.savefig(path, dpi=300)
+    plt.close('all')
+
+
 def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02, sigma_cutoff=False):
     """
     Simplified FSFDP algorithm. # TODO Instead of halo, use distance of crystals from center.
@@ -1191,7 +1218,7 @@ def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02, sigma_cutoff=
     :return:
     """
     import matplotlib as mpl
-    mpl.use('Agg')
+    # mpl.use('Agg')
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
@@ -1214,7 +1241,7 @@ def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02, sigma_cutoff=
             rho[i] += kernel_function(dmat.values[i][j])
             rho[j] += kernel_function(dmat.values[i][j])
 
-    rho = pd.Series(rho, index=dmat.index)
+    rho = pd.Series(rho, index=dmat.index, name="rho")
 
     # Find sigma vector
     sigma = pd.Series(np.full(rho.shape, -1.), dmat.index, name="sigma")
@@ -1246,7 +1273,7 @@ def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02, sigma_cutoff=
             dataset.at[i, "cluster"] = dataset.loc[dataset.loc[i]["NN"]]["cluster"]
             dataset.at[i, "distance"] = dmat.loc[i, dataset.loc[i, "cluster"]]
 
-    return dataset
+    return dataset, sigma_cutoff
 
 
 class Clustering(object):
@@ -1270,7 +1297,8 @@ class Clustering(object):
         self.fsfdp_kernel = "gaussian"
         self.centers = "energy"
         self.d_c = []
-        self.cutoff_factor = 0.
+        self.cutoff_factor = 0.02
+        self.sigma_cutoff = False
 
         self.similarity_matrix = False
         self.cluster_data = {}
@@ -1318,6 +1346,10 @@ class Clustering(object):
         import pandas as pd
         import itertools as its
         import copy
+
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.max_rows', None)
+        pd.set_option('display.expand_frame_repr', False)
 
         if gen_sim_mat:
             import progressbar
@@ -1406,7 +1438,7 @@ class Clustering(object):
                 if combinations.at[index, "Structures"]:
                     for i in range(combinations.at[index, "Number of structures"] - 1):
                         for j in range(i + 1, combinations.at[index, "Number of structures"]):
-                            dist_ij = np.linalg.norm([k[i, j] for k in 
+                            dist_ij = np.linalg.norm([k[i, j] for k in
                                                       combinations.loc[index, [cv.name for cv in distributions]]])
                             combinations.at[index, "Distance Matrix"][i, j] = \
                                 combinations.at[index, "Distance Matrix"][j, i] = dist_ij / normalization
@@ -1417,8 +1449,7 @@ class Clustering(object):
                 if combinations.at[index, "Structures"]:
                     idx = [i.name for i in combinations.at[index, "Structures"]]
                     for mat in combinations.loc[index, "Distance Matrix":].index:
-                        combinations.loc[index, mat] = pd.DataFrame(combinations.loc[index, mat],
-                                                                    index=idx, columns=idx)
+                        combinations.at[index, mat] = pd.DataFrame(combinations.at[index, mat], index=idx, columns=idx)
                         with open(simulation.path_output + str(self.name) + "_similarity_matrix_" +
                                   mat.replace(" ", "") + ".dat", 'w') as fo:
                             fo.write(combinations.loc[index, mat].__str__())
@@ -1427,7 +1458,7 @@ class Clustering(object):
             list_crys = [[i.name for i in row["Structures"]] for index, row in self.similarity_matrix.iterrows()]
             file_output = pd.concat((self.similarity_matrix.loc[:, :"Number of structures"],
                                      pd.Series(list_crys, name="IDs", index=self.similarity_matrix.index)), axis=1)
-            pd.set_option('display.expand_frame_repr', False)
+
             with open(simulation.path_output + str(self.name) + "_similarity_matrix_groups.dat", 'w') as fo:
                 fo.write(file_output.__str__())
 
@@ -1436,11 +1467,13 @@ class Clustering(object):
         # Remove structures that are not cluster centers
         changes_string = "\n"
         for index in self.similarity_matrix.index:
-            row = self.similarity_matrix.loc[index]
-            if row["Structures"]:
-                # idx = [i.name for i in row["Structures"]]
-                # row["Distance Matrix"] = pd.DataFrame(row["Distance Matrix"], index=idx, columns=idx)
-                self.cluster_data[index] = FSFDP(row["Distance Matrix"], d_c=self.d_c)
+            if self.similarity_matrix.at[index, "Structures"]:
+                self.cluster_data[index], sc = FSFDP(self.similarity_matrix.at[index, "Distance Matrix"], d_c=self.d_c,
+                                                 cutoff_factor=self.cutoff_factor, sigma_cutoff=self.sigma_cutoff)
+                self.save_decision_graph(self.cluster_data[index].loc[:, "rho"].values,
+                                         self.cluster_data[index].loc[:, "sigma"].values,
+                                         sigma_cutoff=sc,
+                                         path=simulation.path_output + str(self.name) + "_decision_graph.dat")
 
                 with open(simulation.path_output + str(self.name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
                     fo.write(self.cluster_data[index].__str__())
@@ -1451,7 +1484,7 @@ class Clustering(object):
                 if energy:
                     import copy
                     new_clusters = copy.deepcopy(clusters[index])
-                    energies = {k.name: k.Potential for k in row["Structures"]}
+                    energies = {k.name: k.Potential for k in self.similarity_matrix.at[index, "Structures"]}
                     for center in clusters[index].keys():
                         changes = [center, None]
                         for crystal in clusters[index][center]:
@@ -1462,7 +1495,7 @@ class Clustering(object):
                             changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
                     clusters[index] = new_clusters
 
-                for crystal in row["Structures"]:
+                for crystal in self.similarity_matrix.at[index, "Structures"]:
                     if crystal.name not in clusters[index].keys():
                         crystal.melted = True
 
