@@ -1297,7 +1297,7 @@ class Clustering(object):
         self.fsfdp_kernel = "gaussian"
         self.centers = "energy"
         self.d_c = []
-        self.cutoff_factor = 0.02
+        self.cutoff_factor = 0.01
         self.sigma_cutoff = False
 
         self.similarity_matrix = False
@@ -1484,17 +1484,17 @@ class Clustering(object):
 
                 if self.centers.lower() == "energy":
                     import copy
-                    new_clusters = copy.deepcopy(clusters[index])
+                    new_clusters = copy.deepcopy(self.clusters[index])
                     energies = {k.name: k.Potential for k in self.similarity_matrix.at[index, "Structures"]}
-                    for center in clusters[index].keys():
+                    for center in self.clusters[index].keys():
                         changes = [center, None]
-                        for crystal in clusters[index][center]:
+                        for crystal in self.clusters[index][center]:
                             if energies[crystal] < energies[center]:
                                 changes[1] = crystal
                         if changes[1]:
                             new_clusters[changes[1]] = new_clusters.pop(changes[0])
                             changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
-                    clusters[index] = new_clusters
+                    self.clusters[index] = new_clusters
 
                 for crystal in self.similarity_matrix.at[index, "Structures"]:
                     if crystal.name not in clusters[index].keys():
