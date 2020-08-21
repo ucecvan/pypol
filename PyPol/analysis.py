@@ -1397,29 +1397,27 @@ class Clustering(object):
             for cv in distributions:
                 normalization.append(1. / n_factors[cv.name])
                 for index in combinations.index:
-                    row = combinations.loc[index]
-                    if row["Structures"]:
-                        combinations.loc[index, cv.name] /= n_factors[cv.name]
+                    if combinations.at[index, "Structures"]:
+                        combinations.at[index, cv.name] /= n_factors[cv.name]
 
             # Generate Distance Matrix
             normalization = np.linalg.norm(np.array(normalization))
             for index in combinations.index:
-                row = combinations.loc[index]
-                if row["Structures"]:
-                    for i in range(row["Number of structures"] - 1):
-                        for j in range(i + 1, row["Number of structures"]):
-                            dist_ij = np.linalg.norm(
-                                [k[i, j] for k in row.loc[[cv.name for cv in distributions]]]) / normalization
-                            combinations.loc[index, "Distance Matrix"][i, j] = \
-                                combinations.loc[index, "Distance Matrix"][j, i] = dist_ij
+                if combinations.at[index, "Structures"]:
+                    for i in range(combinations.at[index, "Number of structures"] - 1):
+                        for j in range(i + 1, combinations.at[index, "Number of structures"]):
+                            dist_ij = np.linalg.norm([k[i, j] for k in 
+                                                      combinations.loc[index, [cv.name for cv in distributions]]])
+                            combinations.at[index, "Distance Matrix"][i, j] = \
+                                combinations.at[index, "Distance Matrix"][j, i] = dist_ij / normalization
                             self.d_c.append(dist_ij)
 
             self.similarity_matrix = combinations
             for index in self.similarity_matrix.index:
-                row = combinations.loc[index]
-                if row["Structures"]:
-                    idx = [i.name for i in row["Structures"]]
-                    for mat in row.loc["Distance Matrix":].columns:
+                if combinations.at[index, "Structures"]:
+                    idx = [i.name for i in combinations.at[index, "Structures"]]
+                    print(combinations.loc[index, "Distance Matrix":])
+                    for mat in combinations.loc[index, "Distance Matrix":].index:
                         combinations.loc[index, mat] = pd.DataFrame(combinations.loc[index, mat],
                                                                     index=idx, columns=idx)
                         with open(simulation.path_output + str(self.name) + "_similarity_matrix_" +
