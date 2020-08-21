@@ -1376,6 +1376,8 @@ class Clustering(object):
 
                         for i in range(len(crystals) - 1):
                             for j in range(i + 1, len(crystals)):
+                                bar.update(bc)
+                                bc += 1
                                 if cv.type == "Radial Distribution Function":
                                     if len(crystals[i].cvs[cv.name]) > len(crystals[j].cvs[cv.name]):
                                         hd = hellinger(crystals[i].cvs[cv.name][:len(crystals[j].cvs[cv.name])],
@@ -1388,8 +1390,6 @@ class Clustering(object):
                                 combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
                                 if hd > n_factors[cv.name]:
                                     n_factors[cv.name] = hd
-                                bc += 1
-                                bar.update(bc)
                         bar.finish()
 
             # Normalize distances
