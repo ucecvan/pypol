@@ -1473,13 +1473,14 @@ class Clustering(object):
                 save_decision_graph(self.cluster_data[index].loc[:, "rho"].values,
                                     self.cluster_data[index].loc[:, "sigma"].values,
                                     sigma_cutoff=sc,
-                                    path=simulation.path_output + str(self.name) + "_decision_graph.dat")
+                                    path=simulation.path_output + str(self.name) + "_decision_graph.png")
 
                 with open(simulation.path_output + str(self.name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
                     fo.write(self.cluster_data[index].__str__())
 
-                self.clusters[index] = {k: clustering.index[clustering["cluster"] == k].tolist()
-                                        for k in list(clustering["cluster"].unique())}
+                self.clusters[index] = {
+                    k: self.cluster_data[index].index[self.cluster_data[index]["cluster"] == k].tolist()
+                    for k in list(self.cluster_data[index]["cluster"].unique())}
 
                 if energy:
                     import copy
