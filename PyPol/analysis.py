@@ -302,7 +302,7 @@ class MolecularOrientation(object):
         self.atoms = list()
         self.molecules = list()
 
-        self.kernel = "GAUSSIAN"
+        self.kernel = "TRIANGULAR"
         self.bandwidth = 0.3
 
         self.grid_min = 0.0
@@ -1182,19 +1182,19 @@ def decision_graph(x, y):
 
 def save_decision_graph(rho, sigma, sigma_cutoff, path):
     import matplotlib.pyplot as plt
+    import numpy as np
+
     for i in range(len(rho)):
         if sigma[i] >= sigma_cutoff:
             if rho[i] < rho.max() / 100.0:
-                plt.scatter(rho[i], sigma[i], s=20, marker='o', c=(0.77, 0.1, 0.2), edgecolor='none')
+                plt.scatter(rho[i], sigma[i], s=20, marker='o', c="black", edgecolor='none')
             else:
-                plt.scatter(rho[i], sigma[i], s=20, marker='o', c=(30. / 255., 144. / 255., 255. / 255.),
-                            edgecolor='none')
+                plt.scatter(rho[i], sigma[i], s=20, marker='o', c="C0", edgecolor='none')
         else:
-            plt.scatter(rho[i], sigma[i], s=20, marker='o', c=(255. / 255., 120. / 255., 10. / 255.),
-                        edgecolor='none')
+            plt.scatter(rho[i], sigma[i], s=20, marker='o', c="C1", edgecolor='none')
 
     plt.fill_between(np.array([-max(rho), max(rho) + 0.25]), np.array([sigma_cutoff, sigma_cutoff]),
-                     color=(30. / 255., 144. / 255., 255. / 255.), alpha=0.1)
+                     color="C1", alpha=0.1)
 
     plt.xlim(0.0, max(rho) + 0.25)
     plt.ylim(0.0, max(sigma) + 0.1)
@@ -1469,11 +1469,11 @@ class Clustering(object):
         for index in self.similarity_matrix.index:
             if self.similarity_matrix.at[index, "Structures"]:
                 self.cluster_data[index], sc = FSFDP(self.similarity_matrix.at[index, "Distance Matrix"], d_c=self.d_c,
-                                                 cutoff_factor=self.cutoff_factor, sigma_cutoff=self.sigma_cutoff)
-                self.save_decision_graph(self.cluster_data[index].loc[:, "rho"].values,
-                                         self.cluster_data[index].loc[:, "sigma"].values,
-                                         sigma_cutoff=sc,
-                                         path=simulation.path_output + str(self.name) + "_decision_graph.dat")
+                                                     cutoff_factor=self.cutoff_factor, sigma_cutoff=self.sigma_cutoff)
+                save_decision_graph(self.cluster_data[index].loc[:, "rho"].values,
+                                    self.cluster_data[index].loc[:, "sigma"].values,
+                                    sigma_cutoff=sc,
+                                    path=simulation.path_output + str(self.name) + "_decision_graph.dat")
 
                 with open(simulation.path_output + str(self.name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
                     fo.write(self.cluster_data[index].__str__())
