@@ -1482,7 +1482,7 @@ class Clustering(object):
                     k: self.cluster_data[index].index[self.cluster_data[index]["cluster"] == k].tolist()
                     for k in list(self.cluster_data[index]["cluster"].unique())}
 
-                if energy:
+                if self.centers.lower() == "energy":
                     import copy
                     new_clusters = copy.deepcopy(clusters[index])
                     energies = {k.name: k.Potential for k in self.similarity_matrix.at[index, "Structures"]}
