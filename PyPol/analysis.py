@@ -1416,7 +1416,6 @@ class Clustering(object):
             for index in self.similarity_matrix.index:
                 if combinations.at[index, "Structures"]:
                     idx = [i.name for i in combinations.at[index, "Structures"]]
-                    print(combinations.loc[index, "Distance Matrix":])
                     for mat in combinations.loc[index, "Distance Matrix":].index:
                         combinations.loc[index, mat] = pd.DataFrame(combinations.loc[index, mat],
                                                                     index=idx, columns=idx)
