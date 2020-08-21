@@ -1355,7 +1355,7 @@ class Clustering(object):
             slist = [np.full((combinations.loc[i, "Number of structures"],
                               combinations.loc[i, "Number of structures"]), 0.0) for i in combinations.index]
             combinations = pd.concat((combinations,
-                          pd.Series(slist, name="Distance Matrix", index=combinations.index)), axis=1)
+                                      pd.Series(slist, name="Distance Matrix", index=combinations.index)), axis=1)
 
             # Generate Distance Matrix of each set of distributions
             distributions = [cv for cv in self.cvs if cv.clustering_type != "classification"]
@@ -1370,8 +1370,8 @@ class Clustering(object):
                     if row["Structures"]:
                         crystals = row["Structures"]
 
-                        print("CV: {} Group: {}".format(cv.name, index))
-                        bar = progressbar.ProgressBar(maxval=int(len(crystals)*(len(crystals)-1)/2)).start()
+                        print("\nCV: {} Group: {}".format(cv.name, index))
+                        bar = progressbar.ProgressBar(maxval=int(len(crystals) * (len(crystals) - 1) / 2)).start()
                         bc = 1
 
                         for i in range(len(crystals) - 1):
@@ -1388,8 +1388,8 @@ class Clustering(object):
                                 combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
                                 if hd > n_factors[cv.name]:
                                     n_factors[cv.name] = hd
-                                bar.update(bc)
                                 bc += 1
+                                bar.update(bc)
                         bar.finish()
 
             # Normalize distances
@@ -1399,7 +1399,7 @@ class Clustering(object):
                 for index in combinations.index:
                     row = combinations.loc[index]
                     if row["Structures"]:
-                        row[cv.name] /= n_factors[cv.name]
+                        combinations.loc[index, cv.name] /= n_factors[cv.name]
 
             # Generate Distance Matrix
             normalization = np.linalg.norm(np.array(normalization))
@@ -1410,19 +1410,21 @@ class Clustering(object):
                         for j in range(i + 1, row["Number of structures"]):
                             dist_ij = np.linalg.norm(
                                 [k[i, j] for k in row.loc[[cv.name for cv in distributions]]]) / normalization
-                            row["Distance Matrix"][i, j] = row["Distance Matrix"][j, i] = dist_ij
+                            combinations.loc[index, "Distance Matrix"][i, j] = \
+                                combinations.loc[index, "Distance Matrix"][j, i] = dist_ij
                             self.d_c.append(dist_ij)
-                            
+
             self.similarity_matrix = combinations
             for index in self.similarity_matrix.index:
                 row = combinations.loc[index]
                 if row["Structures"]:
                     idx = [i.name for i in row["Structures"]]
                     for mat in row.loc["Distance Matrix":].columns:
-                        row[mat] = pd.DataFrame(mat, index=idx, columns=idx)
+                        combinations.loc[index, mat] = pd.DataFrame(combinations.loc[index, mat],
+                                                                    index=idx, columns=idx)
                         with open(simulation.path_output + str(self.name) + "_similarity_matrix_" +
                                   mat.replace(" ", "") + ".dat", 'w') as fo:
-                            fo.write(row[mat].__str__())
+                            fo.write(combinations.loc[index, mat].__str__())
                     # row["Distance Matrix"] = pd.DataFrame(row["Distance Matrix"], index=idx, columns=idx)
 
             list_crys = [[i.name for i in row["Structures"]] for index, row in self.similarity_matrix.iterrows()]
@@ -1462,7 +1464,7 @@ class Clustering(object):
                             new_clusters[changes[1]] = new_clusters.pop(changes[0])
                             changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
                     clusters[index] = new_clusters
-        
+
                 for crystal in row["Structures"]:
                     if crystal.name not in clusters[index].keys():
                         crystal.melted = True
