@@ -257,6 +257,9 @@ class Torsions(object):
         import numpy as np
         import os
         from PyPol.utilities import get_list
+        import matplotlib as mpl
+        # mpl.use('Agg')
+        import matplotlib.pyplot as plt
 
         if crystals == "all":
             list_crystals = list()
@@ -267,21 +270,37 @@ class Torsions(object):
             list_crystals = get_list(crystals)
 
         for crystal in list_crystals:
-            path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
-            if os.path.exists(path_output):
-                cv = np.genfromtxt(path_output, skip_header=1)[:, 1:]
+            path_plumed_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
+            if os.path.exists(path_plumed_output):
+                cv = np.genfromtxt(path_plumed_output, skip_header=1)[:, 1:]
                 cv = np.average(cv, axis=0)
                 cv /= cv.sum()
                 if self.clustering_type == "distribution":
                     crystal.cvs[self.name] = cv
+                    # Save output and plot distribution
+                    x = np.linspace(self.grid_min, self.grid_max, len(cv))
+                    np.savetxt(crystal.path + "plumed_{}_{}_data.dat".format(simulation.name, self.name),
+                               np.column_stack(x, cv), fmt=("%1.3f", "%1.5f"),
+                               header="Angle ProbabilityDensity")
+                    plt.plot(x, crystal.cvs[self.name], "-")
+                    plt.xlabel("Torsional Angle / rad")
+                    plt.xlim(self.grid_min, self.grid_max)
+                    plt.ylabel("Probability Density")
+                    plt.savefig(crystal.path + "plumed_{}_{}_plot.png".format(simulation.name, self.name), dpi=300)
+                    plt.close("all")
+
                 elif self.clustering_type == "classification":
                     crystal.cvs[self.name] = {}
+                    file_output = open(crystal.path + "plumed_{}_{}_data.dat".format(simulation.name, self.name), "w")
+                    file_output.write("Groups ProbabilityDensity")
                     for group_name in self.group_bins.keys():
                         crystal.cvs[self.name][group_name] = np.sum(cv[self.group_bins[group_name]])
+                        file_output.write("{:25} {:1.5f}".format(group_name, crystal.cvs[self.name][group_name]))
+                    file_output.close()
 
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
-                      "".format(path_output, crystal.path))
+                      "".format(path_plumed_output, crystal.path))
         self.method.project.save()
 
 
@@ -289,14 +308,14 @@ class MolecularOrientation(object):
 
     def __init__(self, name, method):
         """
-        Error: Be more specific in creating N-Dimensional CV.
+        TODO Be more specific in creating N-Dimensional CV.
         Generates a distribution of the intermolecular torsional angles of the selected atoms.
         :param name: str, name of the collective variable. Default output and variables will have this name.
         :param method: obj, method used to identify topology parameters and crystal structures.
         """
         import numpy as np
         self.type = "Molecular Orientation"
-        self.clustering_type = "distribution"  # No "classification" possible, unless classification based on the grid?
+        self.clustering_type = "distribution"  # TODO No "classification", unless classification based on the grid?
         self.method = method
         self.name = name
         self.atoms = list()
@@ -499,6 +518,9 @@ class MolecularOrientation(object):
         import numpy as np
         import os
         from PyPol.utilities import get_list
+        import matplotlib as mpl
+        # mpl.use('Agg')
+        import matplotlib.pyplot as plt
 
         if crystals == "all":
             list_crystals = list()
@@ -514,6 +536,18 @@ class MolecularOrientation(object):
                 cv = np.genfromtxt(path_output, skip_header=2)[:, 1:]
                 cv = np.average(cv, axis=0)
                 crystal.cvs[self.name] = cv
+                # Save output and plot distribution
+                x = np.linspace(self.grid_min, self.grid_max, len(cv))
+                np.savetxt(crystal.path + "plumed_{}_{}_data.dat".format(simulation.name, self.name),
+                           np.column_stack(x, cv), fmt=("%1.3f", "%1.5f"),
+                           header="Angle ProbabilityDensity")
+                plt.plot(x, crystal.cvs[self.name], "-")
+                plt.xlabel("Intermolecular Angle / rad")
+                plt.xlim(self.grid_min, self.grid_max)
+                plt.ylabel("Probability Density")
+                plt.savefig(crystal.path + "plumed_{}_{}_plot.png".format(simulation.name, self.name), dpi=300)
+                plt.close("all")
+
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
                       "".format(path_output, crystal.path))
@@ -730,6 +764,9 @@ class Combine(object):
         import numpy as np
         import os
         from PyPol.utilities import get_list
+        import matplotlib as mpl
+        # mpl.use('Agg')
+        import matplotlib.pyplot as plt
 
         if crystals == "all":
             list_crystals = list()
@@ -745,6 +782,20 @@ class Combine(object):
                 cv_dist = np.genfromtxt(path_output, skip_header=1)[:, 1:]
                 cv_dist = np.average(cv_dist, axis=0)
                 crystal.cvs[self.name] = cv_dist.reshape(self.list_bins)
+                if len(self.cvs) == 2:
+                    # Save output and plot distribution
+                    np.savetxt(crystal.path + "plumed_{}_{}_data.dat".format(simulation.name, self.name),
+                               crystal.cvs[self.name],
+                               header="Probability Density Grid.")
+                    plt.imshow(crystal.cvs[self.name], interpolation="nearest", cmap="viridis")
+                    plt.xlabel("{} / rad".format(self.cvs[0].name))
+                    plt.ylabel("{} / rad".format(self.cvs[1].name))
+                    plt.savefig(crystal.path + "plumed_{}_{}_plot.png".format(simulation.name, self.name), dpi=300)
+                    plt.close("all")
+                else:
+                    # TODO use 3D plots (create script to be run afterwards), or 3 2D imshow
+                    pass
+
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
                       "".format(path_output, crystal.path))
@@ -987,6 +1038,9 @@ class RDF(object):
         import numpy as np
         import os
         from PyPol.utilities import get_list
+        import matplotlib as mpl
+        # mpl.use('Agg')
+        import matplotlib.pyplot as plt
 
         if crystals == "all":
             list_crystals = list()
@@ -1009,6 +1063,16 @@ class RDF(object):
 
                 cv = np.where(r > 0, dn_r / (4 * np.pi * rho * r ** 2 * self.binspace), 0.)
                 crystal.cvs[self.name] = cv
+                # Save output and plot distribution
+                np.savetxt(crystal.path + "plumed_{}_{}_data.dat".format(simulation.name, self.name),
+                           np.column_stack(r, cv), fmt=("%1.4f", "%1.5f"),
+                           header="r RDF")
+                plt.plot(r, crystal.cvs[self.name], "-")
+                plt.xlabel("r / nm")
+                plt.xlim(self.r_0, d_max)
+                plt.ylabel("Probability Density")
+                plt.savefig(crystal.path + "plumed_{}_{}_plot.png".format(simulation.name, self.name), dpi=300)
+                plt.close("all")
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
                       "".format(path_output, crystal.path))
@@ -1350,6 +1414,8 @@ class Clustering(object):
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
         pd.set_option('display.expand_frame_repr', False)
+        pd.set_option('display.max_colwidth', None)
+        pd.set_option('display.max_seq_items', None)
 
         if gen_sim_mat:
             import progressbar
@@ -1444,16 +1510,16 @@ class Clustering(object):
                                 combinations.at[index, "Distance Matrix"][j, i] = dist_ij / normalization
                             self.d_c.append(dist_ij)
 
-            self.similarity_matrix = combinations
-            for index in self.similarity_matrix.index:
+            for index in combinations.index:
                 if combinations.at[index, "Structures"]:
                     idx = [i.name for i in combinations.at[index, "Structures"]]
                     for mat in combinations.loc[index, "Distance Matrix":].index:
                         combinations.at[index, mat] = pd.DataFrame(combinations.at[index, mat], index=idx, columns=idx)
                         with open(simulation.path_output + str(self.name) + "_similarity_matrix_" +
-                                  mat.replace(" ", "") + ".dat", 'w') as fo:
+                                  mat.replace(" ", "") + "_" + index + ".dat", 'w') as fo:
                             fo.write(combinations.loc[index, mat].__str__())
-                    # row["Distance Matrix"] = pd.DataFrame(row["Distance Matrix"], index=idx, columns=idx)
+
+            self.similarity_matrix = combinations
 
             list_crys = [[i.name for i in row["Structures"]] for index, row in self.similarity_matrix.iterrows()]
             file_output = pd.concat((self.similarity_matrix.loc[:, :"Number of structures"],
@@ -1497,7 +1563,7 @@ class Clustering(object):
                     self.clusters[index] = new_clusters
 
                 for crystal in self.similarity_matrix.at[index, "Structures"]:
-                    if crystal.name not in clusters[index].keys():
+                    if crystal.name not in self.clusters[index].keys():
                         crystal.melted = True
 
         self.clusters = {k: v for g in self.clusters.keys() for k, v in self.clusters[g].items()}
