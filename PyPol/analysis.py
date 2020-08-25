@@ -1061,7 +1061,7 @@ class RDF(object):
                 r = np.linspace(self.r_0, d_max, nbins)
                 rho = crystal.Z / crystal.volume  # Modify for more than one molecule?
 
-                cv = np.where(r > 0, dn_r / (4 * np.pi * rho * r ** 2 * self.binspace), 0.)
+                cv = np.where(r > 0, dn_r / (4 * np.pi * rho * r ** 2 * self.binspace) / crystal.Z * 2.0, 0.)
                 crystal.cvs[self.name] = cv
                 # Save output and plot distribution
                 np.savetxt(crystal.path + "plumed_{}_{}_data.dat".format(simulation.name, self.name),
