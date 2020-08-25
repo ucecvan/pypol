@@ -1538,6 +1538,9 @@ class Clustering(object):
                                      pd.Series(list_crys, name="IDs", index=self.similarity_matrix.index)), axis=1)
 
             with open(simulation.path_output + str(self.name) + "_similarity_matrix_groups.dat", 'w') as fo:
+                fo.write("Normalization Factors:\n")
+                for n in n_factors.keys():
+                    fo.write("{:15}: {:<1.3f}\n".format(n, n_factors[n]))
                 fo.write(file_output.__str__())
 
             self.d_c = np.sort(np.array(self.d_c))[int(float(len(self.d_c)) * self.cutoff_factor)]
