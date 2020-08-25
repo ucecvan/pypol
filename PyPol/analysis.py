@@ -1,7 +1,7 @@
 #
 # Collective Variables
 #
-
+# TODO image generation in check_normal_termination only on demand (it is very slow)
 
 class Torsions(object):
 
@@ -280,7 +280,7 @@ class Torsions(object):
                     # Save output and plot distribution
                     x = np.linspace(self.grid_min, self.grid_max, len(cv))
                     np.savetxt(crystal.path + "plumed_{}_{}_data.dat".format(simulation.name, self.name),
-                               np.column_stack(x, cv), fmt=("%1.3f", "%1.5f"),
+                               np.column_stack((x, cv)), fmt=("%1.3f", "%1.5f"),
                                header="Angle ProbabilityDensity")
                     plt.plot(x, crystal.cvs[self.name], "-")
                     plt.xlabel("Torsional Angle / rad")
@@ -539,7 +539,7 @@ class MolecularOrientation(object):
                 # Save output and plot distribution
                 x = np.linspace(self.grid_min, self.grid_max, len(cv))
                 np.savetxt(crystal.path + "plumed_{}_{}_data.dat".format(simulation.name, self.name),
-                           np.column_stack(x, cv), fmt=("%1.3f", "%1.5f"),
+                           np.column_stack((x, cv)), fmt=("%1.3f", "%1.5f"),
                            header="Angle ProbabilityDensity")
                 plt.plot(x, crystal.cvs[self.name], "-")
                 plt.xlabel("Intermolecular Angle / rad")
@@ -1065,7 +1065,7 @@ class RDF(object):
                 crystal.cvs[self.name] = cv
                 # Save output and plot distribution
                 np.savetxt(crystal.path + "plumed_{}_{}_data.dat".format(simulation.name, self.name),
-                           np.column_stack(r, cv), fmt=("%1.4f", "%1.5f"),
+                           np.column_stack((r, cv)), fmt=("%1.4f", "%1.5f"),
                            header="r RDF")
                 plt.plot(r, crystal.cvs[self.name], "-")
                 plt.xlabel("r / nm")
