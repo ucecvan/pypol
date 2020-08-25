@@ -1443,9 +1443,14 @@ class Clustering(object):
                                               pd.Series([[] for i in range(len(combinations))], name="Structures",
                                                         index=index)), axis=1)
                 combinations.index.name = "Combination"
-
+                bar = progressbar.ProgressBar(maxval=len(simulation.crystals)).start()
+                bc = 1
                 for crystal in simulation.crystals:
-                    combinations = self.sort_crystal(crystal, combinations, group_threshold)
+                    if not crystal.melted:
+                        combinations = self.sort_crystal(crystal, combinations, group_threshold)
+                    bar.update(bc)
+                    bc += 1
+                bar.finish()
 
             else:
                 index = ["All"]
