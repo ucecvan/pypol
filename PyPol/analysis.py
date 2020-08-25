@@ -1428,13 +1428,20 @@ class Clustering(object):
                     group_names.append(cv.name)
             if group_options:
                 combinations = list(its.product(*group_options)) + [tuple([None for i in range(len(group_options[0]))])]
-
                 index = [i for i in range(len(combinations) - 1)] + ["Others"]
-                combinations = pd.concat((pd.DataFrame(combinations, columns=group_names, index=index),
-                                          pd.Series([0 for i in range(len(combinations))], name="Number of structures",
-                                                    dtype=int, index=index),
-                                          pd.Series([[] for i in range(len(combinations))], name="Structures",
-                                                    index=index)), axis=1)
+
+                if len(group_names) == 1:
+                    combinations = pd.concat((pd.Series(combinations, name=group_names[0], index=index),
+                                              pd.Series([0 for i in range(len(combinations))],
+                                                        name="Number of structures", dtype=int, index=index),
+                                              pd.Series([[] for i in range(len(combinations))], name="Structures",
+                                                        index=index)), axis=1)
+                else:
+                    combinations = pd.concat((pd.DataFrame(combinations, columns=group_names, index=index),
+                                              pd.Series([0 for i in range(len(combinations))],
+                                                        name="Number of structures", dtype=int, index=index),
+                                              pd.Series([[] for i in range(len(combinations))], name="Structures",
+                                                        index=index)), axis=1)
                 combinations.index.name = "Combination"
 
                 for crystal in simulation.crystals:
