@@ -1444,12 +1444,12 @@ class Clustering(object):
                                                         index=index)), axis=1)
                 combinations.index.name = "Combination"
                 bar = progressbar.ProgressBar(maxval=len(simulation.crystals)).start()
-                bc = 1
+                nbar = 1
                 for crystal in simulation.crystals:
                     if not crystal.melted:
                         combinations = self.sort_crystal(crystal, combinations, group_threshold)
-                    bar.update(bc)
-                    bc += 1
+                    bar.update(nbar)
+                    nbar += 1
                 bar.finish()
 
             else:
@@ -1481,24 +1481,25 @@ class Clustering(object):
 
                         print("\nCV: {} Group: {}".format(cv.name, index))
                         bar = progressbar.ProgressBar(maxval=int(len(crystals) * (len(crystals) - 1) / 2)).start()
-                        bc = 1
+                        nbar = 1
 
                         for i in range(len(crystals) - 1):
                             for j in range(i + 1, len(crystals)):
-                                bar.update(bc)
-                                bc += 1
+                                bar.update(nbar)
+                                nbar += 1
                                 if cv.type == "Radial Distribution Function":
                                     if len(crystals[i].cvs[cv.name]) > len(crystals[j].cvs[cv.name]):
                                         hd = hellinger(crystals[i].cvs[cv.name][:len(crystals[j].cvs[cv.name])],
-                                                       crystals[j].cvs[cv.name])
+                                                       crystals[j].cvs[cv.name], self.int_type)
                                     else:
                                         hd = hellinger(crystals[i].cvs[cv.name],
-                                                       crystals[j].cvs[cv.name][:len(crystals[i].cvs[cv.name])])
+                                                       crystals[j].cvs[cv.name][:len(crystals[i].cvs[cv.name])],
+                                                       self.int_type)
                                     fo = open(simulation.path_output + "tmp.dat", "a")
                                     fo.write("{:25}{:25}{:1.5f}\n".format(crystals[i].name, crystals[j].name, hd))
                                     fo.close()
                                 else:
-                                    hd = hellinger(crystals[i].cvs[cv.name], crystals[j].cvs[cv.name])
+                                    hd = hellinger(crystals[i].cvs[cv.name], crystals[j].cvs[cv.name], self.int_type)
                                 combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
                                 if hd > n_factors[cv.name]:
                                     n_factors[cv.name] = hd
