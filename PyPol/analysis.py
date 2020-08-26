@@ -1494,8 +1494,9 @@ class Clustering(object):
                                     else:
                                         hd = hellinger(crystals[i].cvs[cv.name],
                                                        crystals[j].cvs[cv.name][:len(crystals[i].cvs[cv.name])])
-                                    print(crystals[i].name, crystals[j].name, hd,
-                                          file=simulation.path_output + "tmp.dat")
+                                    fo = open(simulation.path_output + "tmp.dat", "a")
+                                    fo.write("{:25}{:25}{:1.5f}\n".format(crystals[i].name, crystals[j].name, hd))
+                                    fo.close()
                                 else:
                                     hd = hellinger(crystals[i].cvs[cv.name], crystals[j].cvs[cv.name])
                                 combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
