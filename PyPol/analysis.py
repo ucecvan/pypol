@@ -1484,23 +1484,20 @@ class Clustering(object):
                         nbar = 1
 
                         for i in range(len(crystals) - 1):
+                            di = crystals[i].cvs[cv.name]
                             for j in range(i + 1, len(crystals)):
+                                dj = crystals[j].cvs[cv.name]
                                 bar.update(nbar)
                                 nbar += 1
                                 if cv.type == "Radial Distribution Function":
-                                    if len(crystals[i].cvs[cv.name]) > len(crystals[j].cvs[cv.name]):
-                                        hd = hellinger(crystals[i].cvs[cv.name][:len(crystals[j].cvs[cv.name])],
-                                                       crystals[j].cvs[cv.name], self.int_type)
+                                    if len(di) > len(dj):
+                                        hd = hellinger(di.copy()[:len(dj)], dj.copy(), self.int_type)
                                     else:
-                                        hd = hellinger(crystals[i].cvs[cv.name],
-                                                       crystals[j].cvs[cv.name][:len(crystals[i].cvs[cv.name])],
-                                                       self.int_type)
-                                    fo = open(simulation.path_output + "tmp.dat", "a")
-                                    fo.write("{:25}{:25}{:1.5f}\n".format(crystals[i].name, crystals[j].name, hd))
-                                    fo.close()
+                                        hd = hellinger(di.copy(), dj.copy()[:len(di)], self.int_type)
                                 else:
-                                    hd = hellinger(crystals[i].cvs[cv.name], crystals[j].cvs[cv.name], self.int_type)
+                                    hd = hellinger(di.copy(), dj.copy(), self.int_type)
                                 combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
+
                                 if hd > n_factors[cv.name]:
                                     n_factors[cv.name] = hd
                         bar.finish()
