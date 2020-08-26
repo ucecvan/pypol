@@ -1476,9 +1476,8 @@ class Clustering(object):
                 n_factors[cv.name] = 0.
 
                 for index in combinations.index:
-                    row = combinations.loc[index]
-                    if row["Structures"]:
-                        crystals = row["Structures"]
+                    if combinations.at[index, "Structures"]:
+                        crystals = combinations.at[index, "Structures"]
 
                         print("\nCV: {} Group: {}".format(cv.name, index))
                         bar = progressbar.ProgressBar(maxval=int(len(crystals) * (len(crystals) - 1) / 2)).start()
@@ -1495,6 +1494,8 @@ class Clustering(object):
                                     else:
                                         hd = hellinger(crystals[i].cvs[cv.name],
                                                        crystals[j].cvs[cv.name][:len(crystals[i].cvs[cv.name])])
+                                    print(crystals[i].name, crystals[j].name, hd,
+                                          file=simulation.path_output + "tmp.dat")
                                 else:
                                     hd = hellinger(crystals[i].cvs[cv.name], crystals[j].cvs[cv.name])
                                 combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
@@ -1578,7 +1579,9 @@ class Clustering(object):
                     self.clusters[index] = new_clusters
 
                 for crystal in self.similarity_matrix.at[index, "Structures"]:
-                    if crystal.name not in self.clusters[index].keys():
+                    if crystal.name in self.clusters[index].keys():
+                        crystal.melted = False
+                    else:
                         crystal.melted = True
 
         self.clusters = {k: v for g in self.clusters.keys() for k, v in self.clusters[g].items()}
