@@ -636,11 +636,15 @@ class Combine(object):
                 file_output.write("No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n"
                                   "".format(cv.name))
             else:
-                file_output.write("Atoms:\n")
-                for idx_mol in range(len(cv.molecules)):
-                    file_output.write("\nMolecule '{}': ".format(cv.molecules[idx_mol].residue))
-                    for atom in cv.atoms[idx_mol]:
-                        file_output.write("{}({})  ".format(atom, cv.molecules[idx_mol].atoms[atom].label))
+                if self.type.startswith("Molecular Orientation"):
+                    file_output.write("Atoms:\n")
+                    for idx_mol in range(len(cv.molecules)):
+                        file_output.write("\nMolecule '{}': ".format(cv.molecules[idx_mol].residue))
+                        for atom in cv.atoms[idx_mol]:
+                            file_output.write("{}({})  ".format(atom, cv.molecules[idx_mol].atoms[atom].label))
+                elif self.type.startswith("Torsional Angle"):
+                    # TODO add output
+                    pass
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
             grid_bin += "{},".format(cv.grid_bin)
@@ -672,10 +676,14 @@ class Combine(object):
 
             print("CV{}: {} ({})".format(idx_cv, cv.name, cv.type))
             print("Atoms:", end=" ")
-            for idx_mol in range(len(cv.molecules)):
-                print("\nMolecule '{}': ".format(cv.molecules[idx_mol].residue))
-                for atom in cv.atoms[idx_mol]:
-                    print("{}({})".format(atom, cv.molecules[idx_mol].atoms[atom].label), end="  ")
+            if self.type.startswith("Molecular Orientation"):
+                for idx_mol in range(len(cv.molecules)):
+                    print("\nMolecule '{}': ".format(cv.molecules[idx_mol].residue))
+                    for atom in cv.atoms[idx_mol]:
+                        print("{}({})".format(atom, cv.molecules[idx_mol].atoms[atom].label), end="  ")
+            elif self.type.startswith("Torsional Angle"):
+                # TODO add output + else section to stop module
+                pass
 
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
@@ -728,10 +736,8 @@ class Combine(object):
                 file_plumed = open(crystal.path + "plumed_" + self.name + ".dat", "w")
                 for cv in self.cvs:
                     # Select atoms and molecules
-                    lines_atoms = []
-                    for idx_mol in range(len(cv.molecules)):
-                        lines_atoms = generate_atom_list(cv.atoms[idx_mol], cv.molecules[idx_mol], crystal,
-                                                         keyword="ATOMS", lines=lines_atoms)
+                    lines_atoms = generate_atom_list(cv.atoms, cv.molecule, crystal, keyword="ATOMS", lines=[])
+
                     file_plumed.write("TORSIONS ...\n")
                     for line in lines_atoms:
                         file_plumed.write(line)
