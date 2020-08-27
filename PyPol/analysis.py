@@ -19,8 +19,8 @@ class Torsions(object):
         self.atoms = list()
         self.molecule = None
 
-        self.kernel = "GAUSSIAN"
-        self.bandwidth = 0.3
+        self.kernel = "TRIANGULAR"
+        self.bandwidth = 0.35
 
         self.grid_min = -np.pi
         self.grid_max = np.pi
@@ -72,7 +72,7 @@ class Torsions(object):
         self.grid_bin = grid_bin
         self.method.project.save()
 
-    def set_bandwidth(self, bandwidth=0.3):
+    def set_bandwidth(self, bandwidth=0.35):
         """
 
         :param bandwidth:
@@ -322,7 +322,7 @@ class MolecularOrientation(object):
         self.molecules = list()
 
         self.kernel = "TRIANGULAR"
-        self.bandwidth = 0.3
+        self.bandwidth = 0.35
 
         self.grid_min = 0.0
         self.grid_max = np.pi
@@ -380,7 +380,7 @@ class MolecularOrientation(object):
         self.grid_bin = grid_bin
         self.method.project.save()
 
-    def set_bandwidth(self, bandwidth=0.3):
+    def set_bandwidth(self, bandwidth=0.35):
         """
 
         :param bandwidth:
@@ -1539,14 +1539,17 @@ class Clustering(object):
                         bar.finish()
 
             # Normalize distances
+            print("Normalization...", end="")
             normalization = []
             for cv in distributions:
                 normalization.append(1. / n_factors[cv.name])
                 for index in combinations.index:
                     if combinations.at[index, "Structures"]:
                         combinations.at[index, cv.name] /= n_factors[cv.name]
+            print("done")
 
             # Generate Distance Matrix
+            print("Generating Distance Matrix...", end="")
             normalization = np.linalg.norm(np.array(normalization))
             for index in combinations.index:
                 if combinations.at[index, "Structures"]:
@@ -1557,7 +1560,9 @@ class Clustering(object):
                             combinations.at[index, "Distance Matrix"][i, j] = \
                                 combinations.at[index, "Distance Matrix"][j, i] = dist_ij / normalization
                             self.d_c.append(dist_ij)
+            print("done")
 
+            print("Writing outputs...")
             for index in combinations.index:
                 if combinations.at[index, "Structures"]:
                     idx = [i.name for i in combinations.at[index, "Structures"]]
@@ -1578,10 +1583,11 @@ class Clustering(object):
                 for n in n_factors.keys():
                     fo.write("{:15}: {:<1.3f}\n".format(n, n_factors[n]))
                 fo.write(file_output.__str__())
-
+            print("done")
             self.d_c = np.sort(np.array(self.d_c))[int(float(len(self.d_c)) * self.cutoff_factor)]
 
         # Remove structures that are not cluster centers
+        print("Clustering...", end="")
         changes_string = "\n"
         for index in self.similarity_matrix.index:
             if self.similarity_matrix.at[index, "Structures"]:
@@ -1629,6 +1635,6 @@ class Clustering(object):
 
         with open(simulation.path_output + str(self.name) + "_Clusters.dat", 'w') as fo:
             fo.write(self.clusters.__str__())
-
+        print("done")
         # TODO List distances with respect to each structure.
         #      Also, in the FSFDP algorithm, instead of halo calculation, check distance with the cluster center
