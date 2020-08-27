@@ -737,9 +737,9 @@ class Combine(object):
                         file_plumed.write(line)
 
                     file_plumed.write("LABEL={0}\n... TORSIONS\n\n".format(cv.name))
-                file_plumed.write("valg_{0}: KDE {7} GRID_MIN={1} GRID_MAX={2} "
+                file_plumed.write("kde_{0}: KDE {7} GRID_MIN={1} GRID_MAX={2} "
                                   "GRID_BIN={3} BANDWIDTH={4} KERNEL={5}\n\n"
-                                  "PRINT ARG=valg_{0} FILE=plumed_{6}_{0}.dat\n"
+                                  "PRINT ARG=kde_{0} FILE=plumed_{6}_{0}.dat\n"
                                   "".format(self.name, grid_min, grid_max,
                                             grid_bin, bandwidth, self.kernel, simulation.name, args))
                 file_plumed.close()
@@ -858,7 +858,7 @@ class RDF(object):
         self.switching_function = "RATIONAL"
         self.r_0 = 0.01
 
-        self.kernel = "GAUSSIAN"
+        self.kernel = "TRIANGULAR"
         self.binspace = 0.01
         self.bandwidth = 0.01
 
