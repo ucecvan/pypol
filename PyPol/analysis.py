@@ -20,11 +20,11 @@ class Torsions(object):
         self.molecule = None
 
         self.kernel = "TRIANGULAR"
-        self.bandwidth = 0.35
+        self.bandwidth = 0.175
 
         self.grid_min = -np.pi
         self.grid_max = np.pi
-        self.grid_bin = 37
+        self.grid_bin = 73
         self.timeinterval = 200
 
         self.groups = {}
@@ -322,11 +322,11 @@ class MolecularOrientation(object):
         self.molecules = list()
 
         self.kernel = "TRIANGULAR"
-        self.bandwidth = 0.35
+        self.bandwidth = 0.175
 
         self.grid_min = 0.0
         self.grid_max = np.pi
-        self.grid_bin = 19
+        self.grid_bin = 37
 
         self.timeinterval = 200
 
