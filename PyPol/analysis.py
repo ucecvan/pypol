@@ -1588,7 +1588,7 @@ class Clustering(object):
 
         # Remove structures that are not cluster centers
         print("Clustering...", end="")
-        changes_string = "\n"
+        changes_string = ""
         for index in self.similarity_matrix.index:
             if self.similarity_matrix.at[index, "Structures"]:
                 self.cluster_data[index], sc = FSFDP(self.similarity_matrix.at[index, "Distance Matrix"], d_c=self.d_c,
@@ -1616,6 +1616,7 @@ class Clustering(object):
                                 changes[1] = crystal
                         if changes[1]:
                             new_clusters[changes[1]] = new_clusters.pop(changes[0])
+                            print("{:>25} ---> {:25}\n".format(changes[0], changes[1]))
                             changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
                     self.clusters[index] = new_clusters
 
@@ -1634,6 +1635,9 @@ class Clustering(object):
             axis=1).sort_values(by="Number of Structures", ascending=False)
 
         with open(simulation.path_output + str(self.name) + "_Clusters.dat", 'w') as fo:
+            if changes_string:
+                fo.write("Cluster centers changed according to potential energy:\n")
+                fo.write(changes_string)
             fo.write(self.clusters.__str__())
         print("done")
         # TODO List distances with respect to each structure.
