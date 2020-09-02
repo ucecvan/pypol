@@ -1702,6 +1702,8 @@ class Clustering(object):
                                                                   d_c=self.d_c,
                                                                   cutoff_factor=self.cutoff_factor,
                                                                   sigma_cutoff=self.sigma_cutoff)
+                    with open(simulation.path_output + str(self.name) + "_DC_" + str(index) + ".dat", 'w') as fo:
+                        fo.write(self.cluster_data[index].__str__())
 
                 self.clusters[index] = {
                     k: self.cluster_data[index].index[self.cluster_data[index]["cluster"] == k].tolist()
