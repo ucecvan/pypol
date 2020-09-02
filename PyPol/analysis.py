@@ -1497,10 +1497,10 @@ class Clustering(object):
             exit()
 
     def set_clustering_method(self, method_name):
-        if kernel.lower() in ("fsfdp", "cutoff"):
+        if method_name.lower() in ("fsfdp", "cutoff"):
             self.algorithm = method_name.lower()
         else:
-            print("Error: Kernel function not recognized. Choose between 'gaussian' and 'cutoff'")
+            print("Error: Clustering algorithm not recognized. Choose between 'fsfdp' and 'cutoff'")
             exit()
 
     def set_fsfdp_kernel(self, kernel):
