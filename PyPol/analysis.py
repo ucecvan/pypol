@@ -1651,9 +1651,7 @@ class Clustering(object):
                             combinations.at[index, "Distance Matrix"][i, j] = \
                                 combinations.at[index, "Distance Matrix"][j, i] = dist_ij / normalization
                             self.d_c.append(dist_ij)
-            print("done")
 
-            print("Writing outputs...")
             for index in combinations.index:
                 if combinations.at[index, "Structures"]:
                     idx = [i.name for i in combinations.at[index, "Structures"]]
