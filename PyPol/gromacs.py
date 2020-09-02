@@ -434,6 +434,7 @@ class Method(object):
                             file_output.write("{:10.2f} "
                                               "".format(scrystal.Potential - simulation.global_minima.Potential))
                             break
+
             for simulation in self.molecular_dynamics:
                 if simulation.completed and not simulation.hide:
                     for scrystal in simulation.crystals:
@@ -441,6 +442,10 @@ class Method(object):
                             file_output.write("{:10.2f} "
                                               "".format(scrystal.Potential - simulation.global_minima.Potential))
                             break
+                        elif scrystal.name == crystal.name and scrystal.melted:
+                            file_output.write("{:10} ".format(str(scrystal.melted)))
+                            break
+
         file_output.write("\n" + "=" * 100 + "\n")
         file_output.close()
 
@@ -1403,6 +1408,170 @@ class MolecularDynamics(object):
         self.completed = False
         self.global_minima = None
         self.hide = False
+
+    def generate_input(self, bash_script=False, crystals="incomplete"):
+        """
+
+        :param bash_script:
+        :param crystals:
+        :return:
+        """
+        from PyPol.utilities import get_list
+        from shutil import copyfile
+        if crystals == "all":
+            list_crystals = self.crystals
+        elif crystals == "incomplete":
+            list_crystals = list()
+            for crystal in self.crystals:
+                if not crystal.completed:
+                    list_crystals.append(crystal)
+        else:
+            list_crystals = get_list(crystals)
+
+        for crystal in list_crystals:
+            copyfile(self.mdp, crystal.path + self.name + ".mdp")
+
+        if bash_script:
+            file_script = open(self.path_data + "/run_" + self.name + ".sh", "w")
+            file_script.write('#!/bin/bash\n\n'
+                              'crystal_paths="\n')
+            for crystal in self.crystals:
+                file_script.write(crystal.path + "\n")
+            if self.index > 0:
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '{0} grompp -f {1}.mdp -c {2}.gro -t {2}.cpt -o {1}.tpr -p topol.top -maxwarn 1 \n'
+                                  '{0} mdrun {3} -deffnm {1} \n'
+                                  'done \n'
+                                  ''.format(self.command, self.name, self.previous_name, self.mdrun_options))
+            else:
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '{0} grompp -f {1}.mdp -c {2}.gro -o {1}.tpr -p topol.top -maxwarn 1 \n'
+                                  '{0} mdrun {3} -deffnm {1} \n'
+                                  'done \n'
+                                  ''.format(self.command, self.name, self.previous_name, self.mdrun_options))
+            file_script.close()
+        self.project.save()
+
+    def check_normal_termination(self, crystals="all"):
+        """
+        Verify if the simulation ended correctly and upload new crystal properties.
+        :param crystals:
+        :return:
+        """
+        import os
+        from PyPol.utilities import get_list, box2cell
+        import numpy as np
+
+        if crystals == "all":
+            list_crystals = self.crystals
+        elif crystals == "incomplete":
+            list_crystals = list()
+            for crystal in self.crystals:
+                if not crystal.completed:
+                    list_crystals.append(crystal)
+        else:
+            list_crystals = get_list(crystals)
+
+        for crystal in list_crystals:
+            path_output = crystal.path + self.name + ".log"
+            if os.path.exists(path_output):
+                file_output = open(path_output)
+                lines = file_output.readlines()
+                if any("Finished mdrun" in string for string in lines[-30:]):
+                    os.chdir(crystal.path)
+                    os.system('{} energy -f {}.edr <<< "Potential" > PyPol_Temporary_Potential.txt'
+                              ''.format(self.command, self.name))
+                    file_pot = open(crystal.path + 'PyPol_Temporary_Potential.txt')
+                    for line in file_pot:
+                        if line.startswith("Potential"):
+                            lattice_energy = float(line.split()[1]) / crystal.Z - \
+                                             self.method.molecules[0].potential_energy
+                            crystal.Potential = lattice_energy
+                            crystal.completed = True
+                            break
+                    file_pot.close()
+                    os.remove(crystal.path + 'PyPol_Temporary_Potential.txt')
+                else:
+                    print("An error has occurred with Gromacs. Check simulation {} in folder {}."
+                          "".format(self.name, crystal.path))
+                file_output.close()
+            else:
+                print("An error has occurred with Gromacs. Check simulation {} in folder {}."
+                      "".format(self.name, crystal.path))
+
+        new_rank = dict()
+        incomplete_simulations = False
+        for crystal in self.crystals:
+            if crystal.completed:
+                new_rank[crystal.name] = crystal.Potential
+                file_gro = open(crystal.path + self.name + ".gro", "r")
+                new_box = file_gro.readlines()[-1].split()
+                file_gro.close()
+                if len(new_box) == 3:
+                    new_box = [float(ii) for ii in new_box] + [0., 0., 0., 0., 0., 0.]
+                idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
+                crystal.box = np.array([float(new_box[ii]) for ii in idx_gromacs]).reshape((3, 3))
+                crystal.cell_parameters = box2cell(crystal.box)
+                crystal.volume = np.linalg.det(crystal.box)
+            else:
+                incomplete_simulations = True
+                break
+
+        if not incomplete_simulations:
+            rank = 1
+            for crystal_name in sorted(new_rank, key=lambda c: new_rank[c]):
+                for crystal in self.crystals:
+                    if crystal.name == crystal_name:
+                        crystal.rank = rank
+                        if rank == 1:
+                            self.global_minima = crystal
+                        rank += 1
+            self.completed = True
+
+        self.project.save()
+
+
+class Metadynamics(object):
+
+    def __init__(self, name=None, path_mdp=""):
+        """
+        Generates input for MD simulations with Gromacs.
+        :param name:
+        :param path_mdp:
+        """
+        import os
+        from shutil import copyfile
+        self.type = "Metadynamics"
+        self.project = None
+        self.method = None
+        self.path_data = None
+        self.path_output = None
+        self.path_input = None
+        self.index = 0
+        self.previous_name = None
+        self.name = name
+        if path_mdp:
+            if os.path.exists(path_mdp):
+                copyfile(path_mdp, self.path_input + name + ".mdp")
+                self.mdp = self.path_input + name + ".mdp"
+            else:
+                print("Error: File '{}' not found".format(path_mdp))
+                exit()
+        else:
+            self.mdp = path_mdp
+        self.command = None
+        self.mdrun_options = "-plumed plumed_{}.dat".format(self.name)
+        self.crystals = list()
+        self.completed = False
+        self.global_minima = None
+        self.hide = False
+
+        self.meta_cvp = list()
+        self.meta_replicas = 1
 
     def generate_input(self, bash_script=False, crystals="incomplete"):
         """

@@ -580,7 +580,7 @@ class MolecularOrientation(object):
             hd = hellinger(crystal.cvs[self.name], ref)
             file_hd.write("{:35} {:3.3f}\n".format(crystal.name, hd))
             if hd < tolerance:
-                crystal.melted = True
+                crystal.melted = "melted"
             else:
                 crystal.melted = False
         file_hd.close()
@@ -1121,6 +1121,19 @@ class RDF(object):
         self.method.project.save()
 
 
+class Density(object):
+
+    pass
+
+
+class PotentialEnergy(object):
+    pass
+
+
+#
+# Utilities
+#
+
 def sort_groups(grid_min, grid_max, groups, tolerance=0.01):
     """
 
@@ -1559,7 +1572,7 @@ class Clustering(object):
                 bar = progressbar.ProgressBar(maxval=len(simulation.crystals)).start()
                 nbar = 1
                 for crystal in simulation.crystals:
-                    if not crystal.melted:
+                    if not crystal.melted == "melted":
                         combinations = self.sort_crystal(crystal, combinations, group_threshold)
                     bar.update(nbar)
                     nbar += 1
@@ -1571,7 +1584,7 @@ class Clustering(object):
                                             dtype=None, index=["all"])
                 combinations.index.name = "Combination"
                 for crystal in simulation.crystals:
-                    if not crystal.melted:
+                    if not crystal.melted == "melted":
                         combinations.loc["all", "Structures"].append(crystal)
                         combinations.loc["all", "Number of structures"] += 1
 
@@ -1712,7 +1725,9 @@ class Clustering(object):
                     if crystal.name in self.clusters[index].keys():
                         crystal.melted = False
                     else:
-                        crystal.melted = True
+                        for cc in self.clusters[index].keys():
+                            if crystal.name in self.clusters[index][cc]:
+                                crystal.melted = cc
 
         self.clusters = {k: v for g in self.clusters.keys() for k, v in self.clusters[g].items()}
         self.clusters = pd.concat((
