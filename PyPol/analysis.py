@@ -1462,6 +1462,7 @@ class Clustering(object):
     def __init__(self, name, method, cvs):
         self.name = name
         self.method = method
+        self.project = method.project
         self.method.clustering_parameters.append(self)
 
         self.cvs = list()
@@ -1717,7 +1718,7 @@ class Clustering(object):
                                 changes[1] = crystal
                         if changes[1]:
                             new_clusters[changes[1]] = new_clusters.pop(changes[0])
-                            print("{:>25} ---> {:25}\n".format(changes[0], changes[1]))
+                            # print("{:>25} ---> {:25}\n".format(changes[0], changes[1]))
                             changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
                     self.clusters[index] = new_clusters
 
@@ -1742,6 +1743,8 @@ class Clustering(object):
                 fo.write("Cluster centers changed according to potential energy:\n")
                 fo.write(changes_string)
             fo.write(self.clusters.__str__())
+
+        self.project.save()
         print("done")
 
         # TODO List distances with respect to each structure.
