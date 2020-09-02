@@ -81,7 +81,7 @@ class Torsions(object):
         self.bandwidth = bandwidth
         self.method.project.save()
 
-    def set_kernel(self, kernel="GAUSSIAN"):
+    def set_kernel(self, kernel="TRIANGULAR"):
         """
 
         :param kernel:
@@ -681,6 +681,7 @@ class Combine(object):
                     print("\nMolecule '{}': ".format(cv.molecules[idx_mol].residue))
                     for atom in cv.atoms[idx_mol]:
                         print("{}({})".format(atom, cv.molecules[idx_mol].atoms[atom].label), end="  ")
+
             elif self.type.startswith("Torsional Angle"):
                 # TODO add output + else section to stop module
                 pass
@@ -688,7 +689,10 @@ class Combine(object):
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
             grid_bin += "{},".format(cv.grid_bin)
-            list_bins.append(int(cv.grid_bin))
+            if self.type.startswith("Molecular Orientation"):
+                list_bins.append(int(cv.grid_bin + 1))
+            elif self.type.startswith("Torsional Angle"):
+                list_bins.append(int(cv.grid_bin))
             bandwidth += "{:.3f},".format(cv.bandwidth)
             if self.type.startswith("Molecular Orientation"):
                 args += "ARG{}=ang_mat_{} ".format(idx_cv + 1, cv.name)
@@ -696,6 +700,8 @@ class Combine(object):
                 args += "ARG{}={} ".format(idx_cv + 1, cv.name)
 
             idx_cv += 1
+            print("\n")
+
         self.list_bins = tuple(list_bins)
         print("\nClustering type: {5}-D Distribution\n"
               "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2} UPPER={3} LOWER={4}"
@@ -1240,6 +1246,8 @@ def hellinger(y1, y2, int_type="discrete"):
 
 
 def decision_graph(x, y):
+    import matplotlib.pyplot as plt
+
     class PointPicker(object):
         def __init__(self, ax, scat, clicklim=0.05):
             self.fig = ax.figure
@@ -1307,6 +1315,66 @@ def save_decision_graph(rho, sigma, sigma_cutoff, path):
     plt.close('all')
 
 
+def DistanceCutoff(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02, sigma_cutoff=0.1):
+    """
+
+    :param sigma_cutoff:
+    :param dmat:
+    :param kernel:
+    :param d_c:
+    :param cutoff_factor:
+    :return:
+    """
+    # import matplotlib as mpl
+    # mpl.use('Agg')
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+
+    if d_c == "auto":
+        d_c = np.sort(dmat.values.flatten())[int(dmat.values.size * cutoff_factor) + dmat.values.shape[0]]
+
+    import copy
+    dmat = copy.deepcopy(dmat)
+    dataset = pd.concat((pd.Series(np.full(dmat.values.shape[0], pd.NA), dmat.index, name="rho"),
+                         pd.Series(np.full(dmat.values.shape[0], pd.NA), dmat.index, name="sigma"),
+                         pd.Series(np.full(dmat.values.shape[0], pd.NA), dmat.index, name="NN"),
+                         pd.Series(np.full(dmat.values.shape[0], pd.NA), dmat.index, name="cluster"),
+                         pd.Series(np.full(dmat.values.shape[0], pd.NA), dmat.index, name="distance")),
+                        axis=1)
+
+    def find_cluster(dmat):
+        # Find density vector
+        rho = np.zeros(dmat.values.shape[0])
+        if kernel == "gaussian":
+            kernel_function = lambda d_ij: np.exp(-(d_ij / d_c) * (d_ij / d_c))
+        elif kernel == "cutoff":
+            kernel_function = lambda d_ij: 1 if d_ij < d_c else 0
+        else:
+            kernel_function = lambda d_ij: np.exp(-(d_ij / d_c) * (d_ij / d_c))
+            print("Kernel Function not recognized, switching to 'gaussian'")
+
+        for i in range(dmat.values.shape[0] - 1):
+            for j in range(i + 1, dmat.values.shape[0]):
+                rho[i] += kernel_function(dmat.values[i][j])
+                rho[j] += kernel_function(dmat.values[i][j])
+
+        rho = pd.Series(rho, index=dmat.index, name="rho").sort_values(ascending=False)
+        center = rho.index[0]
+        center_distances = copy.deepcopy(dmat.loc[center])
+        for j in center_distances.index:
+            if center_distances[j] < sigma_cutoff:
+                dataset.at[j, "cluster"] = center
+                dataset.at[j, "distance"] = center_distances[j]
+                dmat = dmat.drop(columns=j).drop(j)
+        return dmat
+
+    while dmat.shape != (0, 0):
+        dmat = find_cluster(dmat)
+
+    return dataset, sigma_cutoff
+
+
 def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02, sigma_cutoff=False):
     """
     Simplified FSFDP algorithm. # TODO Instead of halo, use distance of crystals from center.
@@ -1317,7 +1385,7 @@ def FSFDP(dmat, kernel="gaussian", d_c="auto", cutoff_factor=0.02, sigma_cutoff=
     :param cutoff_factor:
     :return:
     """
-    import matplotlib as mpl
+    # import matplotlib as mpl
     # mpl.use('Agg')
     import matplotlib.pyplot as plt
     import numpy as np
@@ -1394,7 +1462,9 @@ class Clustering(object):
             exit()
 
         self.int_type = "discrete"
-        self.fsfdp_kernel = "gaussian"
+
+        self.algorithm = "fsfdp"
+        self.kernel = "gaussian"
         self.centers = "energy"
         self.d_c = []
         self.cutoff_factor = 0.01
@@ -1413,9 +1483,16 @@ class Clustering(object):
                   "'cluster_center': select the geometrical center resulting from the CVs used.")
             exit()
 
+    def set_clustering_method(self, method_name):
+        if kernel.lower() in ("fsfdp", "cutoff"):
+            self.algorithm = method_name.lower()
+        else:
+            print("Error: Kernel function not recognized. Choose between 'gaussian' and 'cutoff'")
+            exit()
+
     def set_fsfdp_kernel(self, kernel):
         if kernel.lower() in ("gaussian", "cutoff"):
-            self.centers = center_selection.lower()
+            self.kernel = kernel.lower()
         else:
             print("Error: Kernel function not recognized. Choose between 'gaussian' and 'cutoff'")
             exit()
@@ -1591,15 +1668,26 @@ class Clustering(object):
         changes_string = ""
         for index in self.similarity_matrix.index:
             if self.similarity_matrix.at[index, "Structures"]:
-                self.cluster_data[index], sc = FSFDP(self.similarity_matrix.at[index, "Distance Matrix"], d_c=self.d_c,
-                                                     cutoff_factor=self.cutoff_factor, sigma_cutoff=self.sigma_cutoff)
-                save_decision_graph(self.cluster_data[index].loc[:, "rho"].values,
-                                    self.cluster_data[index].loc[:, "sigma"].values,
-                                    sigma_cutoff=sc,
-                                    path=simulation.path_output + str(self.name) + "_decision_graph.png")
+                if self.algorithm == "fsfdp":
+                    self.cluster_data[index], sc = FSFDP(self.similarity_matrix.at[index, "Distance Matrix"],
+                                                         kernel=self.kernel,
+                                                         d_c=self.d_c,
+                                                         cutoff_factor=self.cutoff_factor,
+                                                         sigma_cutoff=self.sigma_cutoff)
+                    save_decision_graph(self.cluster_data[index].loc[:, "rho"].values,
+                                        self.cluster_data[index].loc[:, "sigma"].values,
+                                        sigma_cutoff=sc,
+                                        path=simulation.path_output + str(self.name) + "_decision_graph.png")
 
-                with open(simulation.path_output + str(self.name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
-                    fo.write(self.cluster_data[index].__str__())
+                    with open(simulation.path_output + str(self.name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
+                        fo.write(self.cluster_data[index].__str__())
+
+                elif self.algorithm == "cutoff":
+                    self.cluster_data[index], sc = DistanceCutoff(self.similarity_matrix.at[index, "Distance Matrix"],
+                                                                  kernel=self.kernel,
+                                                                  d_c=self.d_c,
+                                                                  cutoff_factor=self.cutoff_factor,
+                                                                  sigma_cutoff=self.sigma_cutoff)
 
                 self.clusters[index] = {
                     k: self.cluster_data[index].index[self.cluster_data[index]["cluster"] == k].tolist()
@@ -1640,5 +1728,6 @@ class Clustering(object):
                 fo.write(changes_string)
             fo.write(self.clusters.__str__())
         print("done")
+
         # TODO List distances with respect to each structure.
         #      Also, in the FSFDP algorithm, instead of halo calculation, check distance with the cluster center

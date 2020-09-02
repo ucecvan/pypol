@@ -1,7 +1,7 @@
 # PyPol
 import datetime
 
-last_update = 1585731216.638416  # import datetime; print(datetime.datetime.now().timestamp())
+last_update = 1599038225.800697  # import datetime; print(datetime.datetime.now().timestamp())
 pypol_info = {
     "path": r"/home/nicholas/Programs/PyPol/PyPol/",
     "version": datetime.datetime.fromtimestamp(last_update).strftime("%Y.%m.%d")
