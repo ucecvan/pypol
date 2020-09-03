@@ -261,6 +261,7 @@ class Torsions(object):
         import matplotlib as mpl
         # mpl.use('Agg')
         import matplotlib.pyplot as plt
+        import progressbar
 
         if crystals == "all":
             list_crystals = list()
@@ -526,6 +527,7 @@ class MolecularOrientation(object):
         import matplotlib as mpl
         # mpl.use('Agg')
         import matplotlib.pyplot as plt
+        import progressbar
 
         if crystals == "all":
             list_crystals = list()
@@ -817,6 +819,7 @@ class Combine(object):
         import matplotlib as mpl
         # mpl.use('Agg')
         import matplotlib.pyplot as plt
+        import progressbar
 
         if crystals == "all":
             list_crystals = list()
@@ -1098,6 +1101,7 @@ class RDF(object):
         import matplotlib as mpl
         # mpl.use('Agg')
         import matplotlib.pyplot as plt
+        import progressbar
 
         if crystals == "all":
             list_crystals = list()
