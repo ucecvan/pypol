@@ -270,7 +270,7 @@ class Torsions(object):
                     list_crystals.append(crystal)
         else:
             list_crystals = get_list(crystals)
-
+        print("\n" + str(self.name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
         for crystal in list_crystals:
@@ -536,6 +536,8 @@ class MolecularOrientation(object):
                     list_crystals.append(crystal)
         else:
             list_crystals = get_list(crystals)
+
+        print("\n" + str(self.name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
         for crystal in list_crystals:
@@ -829,6 +831,7 @@ class Combine(object):
         else:
             list_crystals = get_list(crystals)
 
+        print("\n" + str(self.name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
         for crystal in list_crystals:
@@ -1111,6 +1114,7 @@ class RDF(object):
         else:
             list_crystals = get_list(crystals)
 
+        print("\n" + str(self.name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
         for crystal in list_crystals:
