@@ -164,6 +164,7 @@ class Torsions(object):
 
         :return:
         """
+
         if not self.atoms:
             print("Error: no atoms found. select atoms with the set_atoms module.")
             exit()
@@ -269,6 +270,8 @@ class Torsions(object):
         else:
             list_crystals = get_list(crystals)
 
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
         for crystal in list_crystals:
             path_plumed_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
             if os.path.exists(path_plumed_output):
@@ -297,10 +300,12 @@ class Torsions(object):
                         crystal.cvs[self.name][group_name] = np.sum(cv[self.group_bins[group_name]])
                         file_output.write("{:25} {:1.5f}".format(group_name, crystal.cvs[self.name][group_name]))
                     file_output.close()
-
+                bar.update(nbar)
+                nbar += 1
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
                       "".format(path_plumed_output, crystal.path))
+        bar.finish()
         self.method.project.save()
 
 
@@ -529,7 +534,8 @@ class MolecularOrientation(object):
                     list_crystals.append(crystal)
         else:
             list_crystals = get_list(crystals)
-
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
         for crystal in list_crystals:
             path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
             if os.path.exists(path_output):
@@ -548,9 +554,13 @@ class MolecularOrientation(object):
                 plt.savefig(crystal.path + "plumed_{}_{}_plot.png".format(simulation.name, self.name), dpi=300)
                 plt.close("all")
 
+                bar.update(nbar)
+                nbar += 1
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
                       "".format(path_output, crystal.path))
+
+        bar.finish()
         self.method.project.save()
 
     def identify_melted_structures(self, simulation, crystals="all", tolerance=0.1):
@@ -816,6 +826,8 @@ class Combine(object):
         else:
             list_crystals = get_list(crystals)
 
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
         for crystal in list_crystals:
             path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
             if os.path.exists(path_output):
@@ -838,9 +850,12 @@ class Combine(object):
                     # TODO use 3D plots (create script to be run afterwards), or 3 2D imshow
                     pass
 
+                bar.update(nbar)
+                nbar += 1
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
                       "".format(path_output, crystal.path))
+        bar.finish()
         self.method.project.save()
 
 
@@ -1092,6 +1107,8 @@ class RDF(object):
         else:
             list_crystals = get_list(crystals)
 
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
         for crystal in list_crystals:
             path_output = crystal.path + "plumed_{}_{}.dat".format(simulation.name, self.name)
             if os.path.exists(path_output):
@@ -1115,9 +1132,13 @@ class RDF(object):
                 plt.ylabel("Probability Density")
                 plt.savefig(crystal.path + "plumed_{}_{}_plot.png".format(simulation.name, self.name), dpi=300)
                 plt.close("all")
+
+                bar.update(nbar)
+                nbar += 1
             else:
                 print("An error has occurred with Plumed. Check file {} in folder {}."
                       "".format(path_output, crystal.path))
+        bar.finish()
         self.method.project.save()
 
 
@@ -1483,6 +1504,7 @@ class Clustering(object):
         self.d_c = []
         self.cutoff_factor = 0.01
         self.sigma_cutoff = False
+        self.distance_selection = "norm"
 
         self.similarity_matrix = False
         self.cluster_data = {}
