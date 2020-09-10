@@ -24,7 +24,7 @@ class Torsions(object):
 
         self.grid_min = -np.pi
         self.grid_max = np.pi
-        self.grid_bin = 73
+        self.grid_bins = 73
         self.timeinterval = 200
 
         self.groups = {}
@@ -59,17 +59,17 @@ class Torsions(object):
         self.molecule = molecule
         self.method.project.save()
 
-    def set_grid(self, grid_min, grid_max, grid_bin):
+    def set_grid(self, grid_min, grid_max, grid_bins):
         """
 
         :param grid_min:
         :param grid_max:
-        :param grid_bin:
+        :param grid_bins:
         :return:
         """
         self.grid_min = grid_min
         self.grid_max = grid_max
-        self.grid_bin = grid_bin
+        self.grid_bins = grid_bins
         self.method.project.save()
 
     def set_bandwidth(self, bandwidth=0.35):
@@ -149,7 +149,7 @@ class Torsions(object):
         if self.clustering_type == "distribution":
             file_output.write("\nClustering type: Distribution\n"
                               "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2:.3f} UPPER={3:.3f} LOWER={4:.3f}\n"
-                              "".format(self.kernel, self.grid_bin, self.bandwidth, self.grid_max, self.grid_min))
+                              "".format(self.kernel, self.grid_bins, self.bandwidth, self.grid_max, self.grid_min))
         elif self.clustering_type == "classification":
             file_output.write("\nClustering type: Classification\n")
             for group in self.groups.keys():
@@ -178,7 +178,7 @@ class Torsions(object):
         if self.clustering_type == "distribution":
             print("\nClustering type: Distribution\n"
                   "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2:.3f} UPPER={3:.3f} LOWER={4:.3f}"
-                  "".format(self.kernel, self.grid_bin, self.bandwidth, self.grid_max, self.grid_min))
+                  "".format(self.kernel, self.grid_bins, self.bandwidth, self.grid_max, self.grid_min))
         elif self.clustering_type == "classification":
             print("\nClustering type: Classification")
             for group in self.groups.keys():
@@ -197,7 +197,7 @@ class Torsions(object):
 
             if self.clustering_type == "distribution":
                 file_plumed.write("HISTOGRAM={{{{{0} NBINS={1} BANDWIDTH={2:.3f} UPPER={3:.3f} LOWER={4:.3f}}}}}\n"
-                                  "".format(self.kernel, self.grid_bin, self.bandwidth, self.grid_max, self.grid_min))
+                                  "".format(self.kernel, self.grid_bins, self.bandwidth, self.grid_max, self.grid_min))
             elif self.clustering_type == "classification":
                 idx_boundaries = 1
                 for group in self.groups.keys():
@@ -332,7 +332,7 @@ class MolecularOrientation(object):
 
         self.grid_min = 0.0
         self.grid_max = np.pi
-        self.grid_bin = 37
+        self.grid_bins = 37
 
         self.timeinterval = 200
 
@@ -373,17 +373,17 @@ class MolecularOrientation(object):
             print("Error: not clear which set of atoms you want to delete.")
         self.method.project.save()
 
-    def set_grid(self, grid_min, grid_max, grid_bin):
+    def set_grid(self, grid_min, grid_max, grid_bins):
         """
 
         :param grid_min:
         :param grid_max:
-        :param grid_bin:
+        :param grid_bins:
         :return:
         """
         self.grid_min = grid_min
         self.grid_max = grid_max
-        self.grid_bin = grid_bin
+        self.grid_bins = grid_bins
         self.method.project.save()
 
     def set_bandwidth(self, bandwidth=0.35):
@@ -423,7 +423,7 @@ class MolecularOrientation(object):
 
         file_output.write("\nClustering type: Distribution\n"
                           "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2:.3f} UPPER={3:.3f} LOWER={4:.3f}\n"
-                          "".format(self.kernel, self.grid_bin, self.bandwidth, self.grid_max, self.grid_min))
+                          "".format(self.kernel, self.grid_bins, self.bandwidth, self.grid_max, self.grid_min))
         file_output.close()
 
     def generate_input(self, simulation, bash_script=True):
@@ -449,7 +449,7 @@ class MolecularOrientation(object):
 
         print("\nClustering type: Distribution\n"
               "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2:.3f} UPPER={3:.3f} LOWER={4:.3f}"
-              "".format(self.kernel, self.grid_bin, self.bandwidth, self.grid_max, self.grid_min))
+              "".format(self.kernel, self.grid_bins, self.bandwidth, self.grid_max, self.grid_min))
 
         for crystal in simulation.crystals:
             print(crystal.name)
@@ -473,7 +473,7 @@ class MolecularOrientation(object):
                               "GRID_BIN={3} BANDWIDTH={4} KERNEL={5}\n\n"
                               "PRINT ARG=valg_{0} FILE=plumed_{6}_{0}.dat\n"
                               "".format(self.name, self.grid_min, self.grid_max,
-                                        self.grid_bin, self.bandwidth, self.kernel, simulation.name))
+                                        self.grid_bins, self.bandwidth, self.kernel, simulation.name))
             file_plumed.close()
 
         if bash_script:
@@ -585,7 +585,7 @@ class MolecularOrientation(object):
 
         file_hd = open("{}/HD_{}.dat".format(simulation.path_output, simulation.name), "w")
         file_hd.write("# Tolerance = {}\n#\n# Structures HD".format(round(tolerance, 5)))
-        ref = np.sin(np.linspace(0., np.pi, self.grid_bin))  # Add "+ 1" ?
+        ref = np.sin(np.linspace(0., np.pi, self.grid_bins))  # Add "+ 1" ?
         for crystal in list_crystals:
             if not self.name in crystal.cvs:
                 print("Error: A distribution for this simulation has not been generated.\n"
@@ -613,13 +613,19 @@ class Combine(object):
 
         self.kernel = cvs[0].kernel
         self.timeinterval = cvs[0].timeinterval
-        self.list_bins = ()
-
+        self.grid_min = []
+        self.grid_max = []
+        self.grid_bins = []
+        for cv in self.cvs:
+            self.grid_min.append(cv.grid_min)
+            self.grid_max.append(cv.grid_max)
+            self.grid_bins.append(cv.grid_bins)
         for cv in self.method.cvs:
             if cv.name == self.name:
                 print("Error: CV with label {} already present in this method. Remove it with 'del method.cvs[{}]' or "
                       "change CV label".format(self.name, self.method.cvs.index(cv)))
                 exit()
+
         self.method.cvs.append(self)
         self.method.project.save()
 
@@ -641,7 +647,7 @@ class Combine(object):
 
     def write_output(self, path_output):
         idx_cv = 0
-        grid_min, grid_max, grid_bin, bandwidth, args = ("", "", "", "", "")
+        grid_min, grid_max, grid_bins, bandwidth, args = ("", "", "", "", "")
         file_output = open(path_output, "a")
         file_output.write("\nCV: {} ({})".format(self.name, self.type))
         for cv in self.cvs:
@@ -661,13 +667,14 @@ class Combine(object):
                     pass
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
-            grid_bin += "{},".format(cv.grid_bin)
+
+            grid_bins += "{},".format(cv.grid_bins)
             bandwidth += "{:.3f},".format(cv.grid_min)
             idx_cv += 1
 
         file_output.write("\nClustering type: {5}-D Distribution\n"
                           "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2} UPPER={3} LOWER={4}"
-                          "".format(self.kernel, grid_bin, bandwidth, grid_max, grid_min, len(self.cvs)))
+                          "".format(self.kernel, grid_bins, bandwidth, grid_max, grid_min, len(self.cvs)))
         file_output.close()
 
     def generate_input(self, simulation, bash_script=True):
@@ -679,7 +686,7 @@ class Combine(object):
         """
         idx_cv = 0
         list_bins = list()
-        grid_min, grid_max, grid_bin, bandwidth, args = ("", "", "", "", "")
+        grid_min, grid_max, grid_bins, bandwidth, args = ("", "", "", "", "")
         print("=" * 100)
         print("Generate plumed input files")
         print("CV: {} ({})".format(idx_cv, self.name, self.type))
@@ -702,11 +709,11 @@ class Combine(object):
 
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
-            grid_bin += "{},".format(cv.grid_bin)
+            grid_bins += "{},".format(cv.grid_bins)
             if self.type.startswith("Molecular Orientation"):
-                list_bins.append(int(cv.grid_bin + 1))
+                list_bins.append(int(cv.grid_bins + 1))
             elif self.type.startswith("Torsional Angle"):
-                list_bins.append(int(cv.grid_bin))
+                list_bins.append(int(cv.grid_bins))
             bandwidth += "{:.3f},".format(cv.bandwidth)
             if self.type.startswith("Molecular Orientation"):
                 args += "ARG{}=ang_mat_{} ".format(idx_cv + 1, cv.name)
@@ -716,10 +723,10 @@ class Combine(object):
             idx_cv += 1
             print("\n")
 
-        self.list_bins = tuple(list_bins)
+        self.grid_bins = tuple(list_bins)
         print("\nClustering type: {5}-D Distribution\n"
               "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2} UPPER={3} LOWER={4}"
-              "".format(self.kernel, grid_bin, bandwidth, grid_max, grid_min, len(self.cvs)))
+              "".format(self.kernel, grid_bins, bandwidth, grid_max, grid_min, len(self.cvs)))
 
         if self.type.startswith("Molecular Orientation"):
             for crystal in simulation.crystals:
@@ -747,7 +754,7 @@ class Combine(object):
                                   "GRID_BIN={3} BANDWIDTH={4} KERNEL={5}\n\n"
                                   "PRINT ARG=valg_{0} FILE=plumed_{6}_{0}.dat\n"
                                   "".format(self.name, grid_min, grid_max,
-                                            grid_bin, bandwidth, self.kernel, simulation.name, args))
+                                            grid_bins, bandwidth, self.kernel, simulation.name, args))
                 file_plumed.close()
 
         if self.type.startswith("Torsional Angle"):
@@ -767,7 +774,7 @@ class Combine(object):
                                   "GRID_BIN={3} BANDWIDTH={4} KERNEL={5}\n\n"
                                   "PRINT ARG=kde_{0} FILE=plumed_{6}_{0}.dat\n"
                                   "".format(self.name, grid_min, grid_max,
-                                            grid_bin, bandwidth, self.kernel, simulation.name, args))
+                                            grid_bins, bandwidth, self.kernel, simulation.name, args))
                 file_plumed.close()
 
         if bash_script:
@@ -839,7 +846,7 @@ class Combine(object):
             if os.path.exists(path_output):
                 cv_dist = np.genfromtxt(path_output, skip_header=1)[:, 1:]
                 cv_dist = np.average(cv_dist, axis=0)
-                crystal.cvs[self.name] = cv_dist.reshape(self.list_bins)
+                crystal.cvs[self.name] = cv_dist.reshape(self.grid_bins)
                 if len(self.cvs) == 2:
                     # Save output and plot distribution
                     np.savetxt(crystal.path + "plumed_{}_{}_data.dat".format(simulation.name, self.name),
@@ -1151,7 +1158,6 @@ class RDF(object):
 
 
 class Density(object):
-
     pass
 
 
@@ -1576,6 +1582,379 @@ class Clustering(object):
 
         if gen_sim_mat:
             import progressbar
+            group_options = []
+            group_names = []
+            for cv in self.cvs:
+                if cv.clustering_type == "classification":
+                    group_options.append(list(cv.groups.keys()))
+                    group_names.append(cv.name)
+            if group_options:
+                combinations = list(its.product(*group_options)) + [tuple([None for i in range(len(group_options[0]))])]
+                index = [i for i in range(len(combinations) - 1)] + ["Others"]
+
+                if len(group_names) == 1:
+                    combinations = pd.concat((pd.Series(combinations, name=group_names[0], index=index),
+                                              pd.Series([0 for i in range(len(combinations))],
+                                                        name="Number of structures", dtype=int, index=index),
+                                              pd.Series([[] for i in range(len(combinations))], name="Structures",
+                                                        index=index)), axis=1)
+                else:
+                    combinations = pd.concat((pd.DataFrame(combinations, columns=group_names, index=index),
+                                              pd.Series([0 for i in range(len(combinations))],
+                                                        name="Number of structures", dtype=int, index=index),
+                                              pd.Series([[] for i in range(len(combinations))], name="Structures",
+                                                        index=index)), axis=1)
+                combinations.index.name = "Combination"
+                bar = progressbar.ProgressBar(maxval=len(simulation.crystals)).start()
+                nbar = 1
+                for crystal in simulation.crystals:
+                    if not crystal.melted == "melted":
+                        combinations = self.sort_crystal(crystal, combinations, group_threshold)
+                    bar.update(nbar)
+                    nbar += 1
+                bar.finish()
+
+            else:
+                index = ["All"]
+                combinations = pd.DataFrame([[0, []]], columns=["Number of structures", "Structures"],
+                                            dtype=None, index=["all"])
+                combinations.index.name = "Combination"
+                for crystal in simulation.crystals:
+                    if not crystal.melted == "melted":
+                        combinations.loc["all", "Structures"].append(crystal)
+                        combinations.loc["all", "Number of structures"] += 1
+
+            slist = [np.full((combinations.loc[i, "Number of structures"],
+                              combinations.loc[i, "Number of structures"]), 0.0) for i in combinations.index]
+            combinations = pd.concat((combinations,
+                                      pd.Series(slist, name="Distance Matrix", index=combinations.index)), axis=1)
+
+            # Generate Distance Matrix of each set of distributions
+            distributions = [cv for cv in self.cvs if cv.clustering_type != "classification"]
+            n_factors = {}
+            for cv in distributions:
+                combinations[cv.name] = pd.Series(copy.deepcopy(combinations["Distance Matrix"].to_dict()),
+                                                  index=combinations.index)
+                n_factors[cv.name] = 0.
+
+                for index in combinations.index:
+                    if combinations.at[index, "Structures"]:
+                        crystals = combinations.at[index, "Structures"]
+
+                        print("\nCV: {} Group: {}".format(cv.name, index))
+                        bar = progressbar.ProgressBar(maxval=int(len(crystals) * (len(crystals) - 1) / 2)).start()
+                        nbar = 1
+
+                        for i in range(len(crystals) - 1):
+                            di = crystals[i].cvs[cv.name]
+                            for j in range(i + 1, len(crystals)):
+                                dj = crystals[j].cvs[cv.name]
+                                bar.update(nbar)
+                                nbar += 1
+                                if cv.type == "Radial Distribution Function":
+                                    if len(di) > len(dj):
+                                        hd = hellinger(di.copy()[:len(dj)], dj.copy(), self.int_type)
+                                    else:
+                                        hd = hellinger(di.copy(), dj.copy()[:len(di)], self.int_type)
+                                else:
+                                    hd = hellinger(di.copy(), dj.copy(), self.int_type)
+                                combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
+
+                                if hd > n_factors[cv.name]:
+                                    n_factors[cv.name] = hd
+                        bar.finish()
+
+            # Normalize distances
+            print("Normalization...", end="")
+            normalization = []
+            for cv in distributions:
+                normalization.append(1. / n_factors[cv.name])
+                for index in combinations.index:
+                    if combinations.at[index, "Structures"]:
+                        combinations.at[index, cv.name] /= n_factors[cv.name]
+            print("done")
+
+            # Generate Distance Matrix
+            print("Generating Distance Matrix...", end="")
+            normalization = np.linalg.norm(np.array(normalization))
+            for index in combinations.index:
+                if combinations.at[index, "Structures"]:
+                    for i in range(combinations.at[index, "Number of structures"] - 1):
+                        for j in range(i + 1, combinations.at[index, "Number of structures"]):
+                            dist_ij = np.linalg.norm([k[i, j] for k in
+                                                      combinations.loc[index, [cv.name for cv in distributions]]])
+                            combinations.at[index, "Distance Matrix"][i, j] = \
+                                combinations.at[index, "Distance Matrix"][j, i] = dist_ij / normalization
+                            self.d_c.append(dist_ij)
+
+            for index in combinations.index:
+                if combinations.at[index, "Structures"]:
+                    idx = [i.name for i in combinations.at[index, "Structures"]]
+                    for mat in combinations.loc[index, "Distance Matrix":].index:
+                        combinations.at[index, mat] = pd.DataFrame(combinations.at[index, mat], index=idx, columns=idx)
+                        with open(simulation.path_output + str(self.name) + "_similarity_matrix_" +
+                                  mat.replace(" ", "") + "_" + index + ".dat", 'w') as fo:
+                            fo.write(combinations.loc[index, mat].__str__())
+
+            self.similarity_matrix = combinations
+
+            list_crys = [[i.name for i in row["Structures"]] for index, row in self.similarity_matrix.iterrows()]
+            file_output = pd.concat((self.similarity_matrix.loc[:, :"Number of structures"],
+                                     pd.Series(list_crys, name="IDs", index=self.similarity_matrix.index)), axis=1)
+
+            with open(simulation.path_output + str(self.name) + "_similarity_matrix_groups.dat", 'w') as fo:
+                fo.write("Normalization Factors:\n")
+                for n in n_factors.keys():
+                    fo.write("{:15}: {:<1.3f}\n".format(n, n_factors[n]))
+                fo.write(file_output.__str__())
+            print("done")
+            self.d_c = np.sort(np.array(self.d_c))[int(float(len(self.d_c)) * self.cutoff_factor)]
+
+        # Remove structures that are not cluster centers
+        print("Clustering...", end="")
+        changes_string = ""
+        for index in self.similarity_matrix.index:
+            if self.similarity_matrix.at[index, "Structures"]:
+                if self.algorithm == "fsfdp":
+                    self.cluster_data[index], sc = FSFDP(self.similarity_matrix.at[index, "Distance Matrix"],
+                                                         kernel=self.kernel,
+                                                         d_c=self.d_c,
+                                                         cutoff_factor=self.cutoff_factor,
+                                                         sigma_cutoff=self.sigma_cutoff)
+                    save_decision_graph(self.cluster_data[index].loc[:, "rho"].values,
+                                        self.cluster_data[index].loc[:, "sigma"].values,
+                                        sigma_cutoff=sc,
+                                        path=simulation.path_output + str(self.name) + "_decision_graph.png")
+
+                    with open(simulation.path_output + str(self.name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
+                        fo.write(self.cluster_data[index].__str__())
+
+                elif self.algorithm == "cutoff":
+                    self.cluster_data[index], sc = DistanceCutoff(self.similarity_matrix.at[index, "Distance Matrix"],
+                                                                  kernel=self.kernel,
+                                                                  d_c=self.d_c,
+                                                                  cutoff_factor=self.cutoff_factor,
+                                                                  sigma_cutoff=self.sigma_cutoff)
+                    with open(simulation.path_output + str(self.name) + "_DC_" + str(index) + ".dat", 'w') as fo:
+                        fo.write(self.cluster_data[index].__str__())
+
+                self.clusters[index] = {
+                    k: self.cluster_data[index].index[self.cluster_data[index]["cluster"] == k].tolist()
+                    for k in list(self.cluster_data[index]["cluster"].unique())}
+
+                if self.centers.lower() == "energy":
+                    import copy
+                    new_clusters = copy.deepcopy(self.clusters[index])
+                    energies = {k.name: k.Potential for k in self.similarity_matrix.at[index, "Structures"]}
+                    for center in self.clusters[index].keys():
+                        changes = [center, None]
+                        for crystal in self.clusters[index][center]:
+                            if energies[crystal] < energies[center]:
+                                changes[1] = crystal
+                        if changes[1]:
+                            new_clusters[changes[1]] = new_clusters.pop(changes[0])
+                            # print("{:>25} ---> {:25}\n".format(changes[0], changes[1]))
+                            changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
+                    self.clusters[index] = new_clusters
+
+                for crystal in self.similarity_matrix.at[index, "Structures"]:
+                    if crystal.name in self.clusters[index].keys():
+                        crystal.melted = False
+                    else:
+                        for cc in self.clusters[index].keys():
+                            if crystal.name in self.clusters[index][cc]:
+                                crystal.melted = cc
+
+        self.clusters = {k: v for g in self.clusters.keys() for k, v in self.clusters[g].items()}
+        self.clusters = pd.concat((
+            pd.Series(data=[len(self.clusters[x]) for x in self.clusters.keys()], index=self.clusters.keys(),
+                      name="Number of Structures"),
+            pd.Series(data=[", ".join(str(y) for y in self.clusters[x]) for x in self.clusters.keys()],
+                      index=self.clusters.keys(), name="Structures")),
+            axis=1).sort_values(by="Number of Structures", ascending=False)
+
+        with open(simulation.path_output + str(self.name) + "_Clusters.dat", 'w') as fo:
+            if changes_string:
+                fo.write("Cluster centers changed according to potential energy:\n")
+                fo.write(changes_string)
+            fo.write(self.clusters.__str__())
+
+        self.project.save()
+        print("done")
+
+        # TODO List distances with respect to each structure.
+        #      Also, in the FSFDP algorithm, instead of halo calculation, check distance with the cluster center
+
+
+class GGBD(object):
+
+    def __init__(self, name, method, cv):
+        self.name = name
+        self.method = method
+        self.project = method.project
+        self.dist_cv = cv
+
+        self.cv = None
+        for scv in self.method.cvs:
+            if scv.name == cv.name:
+                self.cv = cv
+            else:
+                print("Error: CV not present in this method. CVs available:")
+                for scv2 in self.method.cvs:
+                    print(scv2.name)
+                exit()
+
+        self.int_type = "discrete"
+
+        self.type = cv.type
+        self.clustering_type = "classification"
+        self.clustering_method = "similarity"  # Alternatively, "group"
+
+        self.atoms = cv.atoms
+        self.molecule = cv.molecule
+
+        self.kernel = cv.kernel
+        self.bandwidth = cv.bandwidth
+        self.timeinterval = cv.timeinterval
+
+        if isinstance(cv.grid_bins, int):
+            self.grid_min = [cv.grid_min]
+            self.grid_max = [cv.grid_max]
+            self.grid_bins = [cv.grid_bins]
+            self.D = 1
+        else:
+            self.grid_min = cv.grid_min
+            self.grid_max = cv.grid_max
+            self.grid_bins = cv.grid_bins
+            self.D = len(self.grid_bins)
+
+        self.group_bins = {}
+
+        for cv in self.method.cvs:
+            if cv.name == self.name:
+                print("Error: CV with label {} already present in this method. Remove it with 'del method.cvs[{}]' or "
+                      "change CV label".format(self.name, self.method.cvs.index(cv)))
+                exit()
+        self.method.cvs.append(self)
+        self.method.project.save()
+
+    def set_clustering_method(self, cm):
+        if cm.lower() in ("similarity", "groups"):
+            self.clustering_method = cm.lower()
+        else:
+            print("Error: Center selection method not recognized. Choose between:\n"
+                  "'similarity'        : NA\n"
+                  "'groups': NA\n")  # TODO add description
+            exit()
+
+    def set_hellinger_integration_type(self, int_type):
+        if int_type.lower() in ("discrete", "simps", "trapz"):
+            self.int_type = int_type.lower()
+        else:
+            print('Error: Hellinger integration type not recognized. Choose between "discrete", "simps" or "trapz"')
+            exit()
+
+    @staticmethod
+    def non_periodic_dist(step, ibins, bins, grid_bins, grid_min, grid_max, bins_space, threshold):
+        if abs(grid_min - bins[0]) > threshold:
+            bins = [grid_min] + bins
+        if abs(grid_max - bins[-1]) > threshold:
+            bins = bins[:-1]
+        print(bins[0], bins[1])
+        print([j * bins_space + grid_min for j in range(grid_bins) if j * bins_space + grid_min <= bins[1]])
+        ibins[(step, 0)] = [j for j in range(grid_bins) if j * bins_space + grid_min < bins[1]]
+        ibins[(step, len(bins) - 1)] = [j for j in range(grid_bins) if bins[-1] <= j * bins_space + grid_min]
+        return ibins, bins
+
+    @staticmethod
+    def periodic_dist(step, ibins, bins, grid_bins, grid_min, grid_max, bins_space, threshold):
+        bins = [grid_min] + bins
+        ibins[(step, 0)] = [j for j in range(grid_bins) if j * bins_space + grid_min < bins[1]] + \
+                           [j for j in range(grid_bins) if bins[-1] <= j * bins_space + grid_min]
+        return ibins, bins
+
+    def set_group_bins(self, *args, threshold="auto", periodic=True):
+        args = list(args)
+        if len(args) != self.D:
+            print("Error: incorret number of args, {} instead of {}.".format(len(args), self.D))
+            exit()
+
+        for i in range(self.D):
+            bins = list(args[i])
+            bins_space = (self.grid_max[i] - self.grid_min[i]) / self.grid_bins[i]
+            
+            if threshold == "auto":
+                threshold = 0.5 * (self.grid_max[i] - self.grid_min[i]) / self.grid_bins[i]
+
+            if not periodic:
+                self.group_bins, bins = self.non_periodic_dist(i, self.group_bins, bins, self.grid_bins[i],
+                                                               self.grid_min[i], self.grid_max[i], bins_space,
+                                                               threshold)
+                
+            else:
+                if abs(grid_min[i] - bins[0]) < threshold or abs(grid_max[i] - bins[-1]) < threshold:
+                    self.group_bins, bins = self.non_periodic_dist(i, self.group_bins, bins, self.grid_bins[i],
+                                                                   self.grid_min[i], self.grid_max[i], bins_space,
+                                                                   threshold)
+                else:
+                    self.group_bins, bins = self.periodic_dist(i, self.group_bins, bins, self.grid_bins[i],
+                                                               self.grid_min[i], self.grid_max[i], bins_space,
+                                                               threshold)
+                
+            for b in range(1, len(bins) - 1):
+                self.group_bins[(i, b)] = [j for j in range(grid_bins[i])
+                                           if bins[b] < j * bins_space + grid_min[i] <= bins[b+1]]
+
+    def run(self, simulation, group_threshold=0.05, gen_sim_mat=True):
+        import numpy as np
+        import pandas as pd
+        import itertools as its
+        import copy
+        import progressbar
+
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.max_rows', None)
+        pd.set_option('display.expand_frame_repr', False)
+        pd.set_option('display.max_colwidth', None)
+        pd.set_option('display.max_seq_items', None)
+
+        if self.clustering_method == "group":
+            combinations = []
+            for i in range(self.D):
+                combinations.append([c for c in ibins.keys() if c[0] == i])
+
+            dataset = np.full((len(simulation.crystals), len(its.product(*combinations)) + 1), np.nan)
+            index = []
+            for cidx in range(len(simulation.crystals)):
+                crystal = simulation.crystals[cidx]
+                if crystal.melted == "melted":
+                    np.delete(dataset, cidx, 0)
+                    continue
+
+                index.append(crystal.name)
+                dist = crystal.cvs[self.dist_cv.name] / np.sum(crystal.cvs[self.dist_cv.name])
+                c = 0
+                for i in its.product(*combinations):
+                    dataset[cidx, c] = np.sum(dist[np.ix_(self.group_bins[i[0]], self.group_bins[i[1]])])
+                    c += 1
+
+            dataset = pd.DataFrame(np.where(dataset > group_threshold, 1, 0), index=index,
+                                   columns=[(i[0][1], i[1][1]) for i in its.product(*combinations)])
+
+            groups = dataset.groupby(dataset.colums.to_list()).groups
+            cvg = {}
+            for i in groups.keys():
+                cvg[i] = 0
+
+            for crystal in simulation.crystals:
+                crystal.cvs[self.name] = copy.deepcopy(cvg)
+                for group in groups.keys():
+                    if crystal.name in groups[group]:
+                        crystal.cvs[self.name][group] += 1
+                        break
+
+            # TODO Output dataset and groups to output folder
+
             # Divide structures in different groups
             group_options = []
             group_names = []
