@@ -1947,214 +1947,66 @@ class GGBD(object):
                 cvg[i] = 0
 
             for crystal in simulation.crystals:
+                if crystal.melted != "melted":
+                    crystal.cvs[self.name] = copy.deepcopy(cvg)
+                    for group in groups.keys():
+                        if crystal.name in groups[group]:
+                            crystal.cvs[self.name][group] += 1
+                            break
+
+        elif self.clustering_method == "similarity":
+            from scipy.sparse import csr_matrix
+            from scipy.sparse.csgraph import breadth_first_order
+            crystals = []
+            index = []
+            for crystal in simulation.crystals:
+                if crystal.melted != "melted":
+                    crystals.append(crystal)
+                    index.append(crystal.name)
+                    
+            dmat = pd.DataFrame(np.zeros((len(index), len(index))), columns=index, index=index)
+            bar = progressbar.ProgressBar(maxval=int(len(crystals) * (len(crystals) - 1) / 2)).start()
+            nbar = 1
+
+            for i in range(len(crystals) - 1):
+                di = crystals[i].cvs[self.dist_cv.name]
+                ci = crystals[i].name
+                for j in range(i + 1, len(crystals)):
+                    dj = crystals[j].cvs[self.dist_cv.name]
+                    cj = crystals[j].name
+                    bar.update(nbar)
+                    nbar += 1
+                    if self.dist_cv.type == "Radial Distribution Function":
+                        if len(di) > len(dj):
+                            hd = hellinger(di.copy()[:len(dj)], dj.copy(), self.int_type)
+                        else:
+                            hd = hellinger(di.copy(), dj.copy()[:len(di)], self.int_type)
+                    else:
+                        hd = hellinger(di.copy(), dj.copy(), self.int_type)
+                    dmat.at[ci, cj] = dmat.at[cj, ci] = hd
+            bar.finish()
+
+            dmat = pd.DataFrame(np.where(dmat.values < group_threshold, 1., 0.), columns=index, index=index)
+
+            groups = {}
+            graph = csr_matrix(tor)
+            removed = []
+            for c in range(len(dmat.index)):
+                if dmat.index.to_list()[c] in removed:
+                    continue
+                bfs = breadth_first_order(graph, c, False, False)
+                group_index = [index[i] for i in range(len(index)) if i in bfs]
+                removed = removed + group_index
+                groups[group_index[0]] = group_index
+
+            cvg = {}
+            for i in groups.keys():
+                cvg[i] = 0
+
+            for crystal in crystals:
                 crystal.cvs[self.name] = copy.deepcopy(cvg)
                 for group in groups.keys():
                     if crystal.name in groups[group]:
                         crystal.cvs[self.name][group] += 1
                         break
-
             # TODO Output dataset and groups to output folder
-        #
-        #     # Divide structures in different groups
-        #     group_options = []
-        #     group_names = []
-        #     for cv in self.cvs:
-        #         if cv.clustering_type == "classification":
-        #             group_options.append(list(cv.groups.keys()))
-        #             group_names.append(cv.name)
-        #     if group_options:
-        #         combinations = list(its.product(*group_options)) + [tuple([None for i in range(len(group_options[0]))])]
-        #         index = [i for i in range(len(combinations) - 1)] + ["Others"]
-        #
-        #         if len(group_names) == 1:
-        #             combinations = pd.concat((pd.Series(combinations, name=group_names[0], index=index),
-        #                                       pd.Series([0 for i in range(len(combinations))],
-        #                                                 name="Number of structures", dtype=int, index=index),
-        #                                       pd.Series([[] for i in range(len(combinations))], name="Structures",
-        #                                                 index=index)), axis=1)
-        #         else:
-        #             combinations = pd.concat((pd.DataFrame(combinations, columns=group_names, index=index),
-        #                                       pd.Series([0 for i in range(len(combinations))],
-        #                                                 name="Number of structures", dtype=int, index=index),
-        #                                       pd.Series([[] for i in range(len(combinations))], name="Structures",
-        #                                                 index=index)), axis=1)
-        #         combinations.index.name = "Combination"
-        #         bar = progressbar.ProgressBar(maxval=len(simulation.crystals)).start()
-        #         nbar = 1
-        #         for crystal in simulation.crystals:
-        #             if not crystal.melted == "melted":
-        #                 combinations = self.sort_crystal(crystal, combinations, group_threshold)
-        #             bar.update(nbar)
-        #             nbar += 1
-        #         bar.finish()
-        #
-        #     else:
-        #         index = ["All"]
-        #         combinations = pd.DataFrame([[0, []]], columns=["Number of structures", "Structures"],
-        #                                     dtype=None, index=["all"])
-        #         combinations.index.name = "Combination"
-        #         for crystal in simulation.crystals:
-        #             if not crystal.melted == "melted":
-        #                 combinations.loc["all", "Structures"].append(crystal)
-        #                 combinations.loc["all", "Number of structures"] += 1
-        #
-        #     slist = [np.full((combinations.loc[i, "Number of structures"],
-        #                       combinations.loc[i, "Number of structures"]), 0.0) for i in combinations.index]
-        #     combinations = pd.concat((combinations,
-        #                               pd.Series(slist, name="Distance Matrix", index=combinations.index)), axis=1)
-        #
-        #     # Generate Distance Matrix of each set of distributions
-        #     distributions = [cv for cv in self.cvs if cv.clustering_type != "classification"]
-        #     n_factors = {}
-        #     for cv in distributions:
-        #         combinations[cv.name] = pd.Series(copy.deepcopy(combinations["Distance Matrix"].to_dict()),
-        #                                           index=combinations.index)
-        #         n_factors[cv.name] = 0.
-        #
-        #         for index in combinations.index:
-        #             if combinations.at[index, "Structures"]:
-        #                 crystals = combinations.at[index, "Structures"]
-        #
-        #                 print("\nCV: {} Group: {}".format(cv.name, index))
-        #                 bar = progressbar.ProgressBar(maxval=int(len(crystals) * (len(crystals) - 1) / 2)).start()
-        #                 nbar = 1
-        #
-        #                 for i in range(len(crystals) - 1):
-        #                     di = crystals[i].cvs[cv.name]
-        #                     for j in range(i + 1, len(crystals)):
-        #                         dj = crystals[j].cvs[cv.name]
-        #                         bar.update(nbar)
-        #                         nbar += 1
-        #                         if cv.type == "Radial Distribution Function":
-        #                             if len(di) > len(dj):
-        #                                 hd = hellinger(di.copy()[:len(dj)], dj.copy(), self.int_type)
-        #                             else:
-        #                                 hd = hellinger(di.copy(), dj.copy()[:len(di)], self.int_type)
-        #                         else:
-        #                             hd = hellinger(di.copy(), dj.copy(), self.int_type)
-        #                         combinations.loc[index, cv.name][i, j] = combinations.loc[index, cv.name][j, i] = hd
-        #
-        #                         if hd > n_factors[cv.name]:
-        #                             n_factors[cv.name] = hd
-        #                 bar.finish()
-        #
-        #     # Normalize distances
-        #     print("Normalization...", end="")
-        #     normalization = []
-        #     for cv in distributions:
-        #         normalization.append(1. / n_factors[cv.name])
-        #         for index in combinations.index:
-        #             if combinations.at[index, "Structures"]:
-        #                 combinations.at[index, cv.name] /= n_factors[cv.name]
-        #     print("done")
-        #
-        #     # Generate Distance Matrix
-        #     print("Generating Distance Matrix...", end="")
-        #     normalization = np.linalg.norm(np.array(normalization))
-        #     for index in combinations.index:
-        #         if combinations.at[index, "Structures"]:
-        #             for i in range(combinations.at[index, "Number of structures"] - 1):
-        #                 for j in range(i + 1, combinations.at[index, "Number of structures"]):
-        #                     dist_ij = np.linalg.norm([k[i, j] for k in
-        #                                               combinations.loc[index, [cv.name for cv in distributions]]])
-        #                     combinations.at[index, "Distance Matrix"][i, j] = \
-        #                         combinations.at[index, "Distance Matrix"][j, i] = dist_ij / normalization
-        #                     self.d_c.append(dist_ij)
-        #
-        #     for index in combinations.index:
-        #         if combinations.at[index, "Structures"]:
-        #             idx = [i.name for i in combinations.at[index, "Structures"]]
-        #             for mat in combinations.loc[index, "Distance Matrix":].index:
-        #                 combinations.at[index, mat] = pd.DataFrame(combinations.at[index, mat], index=idx, columns=idx)
-        #                 with open(simulation.path_output + str(self.name) + "_similarity_matrix_" +
-        #                           mat.replace(" ", "") + "_" + index + ".dat", 'w') as fo:
-        #                     fo.write(combinations.loc[index, mat].__str__())
-        #
-        #     self.similarity_matrix = combinations
-        #
-        #     list_crys = [[i.name for i in row["Structures"]] for index, row in self.similarity_matrix.iterrows()]
-        #     file_output = pd.concat((self.similarity_matrix.loc[:, :"Number of structures"],
-        #                              pd.Series(list_crys, name="IDs", index=self.similarity_matrix.index)), axis=1)
-        #
-        #     with open(simulation.path_output + str(self.name) + "_similarity_matrix_groups.dat", 'w') as fo:
-        #         fo.write("Normalization Factors:\n")
-        #         for n in n_factors.keys():
-        #             fo.write("{:15}: {:<1.3f}\n".format(n, n_factors[n]))
-        #         fo.write(file_output.__str__())
-        #     print("done")
-        #     self.d_c = np.sort(np.array(self.d_c))[int(float(len(self.d_c)) * self.cutoff_factor)]
-        #
-        # # Remove structures that are not cluster centers
-        # print("Clustering...", end="")
-        # changes_string = ""
-        # for index in self.similarity_matrix.index:
-        #     if self.similarity_matrix.at[index, "Structures"]:
-        #         if self.algorithm == "fsfdp":
-        #             self.cluster_data[index], sc = FSFDP(self.similarity_matrix.at[index, "Distance Matrix"],
-        #                                                  kernel=self.kernel,
-        #                                                  d_c=self.d_c,
-        #                                                  cutoff_factor=self.cutoff_factor,
-        #                                                  sigma_cutoff=self.sigma_cutoff)
-        #             save_decision_graph(self.cluster_data[index].loc[:, "rho"].values,
-        #                                 self.cluster_data[index].loc[:, "sigma"].values,
-        #                                 sigma_cutoff=sc,
-        #                                 path=simulation.path_output + str(self.name) + "_decision_graph.png")
-        #
-        #             with open(simulation.path_output + str(self.name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
-        #                 fo.write(self.cluster_data[index].__str__())
-        #
-        #         elif self.algorithm == "cutoff":
-        #             self.cluster_data[index], sc = DistanceCutoff(self.similarity_matrix.at[index, "Distance Matrix"],
-        #                                                           kernel=self.kernel,
-        #                                                           d_c=self.d_c,
-        #                                                           cutoff_factor=self.cutoff_factor,
-        #                                                           sigma_cutoff=self.sigma_cutoff)
-        #             with open(simulation.path_output + str(self.name) + "_DC_" + str(index) + ".dat", 'w') as fo:
-        #                 fo.write(self.cluster_data[index].__str__())
-        #
-        #         self.clusters[index] = {
-        #             k: self.cluster_data[index].index[self.cluster_data[index]["cluster"] == k].tolist()
-        #             for k in list(self.cluster_data[index]["cluster"].unique())}
-        #
-        #         if self.centers.lower() == "energy":
-        #             import copy
-        #             new_clusters = copy.deepcopy(self.clusters[index])
-        #             energies = {k.name: k.Potential for k in self.similarity_matrix.at[index, "Structures"]}
-        #             for center in self.clusters[index].keys():
-        #                 changes = [center, None]
-        #                 for crystal in self.clusters[index][center]:
-        #                     if energies[crystal] < energies[center]:
-        #                         changes[1] = crystal
-        #                 if changes[1]:
-        #                     new_clusters[changes[1]] = new_clusters.pop(changes[0])
-        #                     # print("{:>25} ---> {:25}\n".format(changes[0], changes[1]))
-        #                     changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
-        #             self.clusters[index] = new_clusters
-        #
-        #         for crystal in self.similarity_matrix.at[index, "Structures"]:
-        #             if crystal.name in self.clusters[index].keys():
-        #                 crystal.melted = False
-        #             else:
-        #                 for cc in self.clusters[index].keys():
-        #                     if crystal.name in self.clusters[index][cc]:
-        #                         crystal.melted = cc
-        #
-        # self.clusters = {k: v for g in self.clusters.keys() for k, v in self.clusters[g].items()}
-        # self.clusters = pd.concat((
-        #     pd.Series(data=[len(self.clusters[x]) for x in self.clusters.keys()], index=self.clusters.keys(),
-        #               name="Number of Structures"),
-        #     pd.Series(data=[", ".join(str(y) for y in self.clusters[x]) for x in self.clusters.keys()],
-        #               index=self.clusters.keys(), name="Structures")),
-        #     axis=1).sort_values(by="Number of Structures", ascending=False)
-        #
-        # with open(simulation.path_output + str(self.name) + "_Clusters.dat", 'w') as fo:
-        #     if changes_string:
-        #         fo.write("Cluster centers changed according to potential energy:\n")
-        #         fo.write(changes_string)
-        #     fo.write(self.clusters.__str__())
-        #
-        # self.project.save()
-        # print("done")
-        #
-        # # TODO List distances with respect to each structure.
-        # #      Also, in the FSFDP algorithm, instead of halo calculation, check distance with the cluster center
