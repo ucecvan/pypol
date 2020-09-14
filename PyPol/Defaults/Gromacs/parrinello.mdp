@@ -1,5 +1,5 @@
-; NPT with Berendsen barostat
-integrator                      = md
+; NPT with Parrinello-Rahman barostat
+integrator                      = md-vv
 nsteps                          = 3000000
 dt                              = 0.001
 

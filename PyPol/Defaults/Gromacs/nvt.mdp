@@ -1,5 +1,5 @@
 ; NVT Equilibration
-integrator                      = md
+integrator                      = md-vv
 nsteps                          = 3000000
 dt                              = 0.001
 
