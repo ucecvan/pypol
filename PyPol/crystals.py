@@ -1,137 +1,308 @@
+import numpy as np
+from PyPol.utilities import cell2box, point_in_box
+import os
+
+
 class Crystal(object):
+    """
+    This object stores the relevant information about the crystal, including the molecules and atoms in it.
+
+    Attributes:\n
+    - name: ID of the crystal as saved in the project\n
+    - label: Alternative name to identify special structures in crystals set. \n
+    - index: Crystal index in the set\n
+    - path: Folder with the simulations\n
+    - box: 3x3 Matrix of the three box vectors a, b, and c with components ay = az = bz = 0\n
+    - cell_parameters: Lattice parameters, a, b, c, alpha, beta, gamma\n
+    - volume: Volume of the simulation box\n
+    - Z: Number of molecules in the cell\n
+    - nmoltypes: Types of different molecules in the crystal (For now only one is allowed)\n
+    - rank: Rank of the structure in the method crystal set.\n
+    - energy: Pot. energy divided by the number of atoms and rescaled by the energy of an isolated molecule.\n
+    - state: State of the crystal:\n
+        - incomplete: the simulation is not finished
+        - complete: the simulation is finished and ready for analysis
+        - melted: The simulation is completed but the structure is melted
+        - clusterID: Name of the cluster the structure belongs.\n
+    - cvs: Collective Variables calculated for this structure.
+
+    Methods:\n
+    - help(): print attributes and methods available
+    """
 
     def __init__(self, name):
         """
-
-        :param name:
+        This object stores the relevant information about the crystal, including the molecules and atoms in it.
+        :param name: ID of the crystal as saved in the project
         """
-        self.name = name
-        self.index = None
-        self.path = None
+        self._name = name
+        self._label = name
+        self._index = None
+        self._path = None
 
-        self.box = None
-        self.cell_parameters = None
-        self.volume = None
+        self._box = None
+        self._cell_parameters = None
+        self._volume = None
+        self._Z = 0
+        self._nmoleculestypes = list()
 
-        self.molecules = list()
-        self.Z = 0
-        self.nmoleculestypes = list()
-        self.melted = False
-        self.completed = False
-        self.Potential = None
-        self.rank = 0
-        self.cvs = dict()
+        self._state = False
+        self._energy = None
+        self._rank = 0
 
-    def save(self, remove_molecules=True):
-        """
+        self._cvs = dict()
 
-        :param remove_molecules:
-        :return:
-        """
-        import pickle
-        import os
-        if os.path.exists("{}/.initial_crystal.pkl".format(self.path)):
-            os.rename("{}/.initial_crystal.pkl".format(self.path), "{}/.initial_crystal.bck.pkl".format(self.path))
-        with open("{}/.initial_crystal.pkl".format(self.path), "wb") as file_pickle:
-            pickle.dump(self, file_pickle)
-        if remove_molecules:
-            self.molecules = list()
-
-    def load(self, use_backup=False):
-        """
-
-        :param use_backup:
-        :return:
-        """
-        import pickle
-        import os
-        file_pickle = "{}/.initial_crystal.pkl".format(self.path)
-        if use_backup:
-            file_pickle = "{}/.initial_crystal.bck.pkl".format(self.path)
-        if os.path.exists(file_pickle):
-            crystal = pickle.load(open(file_pickle, "rb"))
-            return crystal
-        else:
-            print("Error: No crystal found in {}/.initial_crystal.bck.pkl.".format(self.path))
-
-    def load_molecules(self, use_backup=False):
-        """
-
-        :param use_backup:
-        :return:
-        """
-        import pickle
-        import os
-        file_pickle = "{}/.initial_crystal.pkl".format(self.path)
-        if use_backup:
-            file_pickle = "{}/.initial_crystal.bck.pkl".format(self.path)
-        if os.path.exists(file_pickle):
-            crystal = pickle.load(open(file_pickle, "rb"))
-            return crystal.molecules
-        else:
-            print("Error: No crystal found in {}.initial_crystal.bck.pkl.".format(self.path))
+    def __str__(self):
+        return """
+Crystal {0._index}
+Label:            {0._label}
+Folder:           {0._path}
+Cell Parameters:  {0.cell_parameters}
+Volume:           {0._volume}
+Z:                {0._Z}""".format(self)
 
     @staticmethod
-    def copy_properties(crystal):
-        """
+    def help():
+        return """
+This object stores the relevant information about the crystal, including the molecules and atoms in it.
 
-        :param crystal:
+Attributes:
+    - name: ID of the crystal as saved in the project 
+    - label: Alternative name to identify special structures in crystals set. 
+    - index: Crystal index in the set
+    - path: Folder with the simulations
+    - box: 3x3 Matrix of the three box vectors a, b, and c with components ay = az = bz = 0
+    - cell_parameters: Lattice parameters, a, b, c, alpha, beta, gamma
+    - volume: Volume of the simulation box
+    - Z: Number of molecules in the cell
+    - nmoltypes: Types of different molecules in the crystal (For now only one is allowed)
+    - rank: Rank of the structure in the method crystal set.
+    - energy: Potential energy of the crystal divided by the number of atoms and rescaled by the energy of an 
+    isolated molecule.
+    - state: State of the crystal:
+        - incomplete: the simulation is not finished
+        - complete: the simulation is finished and ready for analysis
+        - melted: The simulation is completed but the structure is melted
+        - clusterID: Name of the cluster the structure belongs.
+    - cvs: Collective Variables calculated for this structure.
+    
+Methods:
+    - help(): print attributes and methods available"""
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def label(self):
+        return self._label
+
+    @label.setter
+    def label(self, new_label: str):
+        self._label = new_label
+
+    @property
+    def index(self):
+        return self._index
+
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def box(self):
+        return self._box
+
+    @property
+    def cell_parameters(self):
+        return "a: {0._cell_parameters[0]} b: {0._cell_parameters[1]} c: {0._cell_parameters[2]} " \
+               "alpha: {0._cell_parameters[3]} beta: {0._cell_parameters[4]} gamma: {0._cell_parameters[5]}" \
+               "".format(self)
+
+    @property
+    def volume(self):
+        return self._volume
+
+    # noinspection PyPep8Naming
+    @property
+    def Z(self):
+        return self._Z
+
+    @property
+    def nmoltypes(self):
+        return self._nmoleculestypes
+
+    @property
+    def state(self):
+        if self._state == "incomplete":
+            return "The simulation for crystal {} is not completed yet".format(self._label)
+        elif self._state == "complete":
+            return "The simulation for crystal {} is completed and it is ready for other steps and/or analysis" \
+                   "".format(self._label)
+        elif self._state == "melted":
+            return "Crystal {} is melted".format(self._label)
+        else:
+            return "Crystal {} belongs to cluster {}".format(self._label, self._state)
+
+    @property
+    def energy(self):
+        return "{:.3f} kJ/mol".format(self._energy)
+
+    @property
+    def energy_long(self):
+        return "{} kJ/mol".format(self._energy)
+
+    @property
+    def rank(self):
+        return "Crystal {0._label} is ranked {0._rank}".format(self)
+
+    @property
+    def cvs(self):
+        txt = "CollectiveVariables\n"
+        for cv in self._cvs.keys():
+            if not isinstance(self._cvs[cv], dict):
+                txt += "{:<24}:\n{}\n\n".format(cv, self._cvs[cv])
+            else:
+                txt += "{:<24}:\n".format(cv)
+                for group in self._cvs[cv].keys():
+                    txt += " - {}: {}".format(group, self._cvs[cv][group])
+                txt += "\n"
+        return txt
+
+    @property
+    def molecules(self):
+        return self._load_coordinates()
+
+    def _save_coordinates(self, molecules):
+        """
+        Save molecules in the crystal folder. This is done to limit the memory use.
+        :param molecules: list of Molecule objects
+        :return:
+        """
+        import pickle
+        import os
+        if os.path.exists("{}/.initial_crystal.pkl".format(self._path)):
+            os.rename("{}/.initial_crystal.pkl".format(self._path), "{}/.initial_crystal.bck.pkl".format(self._path))
+        with open("{}/.initial_crystal.pkl".format(self._path), "wb") as file_pickle:
+            pickle.dump(molecules, file_pickle)
+
+    def _load_coordinates(self, use_backup=False):
+        """
+        Load the Molecule objects stored in the crystal folder.
+        :param use_backup:
+        :return:
+        """
+        import pickle
+        import os
+        file_pickle = "{}/.initial_crystal.pkl".format(self._path)
+        if use_backup:
+            file_pickle = "{}/.initial_crystal.bck.pkl".format(self._path)
+        if os.path.exists(file_pickle):
+            molecules = pickle.load(open(file_pickle, "rb"))
+            return molecules
+        else:
+            print("Error: No molecules found in {}.initial_crystal.bck.pkl.".format(self._path))
+            exit()
+
+    @staticmethod
+    def _copy_properties(crystal):
+        """
+        Create a copy of the input crystal
+        :param crystal: Crystal object to copy
         :return:
         """
         import copy
 
-        new_crystal = Crystal(crystal.name)
-        new_crystal.index = crystal.index
-        new_crystal.Z = crystal.Z
-        new_crystal.nmoleculestypes = crystal.nmoleculestypes
-        new_crystal.path = crystal.path
-        new_crystal.cell_parameters = copy.deepcopy(crystal.cell_parameters)
-        new_crystal.box = copy.deepcopy(crystal.box)
-        if new_crystal.cvs:
-            new_crystal.cvs = copy.deepcopy(crystal.CVs)
+        new_crystal = Crystal(crystal._name)
+        new_crystal._index = crystal._index
+        new_crystal._Z = crystal._Z
+        new_crystal._nmoleculestypes = crystal._nmoleculestypes
+        new_crystal._path = crystal._path
+        new_crystal._cell_parameters = copy.deepcopy(crystal._cell_parameters)
+        new_crystal._box = copy.deepcopy(crystal._box)
         return new_crystal
 
-    @staticmethod
-    def _recursive_group_check(atom_i, molecule):
-        """
+    # @staticmethod
+    # def _recursive_group_check(atom_i, molecule):
+    #     """
+    #     TODO Remove after test
+    #     :param atom_i:
+    #     :param molecule:
+    #     :return:
+    #     """
+    #     for j in atom_i._bonds:
+    #         atom_j = molecule._atoms[j]
+    #         if not atom_j._group:
+    #             atom_j._group = atom_i._group
+    #             Crystal._recursive_group_check(atom_j, molecule)
 
-        :param atom_i:
-        :param molecule:
+    @staticmethod
+    def _arrange_atoms_in_molecules(molecules: list):
+        """
+        Check if the atoms in a Molecule object belongs to a single molecule. This is done to prevent errors from
+        openbabel or the CSD Python API when assigning residues index. The check is performed by converting molecules to
+        graphs and looking at their edges with the Breadth First Search algorithm.
+        :param molecules: List of Molecule objects
         :return:
         """
-        for j in atom_i.bonds:
-            atom_j = molecule.atoms[j]
-            if not atom_j.group:
-                atom_j.group = atom_i.group
-                Crystal._recursive_group_check(atom_j, molecule)
+        from scipy.sparse import csr_matrix
+        from scipy.sparse.csgraph import breadth_first_order
+        new_molecules = list()
+        molidx = 0
+        for molecule in molecules:
+            graph = csr_matrix(molecule.contact_matrix)
+            removed = []
+            for atom in range(len(molecule._atoms)):
+                if atom in removed:
+                    continue
+
+                bfs = breadth_first_order(graph, atom, False, False)
+                # print(bfs, min(bfs))
+                removed = removed + list(bfs)
+
+                new_molecule = Molecule(molecule._residue)
+                new_molecule._index = molidx
+                molidx += 1
+                new_molecule._atoms = [molecule._atoms[i] for i in range(len(molecule._atoms)) if i in bfs]
+                new_molecule._natoms = len(new_molecule._atoms)
+                for natom in new_molecule._atoms:
+                    natom._index = natom._index - (new_molecule._natoms * new_molecule._index)
+                    natom._bonds = [bond - (new_molecule._natoms * new_molecule._index) for bond in natom._bonds]
+
+                new_molecule._calculate_centroid()
+                new_molecule._forcefield = molecule._forcefield
+                new_molecule._potential_energy = molecule._potential_energy
+                new_molecule._generate_contact_matrix()
+
+                new_molecules.append(new_molecule)
+        return new_molecules
 
     @staticmethod
-    def loadfrompdb(name, path_pdb, include_atomtype=False):
+    def _loadfrompdb(name, path_pdb, include_atomtype=False):
         """
-
-        :param name:
-        :param path_pdb:
-        :param include_atomtype:
-        :return:
+        Load Crystal from a PDB file. If include_atomtype is set to True, it also uses the 'atomtype' program from
+        AmberTools to identify the atom types contained in the pdb file. If the pdb file contain the 'CONECT' keyword,
+        bonds are taken from it. Alternatively, they can be generated with the 'atomtype' program.
+        :param name: ID of the crystal, usually the basename of the PDB file
+        :param path_pdb: Path of the PDB file
+        :param include_atomtype: Include the identification of the atom types
+        :return: Crystal Object
         """
-        import numpy as np
-        from PyPol.Defaults.defaults import equivalent_atom_types
-        from PyPol.utilities import cell2box, point_in_box
-        import os
 
         new_crystal = Crystal(name)
+        molecules = list()
         # Open pdb file
         bonds_imported = False
         file_pdb = open(path_pdb)
         for line in file_pdb:
             # Import Crystal Properties
             if line.startswith("CRYST1"):
-                new_crystal.cell_parameters = np.array(
+                new_crystal._cell_parameters = np.array(
                     [float(line[6:15]) / 10., float(line[15:24]) / 10., float(line[24:33]) / 10.,
                      float(line[33:40]), float(line[40:47]), float(line[47:54])])
-                new_crystal.box = cell2box(new_crystal.cell_parameters)
+                new_crystal._box = cell2box(new_crystal._cell_parameters)
 
-                new_crystal.volume = np.linalg.det(new_crystal.box)
+                new_crystal._volume = np.linalg.det(new_crystal._box)
 
             # Import Molecular and Atom Properties
             elif line.startswith("ATOM") or line.startswith("HETATM"):
@@ -142,26 +313,26 @@ class Crystal(object):
                 atom_x, atom_y, atom_z = (float(line[30:38]) / 10., float(line[38:46]) / 10., float(line[46:54]) / 10.)
                 atom_element = line[76:78]
 
-                if not new_crystal.molecules:
-                    new_crystal.molecules.append(Molecule.load(molecule_index, molecule_name))
-                elif new_crystal.molecules[-1].index < molecule_index:
-                    new_crystal.molecules.append(Molecule.load(molecule_index, molecule_name))
+                if not molecules:
+                    molecules.append(Molecule(molecule_name, molecule_index))
+                elif molecules[-1]._index < molecule_index:
+                    molecules.append(Molecule(molecule_name, molecule_index))
 
-                for molecule in new_crystal.molecules:
-                    if molecule_index == molecule.index:
-                        molecule.atoms.append(Atom.loadfromcrd(atom_index, atom_label, None, None,
-                                                               [atom_x, atom_y, atom_z], atom_element, None))
+                for molecule in molecules:
+                    if molecule_index == molecule._index:
+                        molecule._atoms.append(Atom(index=atom_index, label=atom_label, ff_type=None, atomtype=None,
+                                                    coordinates=[atom_x, atom_y, atom_z], element=atom_element,
+                                                    bonds=None))
 
             elif line.startswith("CONECT"):
                 bonds_imported = True
                 atom_index = int(line[6:11]) - 1
                 bonds = [int(bond) - 1 for bond in line.split()[2:]]
-                for molecule in new_crystal.molecules:
-                    molecule.natoms = len(molecule.atoms)
-                    for atom in molecule.atoms:
-                        if atom_index == atom.index:
-                            atom.index = atom.index - (molecule.natoms * molecule.index)
-                            atom.bonds = [bond - (molecule.natoms * molecule.index) for bond in bonds]
+                for molecule in molecules:
+                    molecule._natoms = len(molecule._atoms)
+                    for atom in molecule._atoms:
+                        if atom_index == atom._index:
+                            atom._bonds = bonds
                             break
         file_pdb.close()
 
@@ -171,6 +342,20 @@ class Crystal(object):
                   "Try to generate a structure.ac file with the ambertool 'atomtype' or 'antechamber' and rerun "
                   "with the parameter 'include_atomtype=True'.")
             return
+
+        # Atom types that can be switched by antechamber, especially from experimental data. They are considered
+        # equivalent only during the index assignation in the generate_input module but not during the simulation.
+        equivalent_atom_types = {
+            'cq': 'cp',
+            'cd': 'c2',  # Not true but equivalent for the index assignation. It should be 'cd': 'cc'. However,
+            'cc': 'c2',  # antechamber tend to switch them when the ring is not perfectly planar.
+            'cf': 'ce',
+            'ch': 'cg',
+            'nd': 'nc',
+            'nf': 'ne',
+            'pd': 'pc',
+            'pf': 'pe',
+        }
 
         if include_atomtype:
             path_ac = path_pdb[:-3] + "ac"
@@ -186,108 +371,109 @@ class Crystal(object):
                     if line.startswith("BOND"):
                         a1 = int(line[9:14]) - 1
                         a2 = int(line[14:19]) - 1
-                        for molecule in new_crystal.molecules:
-                            for atom in molecule.atoms:
-                                if atom.index == a1:
-                                    if atom.bonds == [None] or atom.bonds is None:
-                                        atom.bonds = list()
-                                    atom.bonds.append(a2)
-                                elif atom.index == a2:
-                                    if atom.bonds == [None] or atom.bonds is None:
-                                        atom.bonds = list()
-                                    atom.bonds.append(a1)
+                        for molecule in molecules:
+                            for atom in molecule._atoms:
+                                if atom._index == a1:
+                                    if atom._bonds == [None] or atom._bonds is None:
+                                        atom._bonds = list()
+                                    atom._bonds.append(a2)
+                                elif atom._index == a2:
+                                    if atom._bonds == [None] or atom._bonds is None:
+                                        atom._bonds = list()
+                                    atom._bonds.append(a1)
             file_ac.close()
 
             atomtype_index = 0
-            for molecule in new_crystal.molecules:
-                molecule.natoms = len(molecule.atoms)
-                for atom in molecule.atoms:
-                    atom.type = list_atomtypes[atomtype_index]
+            for molecule in molecules:
+                molecule._natoms = len(molecule._atoms)
+                for atom in molecule._atoms:
+                    atom._type = list_atomtypes[atomtype_index]
                     if not bonds_imported:
-                        atom.index = atom.index - (molecule.natoms * molecule.index)
+                        atom._index = atom._index - (molecule._natoms * molecule._index)
                         # atom.bonds = sorted([bond - (molecule.natoms * molecule.index) for bond in atom.bonds])
-                        atom.bonds = [bond - (molecule.natoms * molecule.index) for bond in atom.bonds]
+                        atom._bonds = [bond - (molecule._natoms * molecule._index) for bond in atom._bonds]
                     atomtype_index += 1
 
         # Check if molecule contains more than one component.
-        gn = 1
-        for molecule in new_crystal.molecules:
-            for atom in molecule.atoms:
-                if not atom.group:
-                    atom.group = gn
-                    gn += 1
-                    new_crystal._recursive_group_check(atom, molecule)
+        molecules = Crystal._arrange_atoms_in_molecules(molecules)
 
-        if gn - 2 != new_crystal.molecules[-1].index:
-            new_molecule_list = list()
-            for molecule in new_crystal.molecules:
-                for atom in molecule.atoms:
-                    molecule_name = molecule.residue
-                    molecule_index = atom.group - 1
-                    if not new_molecule_list or new_molecule_list[-1].index < molecule_index:
-                        new_molecule_list.append(Molecule.load(molecule_index, molecule_name))
-                    for new_molecule in new_molecule_list:
-                        if molecule_index == new_molecule.index:
-                            new_molecule.atoms.append(atom)
-                            new_molecule.natoms = len(new_molecule.atoms)
-            new_crystal.molecules = new_molecule_list
-            for molecule in new_crystal.molecules:
-                for atom in molecule.atoms:
-                    n = int(atom.index / molecule.natoms)
-                    atom.index = atom.index - (molecule.natoms * n)
-                    atom.bonds = [bond - (molecule.natoms * n) for bond in atom.bonds]
+        # TODO Remove after test
+        # gn = 1
+        # for molecule in molecules:
+        #     for atom in molecule._atoms:
+        #         if not atom._group:
+        #             atom._group = gn
+        #             gn += 1
+        #             new_crystal._recursive_group_check(atom, molecule)
+        #
+        # if gn - 2 != molecules[-1]._index:
+        #     new_molecule_list = list()
+        #     for molecule in molecules:
+        #         for atom in molecule._atoms:
+        #             molecule_name = molecule._residue
+        #             molecule_index = atom._group - 1
+        #             if not new_molecule_list or new_molecule_list[-1]._index < molecule_index:
+        #                 new_molecule_list.append(Molecule._load(molecule_index, molecule_name))
+        #             for new_molecule in new_molecule_list:
+        #                 if molecule_index == new_molecule._index:
+        #                     new_molecule._atoms.append(atom)
+        #                     new_molecule._natoms = len(new_molecule._atoms)
+        #     molecules = new_molecule_list
+        #     for molecule in molecules:
+        #         for atom in molecule._atoms:
+        #             n = int(atom._index / molecule._natoms)
+        #             atom._index = atom._index - (molecule._natoms * n)
+        #             atom._bonds = [bond - (molecule._natoms * n) for bond in atom._bonds]
 
         # Calculate geometrical centre of each molecule and remove replicas
         new_molecule_index = 0
-        for molecule in new_crystal.molecules:
-            molecule.calculate_centroid()
-            if not point_in_box(molecule.centroid, new_crystal.box):
-                # print("Molecule '{}' removed".format(molecule.index))
-                new_crystal.molecules.remove(molecule)
-            else:
-                # print("Molecule '{}' inside the box".format(molecule.index))
-                molecule.index = new_molecule_index
+        new_molecules = []
+        for molecule in molecules:
+            if point_in_box(molecule.centroid, new_crystal._box):
+                molecule._index = new_molecule_index
+                new_molecules.append(molecule)
                 new_molecule_index += 1
-        new_crystal.Z = len(new_crystal.molecules)
-        new_crystal.path = os.path.dirname(path_pdb)
+        new_crystal._Z = len(new_molecules)
+        new_crystal._path = os.path.dirname(path_pdb) + "/"
+        new_crystal._save_coordinates(new_molecules)
         return new_crystal
 
-    def save_pdb(self, path_pdb):
+    def _save_pdb(self, path_pdb):
         """
-
-        :param path_pdb:
-        :return:
+        Save a PDB file of the crystal.
+        :param path_pdb: Output path of the file
         """
         import datetime
 
         today = datetime.datetime.now()
         file_pdb = open(path_pdb, "w")
-        file_pdb.write("{:6}    {:40}{:8}\n".format("HEADER", "Crystal " + str(self.index), today.strftime("%d-%m-%y")))
+        file_pdb.write("{:6}    {:40}{:8}\n".format("HEADER", "Crystal " + str(self._index),
+                                                    today.strftime("%d-%m-%y")))
         file_pdb.write("{:6}{:9.3f}{:9.3f}{:9.3f}{:7.2f}{:7.2f}{:7.2f}{:>11}{:>4}\n"
-                       "".format("CRYST1", self.cell_parameters[0] * 10, self.cell_parameters[1] * 10,
-                                 self.cell_parameters[2] * 10, self.cell_parameters[3], self.cell_parameters[4],
-                                 self.cell_parameters[5], "P1", self.Z))
+                       "".format("CRYST1", self._cell_parameters[0] * 10, self._cell_parameters[1] * 10,
+                                 self._cell_parameters[2] * 10, self._cell_parameters[3], self._cell_parameters[4],
+                                 self._cell_parameters[5], "P1", self._Z))
         tot_atoms = 0
-        for molecule in self.load_molecules():
-            tot_atoms += molecule.natoms
-            for atom in molecule.atoms:
-                atom_index = atom.index + 1 + (molecule.index * molecule.natoms)
+        for molecule in self._load_coordinates():
+            tot_atoms += molecule._natoms
+            for atom in molecule._atoms:
+                atom_index = atom._index + 1 + (molecule._index * molecule._natoms)
                 file_pdb.write("{:6}{:>5} {:>4}{:1}{:3} {:1}{:>4}{:1}   {:>8.3f}{:>8.3f}{:>8.3f}{:>6.2f}{:>6}"
                                "          {:>2}{:2}\n"
-                               "".format("HETATM", atom_index, atom.label, " ", molecule.residue, " ",
-                                         molecule.index + 1,
-                                         " ", atom.coordinates[0] * 10, atom.coordinates[1] * 10,
-                                         atom.coordinates[2] * 10,
-                                         1.00, " ", atom.element, " "))
+                               "".format("HETATM", atom_index, atom._label, " ", molecule._residue, " ",
+                                         molecule._index + 1,
+                                         " ", atom._coordinates[0] * 10, atom._coordinates[1] * 10,
+                                         atom._coordinates[2] * 10,
+                                         1.00, " ", atom._element, " "))
         tot_bonds = 0
-        for molecule in self.load_molecules():
-            for atom in molecule.atoms:
-                if atom.bonds:
+        for molecule in self._load_coordinates():
+            for atom in molecule._atoms:
+                if atom._bonds:
                     tot_bonds += 1
-                    n = molecule.index * molecule.natoms + 1
-                    atom_index = atom.index + n
+                    n = molecule._index * molecule._natoms + 1
+                    atom_index = atom._index + n
                     file_pdb.write("{:6}{:>5}".format("CONECT", atom_index))
-                    for bond in atom.bonds:
+                    for bond in atom._bonds:
                         bond += n
                         file_pdb.write("{:5}".format(bond))
                     file_pdb.write("\n")
@@ -295,80 +481,168 @@ class Crystal(object):
                        "".format("MASTER", 0, 0, 0, 0, 0, 0, 0, 0, tot_atoms, 0, tot_bonds, 0))
         file_pdb.close()
 
-    def save_gro(self, path_gro):
+    def _save_gro(self, path_gro):
         """
-
-        :param path_gro:
-        :return:
+        Save a Gromacs GRO file of the crystal
+        :param path_gro: Output path of the GRO file
         """
         import datetime
 
         today = datetime.datetime.now()
         file_gro = open(path_gro, "w")
-        file_gro.write("{:6}    {:40}{:8}\n".format("HEADER", "Crystal " + str(self.index), today.strftime("%d-%m-%y")))
+        file_gro.write("{:6}    {:40}{:8}\n".format("HEADER", "Crystal " + str(self._index),
+                                                    today.strftime("%d-%m-%y")))
 
         tot_atoms = 0
-        for molecule in self.load_molecules():
-            tot_atoms += molecule.natoms
+        for molecule in self._load_coordinates():
+            tot_atoms += molecule._natoms
 
         file_gro.write("{:>5}\n".format(tot_atoms))
-        for molecule in self.load_molecules():
-            for atom in molecule.atoms:
-                atom_index = atom.index + 1 + (molecule.index * molecule.natoms)
+        for molecule in self._load_coordinates():
+            for atom in molecule._atoms:
+                atom_index = atom._index + 1 + (molecule._index * molecule._natoms)
                 file_gro.write("{:>5}{:5}{:>5}{:>5}{:8.3f}{:8.3f}{:8.3f}\n"
-                               "".format(molecule.index + 1, molecule.residue, atom.label, atom_index,
-                                         atom.coordinates[0], atom.coordinates[1], atom.coordinates[2]))
+                               "".format(molecule._index + 1, molecule._residue, atom._label, atom_index,
+                                         atom._coordinates[0], atom._coordinates[1], atom._coordinates[2]))
         file_gro.write("{:>10.5f}{:>10.5f}{:>10.5f}{:>10.5f}{:>10.5f}{:>10.5f}{:>10.5f}{:>10.5f}{:>10.5f}\n"
-                       "".format(self.box[0, 0], self.box[1, 1], self.box[2, 2],
-                                 self.box[1, 0], self.box[2, 0], self.box[0, 1],
-                                 self.box[2, 1], self.box[0, 2], self.box[1, 2]))
+                       "".format(self._box[0, 0], self._box[1, 1], self._box[2, 2],
+                                 self._box[1, 0], self._box[2, 0], self._box[0, 1],
+                                 self._box[2, 1], self._box[0, 2], self._box[1, 2]))
         file_gro.close()
 
 
 class Molecule(object):
+    """
+    This class stores relevant details about a molecule and the atoms in it.
+    Parameters can be derived from a coordinate or a topology file depending on its purpose.
 
-    def __init__(self, name):
-        """
+    Attributes:\n
+    - residue: The molecule label as specified in the forcefield\n
+    - index: Index of the molecule inside the crystal\n
+    - atoms: List of Atoms objects\n
+    - natoms: Number of atoms in the molecule\n
+    - centroid: The geometrical center of the molecule\n
+    - contact_matrix: A NxN matrix (with N=natoms) with 1 elements if atoms are bonded and 0 if not.\n
 
-        :param name:
+    Methods:\n
+    - help(): print attributes and methods available
+    """
+
+    def __init__(self, name, index=None):
         """
-        self.index = None
-        self.residue = name
-        self.atoms = list()
-        self.natoms = 0
-        self.centroid = None
-        self.forcefield = None
-        self.potential_energy = 0.0
+        This class stores relevant details about a molecule and the atoms in it.
+        :param name: The molecule label as specified in the forcefield
+        """
+        self._index = index
+        self._residue = name
+        self._atoms = list()
+        self._natoms = 0
+        self._centroid = None
+        self._forcefield = None
+        self._potential_energy = 0.0
+        self._contact_matrix = None
+
+    def __str__(self):
+        return """
+Molecule {0._index}: ResidueName = {0._residue}, NumberOfAtoms = {0._natoms} 
+        """
 
     @staticmethod
-    def load(index, name):
-        """
+    def help():
+        return """
+This class stores relevant details about a molecule and the atoms in it.
+Parameters can be derived from a coordinate or a topology file depending on its purpose.
 
-        :param index:
-        :param name:
-        :return:
-        """
-        new_molecule = Molecule(name)
-        new_molecule.index = index
-        return new_molecule
+Attributes:
+- residue: The molecule label as specified in the forcefield
+- index: Index of the molecule inside the crystal
+- atoms: List of Atoms objects
+- natoms: Number of atoms in the molecule
+- centroid: The geometrical center of the molecule
+- contact_matrix: A NxN matrix (with N=natoms) with 1 elements if atoms are bonded and 0 if not.
 
-    def calculate_centroid(self):
-        """
+Example: 
+To access molecule info:
+for molecule in crystal.molecules:
+    print(molecule)
+    print("Atoms:")
+    print("Index Label Element Type Mass Charge Bonds")
+    for atom in molecule.atoms:
+        print("{0._index} {0._label} {0._element} {0._type} {0._mass} {0._charge} {0._bonds} ".format(atom))"""
 
-        :return:
-        """
-        import numpy as np
-        atoms_coordinates = self.atoms[0].coordinates
-        for atom in self.atoms[1:]:
-            atoms_coordinates = np.vstack((atoms_coordinates, atom.coordinates))
-        self.centroid = np.mean(atoms_coordinates, axis=0)
+    @property
+    def residue(self):
+        return self._residue
 
-    def save_gro(self, path_gro, append=False, header=""):
-        """
+    @property
+    def index(self):
+        return self._index
 
-        :param path_gro:
-        :param append:
-        :param header:
+    @property
+    def atoms(self):
+        return self._atoms
+
+    @property
+    def natoms(self):
+        return self._natoms
+
+    @property
+    def centroid(self):
+        if self._centroid.any():
+            return self._centroid
+        else:
+            self._calculate_centroid()
+            return self._centroid
+
+    @property
+    def contact_matrix(self):
+        if self._contact_matrix:
+            return self._contact_matrix
+        else:
+            self._generate_contact_matrix()
+            return self._contact_matrix
+
+    # TODO remove after test
+    # @staticmethod
+    # def _empty(index, name):
+    #     """
+    #     TODO useless, change __init__()
+    #     Return a new Molecule object with the specified index and name
+    #     :param index:
+    #     :param name:
+    #     :return: Molecule
+    #     """
+    #     new_molecule = Molecule(name)
+    #     new_molecule._index = index
+    #     return new_molecule
+
+    def _calculate_centroid(self):
+        """
+        Calculate the geometrical center of the molecule.
+        """
+        atoms_coordinates = self._atoms[0]._coordinates
+        for atom in self._atoms[1:]:
+            atoms_coordinates = np.vstack((atoms_coordinates, atom._coordinates))
+        self._centroid = np.mean(atoms_coordinates, axis=0)
+
+    def _generate_contact_matrix(self):
+        """
+        Generate a NxN matrix (with N=number of atoms) with 1 elements if atoms are bonded and 0 if not.
+        """
+        cmat = np.full((len(self._atoms), len(self._atoms)), 0)
+        for ai in range(len(self._atoms)):
+            atom = self._atoms[ai]
+            for bond in atom._bonds:
+                aj = bond - min([i._index for i in self._atoms])
+                cmat[ai, aj] = 1
+        self._contact_matrix = cmat
+
+    def _save_gro(self, path_gro, append=False, header=""):
+        """
+        Save a Gromcas GRO file of the molecule
+        :param path_gro: output path
+        :param append: Append new text to the file
+        :param header: Add string at the beginning of the file or end of the previous file if append is True
         :return:
         """
         import datetime
@@ -380,82 +654,169 @@ class Molecule(object):
         if header:
             file_gro.write(header + "\n")
         else:
-            file_gro.write("{:6}    {:40}{:8}\n".format("HEADER", "Molecule " + str(self.index),
+            file_gro.write("{:6}    {:40}{:8}\n".format("HEADER", "Molecule " + str(self._index),
                                                         today.strftime("%d-%m-%y")))
 
-        file_gro.write("{:>5}\n".format(len(self.atoms)))
+        file_gro.write("{:>5}\n".format(len(self._atoms)))
 
-        for atom in self.atoms:
-            atom_index = atom.index + 1 + (self.index * len(self.atoms))
+        for atom in self._atoms:
+            atom_index = atom._index + 1 + (self._index * len(self._atoms))
             file_gro.write("{:>5}{:5}{:>5}{:>5}{:8.3f}{:8.3f}{:8.3f}\n"
-                           "".format(self.index + 1, self.residue, atom.label, atom_index,
-                                     atom.coordinates[0], atom.coordinates[1], atom.coordinates[2]))
+                           "".format(self._index + 1, self._residue, atom._label, atom_index,
+                                     atom._coordinates[0], atom._coordinates[1], atom._coordinates[2]))
         file_gro.write("{:>10.5f}{:>10.5f}{:>10.5f}\n".format(1.0, 1.0, 1.0))
         file_gro.close()
 
 
 class Atom(object):
+    """
+    The Atom Class which stores relevant info about each atom of the molecule.
 
-    def __init__(self, name):
+    Attributes:\n
+    - label: Atom label as in the original coordinate file or in the forcefield if index reassignation is performed.\n
+    - index: Index of the atom inside the molecule.\n
+    - ff_type: Atom type as written in the forcefield.\n
+    - type: Atom type identified by the AmberTools program 'atomtype'.\n
+    - coordinates: Coordinates of the atom.\n
+    - element: Element of the atom.\n
+    - bonds: Index of atoms bonded to it.\n
+    - charge: Charge of the atom\n
+    - mass: Mass of the atom.
+
+    Methods:\n
+    - help(): print attributes and methods available
+    """
+
+    def __init__(self, label, index=None, ff_type=None, atomtype=None, coordinates=None, element=None, bonds=None,
+                 charge=None, mass=None):
+        """
+        The Atom Class which stores relevant info about each atom of the molecule.
+        Parameters:
+        :param label: Atom label as  written in the original coordinate file. If atom index reassignation is performed,
+        it has the label used by the forcefield.
+        :param index: Index of the atom inside the molecule.
+        :param ff_type: Atom type as written in the forcefield.
+        :param atomtype: Atom type identified by the AmberTools program 'atomtype'.
+        :param coordinates: Coordinates of the atom.
+        :param element: Element of the atom.
+        :param bonds: Index of atoms bonded to it.
+        :param charge: Charge of the atom
+        :param mass: Mass of the atom.
         """
 
-        :param name:
-        """
-        self.index = None
-        self.label = name
-        self.ff_type = None
-        self.type = None
-        self.coordinates = None
-        self.element = None
-        self.bonds = None
-        self.charge = None
-        self.mass = None
-        self.group = False
+        self._index = index
+        self._label = label
+        self._ff_type = ff_type
+        self._type = atomtype
+        self._coordinates = coordinates
+        self._element = element
+        self._bonds = bonds
+        self._charge = charge
+        self._mass = mass
+
+    def __str__(self):
+        return "Atom {0._index}: Label = {0._label}, Element = {0._element}, Type = {0._type}, Mass = {0._mass}, " \
+               "Charge = {0._charge}, Bonds = {0._bonds} ".format(self)
 
     @staticmethod
-    def loadfromcrd(index, name, ff_type, gaff_type, coordinates, element, bonds):
-        """
+    def help():
+        return """
+The Atom Class which stores relevant info about each atom of the molecule.
 
-        :param index:
-        :param name:
-        :param ff_type:
-        :param gaff_type:
-        :param coordinates:
-        :param element:
-        :param bonds:
-        :return:
-        """
-        new_atom = Atom(name)
-        new_atom.index = index
-        new_atom.ff_type = ff_type
-        new_atom.type = gaff_type
-        new_atom.coordinates = coordinates
-        new_atom.element = element
-        new_atom.bonds = bonds
-        return new_atom
+Attributes:
+- label: Atom label as  written in the original coordinate file. If atom index reassignation is performed,
+         it has the label used by the forcefield.
+- index: Index of the atom inside the molecule.
+- ff_type: Atom type as written in the forcefield.
+- type: Atom type identified by the AmberTools program 'atomtype'.
+- coordinates: Coordinates of the atom.
+- element: Element of the atom.
+- bonds: Index of atoms bonded to it.
+- charge: Charge of the atom\n
+- mass: Mass of the atom.
 
-    @staticmethod
-    def loadfromff(index, gaff_type, ff_type, name, bonds=None, coordinates=None, charge=None, mass=None):
-        """
+Example:
+To access atom info:
+for atom in molecule.atoms:
+    print(atom)"""
 
-        :param index:
-        :param gaff_type:
-        :param ff_type:
-        :param name:
-        :param bonds:
-        :param coordinates:
-        :param charge:
-        :param mass:
-        :return:
-        """
-        if bonds is None:
-            bonds = list()
-        new_atom = Atom(name)
-        new_atom.index = index
-        new_atom.type = gaff_type
-        new_atom.ff_type = ff_type
-        new_atom.coordinates = coordinates
-        new_atom.bonds = bonds
-        new_atom.charge = charge
-        new_atom.mass = mass
-        return new_atom
+    @property
+    def index(self):
+        return self._index
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @property
+    def element(self):
+        return self._element
+
+    @property
+    def bonds(self):
+        return self._bonds
+
+    @property
+    def charge(self):
+        return self._charge
+
+    @property
+    def mass(self):
+        return self._mass
+
+    # TODO remove after test
+    # @staticmethod
+    # def _loadfromcrd(index, name, ff_type, gaff_type, coordinates, element, bonds):
+    #     """
+    #
+    #     :param index:
+    #     :param name:
+    #     :param ff_type:
+    #     :param gaff_type:
+    #     :param coordinates:
+    #     :param element:
+    #     :param bonds:
+    #     :return:
+    #     """
+    #     new_atom = Atom(name)
+    #     new_atom._index = index
+    #     new_atom._ff_type = ff_type
+    #     new_atom._type = gaff_type
+    #     new_atom._coordinates = coordinates
+    #     new_atom._element = element
+    #     new_atom._bonds = bonds
+    #     return new_atom
+    #
+    # @staticmethod
+    # def _loadfromff(index, gaff_type, ff_type, name, bonds=None, coordinates=None, charge=None, mass=None):
+    #     """
+    #     TODO Useless, change __init__() and function usage
+    #     :param index:
+    #     :param gaff_type:
+    #     :param ff_type:
+    #     :param name:
+    #     :param bonds:
+    #     :param coordinates:
+    #     :param charge:
+    #     :param mass:
+    #     :return:
+    #     """
+    #     if bonds is None:
+    #         bonds = list()
+    #     new_atom = Atom(name)
+    #     new_atom._index = index
+    #     new_atom._type = gaff_type
+    #     new_atom._ff_type = ff_type
+    #     new_atom._coordinates = coordinates
+    #     new_atom._bonds = bonds
+    #     new_atom._charge = charge
+    #     new_atom._mass = mass
+    #     return new_atom

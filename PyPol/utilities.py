@@ -86,6 +86,37 @@ def get_list(elements):
         return [elements]
 
 
+def get_list_crystals(scrystals, crystals):
+    from PyPol.crystals import Crystal
+    list_crystals = list()
+    if crystals == "incomplete":
+        for sc in scrystals:
+            if sc._state == "incomplete":
+                list_crystals.append(sc)
+    if crystals == "all":
+        for sc in scrystals:
+            if sc._state != "melted":
+                list_crystals.append(sc)
+    elif crystals == "centers":
+        for sc in scrystals:
+            if sc._state != "melted" and sc._name == sc._state:
+                list_crystals.append(sc)
+    else:
+        crystals = get_list(crystals)
+        if isinstance(crystals[0], str):
+            for sc in scrystals:
+                if sc._name in crystals:
+                    list_crystals.append(sc)
+        if isinstance(crystals[0], Crystal):
+            for sc in scrystals:
+                if sc in crystals:
+                    list_crystals.append(sc)
+        else:
+            print("Something went wrong in crystal selection, please check that simulation is completed")
+            exit()
+    return list_crystals
+
+
 # Cell parameters - Box matrix interconversion
 def cell2box(cell):
     """
@@ -115,7 +146,7 @@ def box2cell(box):
     cell[0] = box[0, 0]
     cell[1] = np.sqrt(box[1, 1] ** 2 + box[0, 1] ** 2)
     cell[2] = np.sqrt(box[2, 2] ** 2 + box[1, 2] ** 2 + box[0, 2] ** 2)
-    cell[3] = np.rad2deg(np.arccos(box[0, 1] * box[0, 2] + box[1, 1] * box[1, 2] / (cell[1] * cell[2])))
+    cell[3] = np.rad2deg(np.arccos((box[0, 1] * box[0, 2] + box[1, 1] * box[1, 2]) / (cell[1] * cell[2])))
     cell[4] = np.rad2deg(np.arccos(box[0, 2] / cell[2]))
     cell[5] = np.rad2deg(np.arccos(box[0, 1] / cell[1]))
     return cell
@@ -134,8 +165,8 @@ def best_c(box, max_replica, toll=0.08):
     new_c = box[:, 2]
     distance_min = np.linalg.norm(new_c[:2])
     replica_c = 1
-    for i in sorted([i for i in range(-max_replica, max_replica) if i != 0], key=abs):
-        for j in sorted([j for j in range(-max_replica, max_replica) if i != 0], key=abs):
+    for i in sorted([i for i in range(-max_replica, max_replica+1) if i != 0], key=abs):
+        for j in sorted([j for j in range(-max_replica, max_replica+1) if i != 0], key=abs):
             for k in range(1, max_replica):
                 vz = i * box[:, 0] + j * box[:, 1] + k * box[:, 2]
                 if np.linalg.norm(vz[:2]) < distance_min:
@@ -159,8 +190,8 @@ def best_b(box, max_replica, toll=0.08):
     new_b = box[:, 1]
     distance_min = np.absolute(new_b[0])
     replica_b = 1
-    for i in sorted([i for i in range(-max_replica, max_replica) if i != 0], key=abs):
-        for j in range(1, max_replica):
+    for i in sorted([i for i in range(-max_replica, max_replica + 1) if i != 0], key=abs):
+        for j in range(1, max_replica + 1):
             vy = i * box[:, 0] + j * box[:, 1]
             if np.absolute(vy[0]) < distance_min:
                 distance_min = vy[0]
@@ -172,7 +203,27 @@ def best_b(box, max_replica, toll=0.08):
 
 
 def translate_molecule(molecule, box):
+    import numpy as np
+
+    def translate_atoms(target, vector):
+        for atom in target._atoms:
+            atom._coordinates += vector
+        target._calculate_centroid()
+        return target
+
+    if not point_in_box(molecule.centroid, box):
+        a = np.dot(molecule.centroid, np.linalg.inv(box.T))
+        for i in range(3):
+            if a[i] < 0.0:
+                translate_atoms(molecule, (int(a[i])-1) * -box[:, i])
+            elif a[i] > 1.0:
+                translate_atoms(molecule, int(a[i]) * -box[:, i])
+    return molecule
+
+
+def translate_molecule_old(molecule, box):
     """
+    TODO Remove
     Translate a molecule whose center of mass is outside the simulation box, inside it.
     :param molecule:
     :param box:
@@ -180,7 +231,7 @@ def translate_molecule(molecule, box):
     """
     import numpy as np
 
-    point = molecule.centroid
+    point = molecule._centroid
     a = box[:, 0]
     b = box[:, 1]
     c = box[:, 2]
@@ -218,9 +269,9 @@ def translate_molecule(molecule, box):
     diff3 = point[2] - int3[2]
 
     def translate_atoms(target, vector):
-        for atom in target.atoms:
-            atom.coordinates += vector
-        target.calculate_centroid()
+        for atom in target._atoms:
+            atom._coordinates += vector
+        target._calculate_centroid()
         return target
 
     if diff1 > norm_a:
@@ -247,8 +298,18 @@ def translate_molecule(molecule, box):
     return molecule
 
 
-def point_in_box(point, cell):
+def point_in_box(point, box):
+    import numpy as np
+    a = np.dot(point, np.linalg.inv(box.T))
+    if (a >= 0.).all() and (a <= 1.).all():
+        return True
+    else:
+        return False
+
+
+def point_in_box_old(point, cell):
     """
+    TODO remove
     Check if a point (molecule centre of mass) is inside the simulation box.
     :param point:
     :param cell:

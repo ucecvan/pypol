@@ -1,62 +1,355 @@
-class Project(object):
+import datetime
+import os
 
+
+class Project(object):
+    """
+    The project class that stores and manage all information and methods.
+
+    Attributes:\n
+    - name: Name of the project
+    - working_directory: path to the project folder
+    - methods: list of methods used in the project
+    - initial_crystals: list of structures imported in the project
+    - path_progress: general output file of the project
+    - path_input: Folder that contains initial structures and methods input files
+    - path_output: Folder that contains results and outputs not present in the progress file
+    - path_data: Folder that contains all simulations data files
+
+    Methods:\n
+    - help(): print attributes and methods available with examples of how to use them
+    - new_project(overwrite=False): creates a new project in the working_directory path
+    - save(): Save current project
+    - change_working_directory(path, reset_program_paths=False): Change project working directory path
+    - add_structures(path_structures, gen_unit_cell=False): Add crystal structures to the project
+    - new_method(name, package="gromacs"): Create a new Method object
+    - get_method(method_name): Get a Method object stored in the project
+    - del_method(method_name): Delete a stored Method object and all the dat, Input and Output folders used for it
+    """
     def __init__(self, path_working_directory, name="project"):
         """
         Define a new project name and location.
         :param path_working_directory:
         :param name:
         """
-        from PyPol.Defaults.defaults import package_paths, pypol_info
+        from PyPol import version
+        import pickle
+        path_packages = os.path.dirname(os.path.realpath(__file__) + "/packages.pkl")
+        if os.path.exists(path_packages):
+            with open(path_packages, "rb") as packages:
+                package_paths = pickle.load(packages)
         if path_working_directory.rstrip().endswith("/"):
             path_working_directory = path_working_directory.rstrip()[:-1]
 
-        self.working_directory = path_working_directory
-        self.name = name
-        self.path_progress = self.working_directory + "/" + self.name + "_output.dat"
-        self.path_pickle = self.working_directory + "/.pypol.pkl"
-        self.path_input = self.working_directory + "/Input/"
-        self.path_input_structures = self.working_directory + "/Input/Initial_Structures/"
-        self.path_output = self.working_directory + "/Output/"
-        self.path_data = self.working_directory + "/data/"
+        self._working_directory = path_working_directory
+        self._name = name
+        self._path_progress = self._working_directory + "/" + self._name + "_output.dat"
+        self._path_pickle = self._working_directory + "/.pypol.pkl"
+        self._path_input = self._working_directory + "/Input/"
+        self._path_input_structures = self._working_directory + "/Input/Initial_Structures/"
+        self._path_output = self._working_directory + "/Output/"
+        self._path_data = self._working_directory + "/data/"
 
-        self.initial_crystals = list()
-        self.methods = list()
+        self._initial_crystals = list()
+        self._methods = list()
 
-        self.pypol_directory = pypol_info["path"]
-        self.version = pypol_info["version"]
-        self.run_csd_python_api = package_paths["run_csd_python_api"]
-        self.atomtype = package_paths["atomtype"]
-        self.gromacs = package_paths["gromacs"]
-        self.lammps = package_paths["lammps"]
-        self.intermol = package_paths["intermol"]
-        self.plumed = package_paths["plumed"]
-        self.htt_plumed = package_paths["htt_plumed"]
+        self._pypol_directory = package_paths["path"]
+        self._version = version
+        self._atomtype = package_paths["atomtype"]
+        self._gromacs = package_paths["gromacs"]
+        self._lammps = package_paths["lammps"]
+        self._intermol = package_paths["intermol"]
+        self._plumed = package_paths["plumed"]
+        self._htt_plumed = package_paths["htt_plumed"]
 
-    def new_project(self, overwrite=False):
+    # Read-Only Properties
+    @property
+    def initial_crystals(self):
+        txt = "IDs:"
+        if self._initial_crystals:
+            for crystal in self._initial_crystals:
+                txt += crystal._name + "\n"
+        return txt
+
+    @property
+    def methods(self):
+        txt = ""
+        if self._methods:
+            for method in self._methods:
+                txt += method.__str__() + "\n"
+        return txt
+
+    @property
+    def working_directory(self):
+        return self._working_directory
+
+    @working_directory.setter
+    def working_directory(self, new_path: str):
+        self.change_working_directory(new_path, True)
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def path_progress(self):
+        return self._path_progress
+
+    @property
+    def path_data(self):
+        return self._path_data
+
+    @property
+    def path_input(self):
+        return self._path_input
+
+    @property
+    def path_output(self):
+        return self._path_output
+
+    @property
+    def atomtype_path(self):
+        return self._atomtype
+
+    @atomtype_path.setter
+    def atomtype_path(self, new_path: str):
+        if os.path.exists(new_path):
+            self._atomtype = new_path
+            for method in self._methods:
+                if hasattr(method, "_atomtype"):
+                    method._atomtype = new_path
+                for simulation in method._simulations:
+                    if hasattr(simulation, "_atomtype"):
+                        simulation._atomtype = new_path
+                    
+    @property
+    def gromacs_path(self):
+        return self._gromacs
+
+    @gromacs_path.setter
+    def gromacs_path(self, new_path: str):
+        if os.path.exists(new_path):
+            self._gromacs = new_path
+            for method in self._methods:
+                if hasattr(method, "_gromacs"):
+                    method._gromacs = new_path
+                for simulation in method._simulations:
+                    if hasattr(simulation, "_gromacs"):
+                        simulation._gromacs = new_path
+
+    @property
+    def lammps_path(self):
+        return self._lammps
+
+    @lammps_path.setter
+    def lammps_path(self, new_path: str):
+        if os.path.exists(new_path):
+            self._lammps = new_path
+            for method in self._methods:
+                if hasattr(method, "_lammps"):
+                    method._lammps = new_path
+                for simulation in method._simulations:
+                    if hasattr(simulation, "_lammps"):
+                        simulation._lammps = new_path
+
+    @property
+    def intermol_path(self):
+        return self._intermol
+
+    @intermol_path.setter
+    def intermol_path(self, new_path: str):
+        if os.path.exists(new_path):
+            self._intermol = new_path
+            for method in self._methods:
+                if hasattr(method, "_intermol"):
+                    method._intermol = new_path
+                for simulation in method._simulations:
+                    if hasattr(simulation, "_intermol"):
+                        simulation._intermol = new_path
+
+    @property
+    def plumed_path(self):
+        return self._plumed
+
+    @plumed_path.setter
+    def plumed_path(self, new_path: str):
+        if os.path.exists(new_path):
+            self._plumed = new_path
+            for method in self._methods:
+                if hasattr(method, "_plumed"):
+                    method._plumed = new_path
+                for cv in method._cvp:
+                    if hasattr(cv, "_plumed") and cv._type in ("Radial Distribution Function", "Density", "Energy"):
+                        cv._plumed = new_path
+
+    @property
+    def htt_plumed_path(self):
+        return self._htt_plumed
+
+    @htt_plumed_path.setter
+    def htt_plumed_path(self, new_path: str):
+        if os.path.exists(new_path):
+            self._htt_plumed = new_path
+            for method in self._methods:
+                if hasattr(method, "_htt_plumed"):
+                    method._htt_plumed = new_path
+                for cv in method._cvp:
+                    if hasattr(cv, "_plumed") and cv._type.startswith(("Torsional Angle", "Molecular Orientation")):
+                        cv._plumed = new_path
+
+    @staticmethod
+    def help():
+        print("""
+The project class that stores and manage all information and methods.
+
+Attributes:
+- name: Name of the project
+- working_directory: path to the project folder
+- methods: list of methods used in the project
+- initial_crystals: list of structures imported in the project
+- path_progress: general output file of the project
+- path_input: Folder that contains initial structures and methods input files
+- path_output: Folder that contains results and outputs not present in the progress file
+- path_data: Folder that contains all simulations data files
+
+Methods:
+- help(): print attributes and methods available with examples of how to use them.
+- new_project(overwrite=False): creates a new project in the working_directory path. 
+                If overwrite=True, the previous folder is deleted.
+- save(): Save current project.
+- change_working_directory(path, reset_program_paths=True): Change project working directory path. 
+                If reset_program_paths=True, also programs paths are updated. 
+- add_structures(path_structures, gen_unit_cell=False): Add crystal structures to the project in the Input folder.
+                For available file formats, please refer to the Open Babel documentation. 
+                If gen_unit_cell=True, it converts asymmetric cells to unit cells with the CSD Python API.
+- new_method(name, package="gromacs"): Create a new Method object using the Gromacs MD package.
+- get_method(method_name): Get a Method object stored in the project
+- del_method(method_name): Delete a stored Method object and all the data, Input and Output folders used for it.
+
+Examples:
+- Create a new project and print the help() function:
+from PyPol import pypol as pp
+project = pp.new_project(r'/home/Work/Project/')              # Creates a new project in folder /home/Work/Project/
+project.help()                                                # Print available attributes, methods and examples
+project.save()                                                # Save project to be used later
+
+- Load an existing project and print information
+from PyPol import pypol as pp
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder
+print(project.name)                                           # Name of the project
+print(project.working_directory)                              # Path to the project folder
+print(project.methods)                                        # List of methods used in the project
+print(project.initial_crystals)                               # List of structures imported in the project
+project.save()                                                # Save project to be used later
+
+- Change the working directory. Copy/Move the project in the new path and then run:
+from PyPol import pypol as pp                                                   
+project = pp.load_project(r'/home/Work/New_Project_Path/')    # Load project from the specified folder
+project.working_directory = r'/home/Work/New_Project_Path/'   # Change the working directory. This might take a while
+project.save()                                                # Save project to be used later
+                                                              
+- Add new crystal structures to the project:                  
+from PyPol import pypol as pp
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+project.add_structures(r'/home/Work/Structures/')             # Add all crystal structures in the given folder
+project.add_structures(r'/home/Work/Structures/str1.pdb')     # Add the specified crystal structure
+project.save()                                                # Save project to be used later      
+
+- Create a new method and print its manual:                                                                            
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.new_method('GAFF')                             # Creates a new method
+gaff.help()                                                   # Print new method manual
+project.save()                                                # Save project to be used later                           
+        
+- Retrieve an existing method:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Get an existing method
+print(gaff.package)                                           # Print method MD package
+project.save()                                                # Save project to be used later
+
+- Delete an existing method:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.del_method('GAFF')                             # Delete an existing method
+project.save()                                                # Save project to be used later""")
+
+    def __str__(self):
+        return """
+PyPol {0._version} {1}
+Project Name: {0._name}\n
+Working Directory: {0._working_directory}
+Number of Structures: {2}
+Number of Methods: {3}
+        """.format(self, datetime.datetime.now().strftime("%c"), len(self._initial_crystals), len(self._methods))
+
+    def _write_output(self):
         """
-        Generate all the fundamental directories in the project folder.
-        :param overwrite: if True, delete the previous folder
+        Write main features of the currect project to the project output file.
         :return:
         """
-        import os
-        from PyPol.utilities import create
 
-        print("PyPol {}\nNew Project: {}".format(self.version, self.name))
-        print("=" * 100)
-        if not os.path.exists(self.working_directory):
-            create(self.working_directory, arg_type='dir', backup=False)
-        else:
-            if overwrite:
-                create(self.working_directory, arg_type='dir', backup=False)
-            else:
-                print("Error: Folder already exists. "
-                      "You can change directory name or overwrite with overwrite=True")
-                exit()
-        create(self.path_input, arg_type='dir')
-        create(self.path_output, arg_type='dir')
-        create(self.path_data, arg_type='dir')
+        file_output = open(self._path_progress, "w")
+        file_output.write(self.__str__())
+        file_output.close()
 
-        self.save()
+        for method in self._methods:
+            method._write_output(self._path_progress)
+
+    # def _file2pdb(self, path_id):
+    #     """
+    #     TODO remove after test ---> Moved to preprocessing.py
+    #     Convert a structure to the .pdb file format, normalize labels and pack it.
+    #     Error: Many steps should be made since the conversion program of the CSD python API fails in the direct
+    #     conversion of many file format to the .pdb one.
+    #     :param path_id:
+    #     :return:
+    #     """
+    #     import os
+    #     print("Importing structure '{}'".format(os.path.basename(path_id)))
+    #     path_id_dir = os.path.dirname(path_id)
+    #     file_python = path_id_dir + "/converter_csd.py"
+    #
+    #     file_default = open(self._pypol_directory + "Defaults/converter_csd.py")
+    #     file_converter = open(file_python, "w")
+    #     for line in file_default:
+    #         if "PATH_TO_FILE" in line:
+    #             file_converter.write('path_id = r"{}"\n'.format(path_id))
+    #         else:
+    #             file_converter.write(line)
+    #     file_converter.close()
+    #     file_default.close()
+    #
+    #     os.system(self._run_csd_python_api + " < " + file_python)
+    #
+    # def new_project(self, overwrite=False):
+    #     """
+    #     Generate all the fundamental directories in the project folder.
+    #     :param overwrite: if True, delete the previous folder
+    #     :return:
+    #     """
+    #
+    #     from PyPol.utilities import create
+    #     from PyPol import check_package_paths
+    #
+    #     check_package_paths()
+    #
+    #     print("PyPol {}\nNew Project: {}".format(self._version, self._name))
+    #     print("=" * 100)
+    #     if not os.path.exists(self._working_directory):
+    #         create(self._working_directory, arg_type='dir', backup=False)
+    #     else:
+    #         if overwrite:
+    #             create(self._working_directory, arg_type='dir', backup=False)
+    #         else:
+    #             print("Error: Folder already exists.\n "
+    #                   "You can change directory name or overwrite with 'overwrite=True' "
+    #                   "(everything inside will be deleted)")
+    #             exit()
+    #     create(self._path_input, arg_type='dir')
+    #     create(self._path_output, arg_type='dir')
+    #     create(self._path_data, arg_type='dir')
 
     def save(self):
         """
@@ -65,33 +358,11 @@ class Project(object):
         """
         import pickle
         import os
-        # print("Saving updates...", end="")
-        if os.path.exists(self.working_directory + "/.pypol.pkl"):
-            os.rename(self.working_directory + "/.pypol.pkl", self.working_directory + "/.pypol.bck.pkl")
-        with open(self.path_pickle, "wb") as file_pickle:
+        if os.path.exists(self._working_directory + "/.pypol.pkl"):
+            os.rename(self._working_directory + "/.pypol.pkl", self._working_directory + "/.pypol.bck.pkl")
+        with open(self._path_pickle, "wb") as file_pickle:
             pickle.dump(self, file_pickle)
-        self.write_output()
-        # print("done")
-
-    def write_output(self):
-        """
-        Write main features of the currect project to the project output file.
-        :return:
-        """
-        import datetime
-        file_output = open(self.path_progress, "w")
-        today = datetime.datetime.now()
-        file_output.write("PyPol {} {}\n\n"
-                          "Project Name: {}\n"
-                          "Working Directory: {}\n\n"
-                          "Number of Structures: {}\n"
-                          "Number of Methods: {}\n\n"
-                          "".format(self.version, today.strftime("%c"), self.name, self.working_directory,
-                                    len(self.initial_crystals), len(self.methods)))
-        file_output.close()
-
-        for method in self.methods:
-            method.write_output(self.path_progress)
+        self._write_output()
 
     def change_working_directory(self, path, reset_program_paths=False):
         """
@@ -100,97 +371,59 @@ class Project(object):
         :param reset_program_paths:
         :return:
         """
-        print("Changing project directory from:\n'{}'\nto:\n'{}'".format(self.working_directory, path))
-        self.working_directory = path
-        self.path_progress = self.working_directory + "/" + self.name + "_output.dat"
-        self.path_pickle = self.working_directory + "/.pypol.pkl"
-        self.path_input = self.working_directory + "/Input/"
-        self.path_input_structures = self.working_directory + "/Input/Initial_Structures/"
-        self.path_output = self.working_directory + "/Output/"
-        self.path_data = self.working_directory + "/data/"
-        for crystal in self.initial_crystals:
-            crystal.path = self.path_input_structures + crystal.name
+        print("Changing project directory from:\n'{}'\nto:\n'{}'".format(self._working_directory, path))
+        self._working_directory = path
+        self._path_progress = self._working_directory + "/" + self._name + "_output.dat"
+        self._path_pickle = self._working_directory + "/.pypol.pkl"
+        self._path_input = self._working_directory + "/Input/"
+        self._path_input_structures = self._working_directory + "/Input/Initial_Structures/"
+        self._path_output = self._working_directory + "/Output/"
+        self._path_data = self._working_directory + "/data/"
 
-        for method in self.methods:
-            method.path_data = self.path_data + method.name + "/"
-            method.path_input = self.path_input + method.name + "/"
-            method.path_output = self.path_output + method.name + "/"
-            method.project = self
-            for crystal in method.initial_crystals:
-                crystal.path = method.path_data + crystal.name + "/"
-                crystal.molecules = crystal.load_molecules()
-                crystal.save()
+        for crystal in self._initial_crystals:
+            crystal._path = self._path_input_structures + crystal._name
 
-            for simulation in method.energy_minimisation + method.molecular_dynamics:  # + method.metadynamics !!!!
-                simulation.path_data = method.path_data
-                simulation.path_output = method.path_output
-                simulation.path_input = method.path_input
-                simulation.project = method.project
+        for method in self._methods:
+            method._path_data = self._path_data + method._name + "/"
+            method._path_input = self._path_input + method._name + "/"
+            method._path_output = self._path_output + method._name + "/"
+            method._project = self
+            for crystal in method._initial_crystals:
+                crystal._path = method._path_data + crystal._name + "/"
+                crystal._molecules = crystal._load_coordinates()
+                crystal._save_coordinates()
+
+            for simulation in method._simulations + method._simulations:  # TODO Add method.metadynamics
+                simulation._path_data = method._path_data
+                simulation._path_output = method._path_output
+                simulation._path_input = method._path_input
+                simulation._project = method._project
                 simulation.Method = method
-                simulation.mdp = simulation.path_input + simulation.name + ".mdp"
-                for crystal in simulation.crystals:
-                    crystal.path = method.path_data + crystal.name + "/"
-                    # if simulation.type == "Cell Relaxation":
-                    #     crystal.path = method.path_data + crystal.name + "/lammps/"
-                    # else:
-                    #     crystal.path = method.path_data + crystal.name + "/"
+                simulation._path_mdp = simulation._path_input + simulation._name + ".mdp"
+                for crystal in simulation._crystals:
+                    crystal._path = method._path_data + crystal._name + "/"
 
         if reset_program_paths:
-            from PyPol.Defaults.defaults import package_paths, pypol_info
+            import pickle
+            path_packages = os.path.dirname(os.path.realpath(__file__) + "/packages.pkl")
+            if os.path.exists(path_packages):
+                with open(path_packages, "rb") as packages:
+                    packages.seek(0)
+                    package_paths = pickle.load(packages)
 
-            self.pypol_directory = pypol_info["path"]
-            self.version = pypol_info["version"]
-            self.run_csd_python_api = package_paths["run_csd_python_api"]
-            self.atomtype = package_paths["atomtype"]
-            self.gromacs = package_paths["gromacs"]
-            self.lammps = package_paths["lammps"]
-            self.intermol = package_paths["intermol"]
-            self.plumed = package_paths["plumed"]
-            self.htt_plumed = package_paths["htt_plumed"]
-            for method in self.methods:
-                if method.package == "Gromacs":
-                    method.pypol_directory = pypol_info["path"]
-                    method.command = self.gromacs
-                if method.package == "LAMMPS":
-                    method.pypol_directory = pypol_info["path"]
-                    method.command = self.lammps
-                for simulation in method.energy_minimisation + method.molecular_dynamics:
-                    simulation.command = method.command
-                    if method.package != "LAMMPS" and simulation.type == "Cell Relaxation":
-                        simulation.lammps = self.lammps
-                        simulation.intermol = self.intermol
-        self.save()
+            from PyPol import version
+            self._pypol_directory = package_paths["path"]
+            self._version = version
+            self.atomtype_path = package_paths["atomtype"]
+            self.gromacs_path = package_paths["gromacs"]
+            self.lammps_path = package_paths["lammps"]
+            self.intermol_path = package_paths["intermol"]
+            self.plumed_path = package_paths["plumed"]
+            self.htt_plumed_path = package_paths["htt_plumed"]
 
-    def _file2pdb(self, path_id):
+    def add_structures(self, path_structures):  # TODO Remove gen_unit_cell=False
         """
-        Convert a structure to the .pdb file format, normalize labels and pack it.
-        Error: Many steps should be made since the conversion program of the CSD python API fails in the direct
-        conversion of many file format to the .pdb one.
-        :param path_id:
-        :return:
-        """
-        import os
-        print("Importing structure '{}'".format(os.path.basename(path_id)))
-        path_id_dir = os.path.dirname(path_id)
-        file_python = path_id_dir + "/converter_csd.py"
-
-        file_default = open(self.pypol_directory + "Defaults/converter_csd.py")
-        file_converter = open(file_python, "w")
-        for line in file_default:
-            if "PATH_TO_FILE" in line:
-                file_converter.write('path_id = r"{}"\n'.format(path_id))
-            else:
-                file_converter.write(line)
-        file_converter.close()
-        file_default.close()
-
-        os.system(self.run_csd_python_api + " < " + file_python)
-
-    def add_structures(self, path_structures, asymmetric_unit=True):
-        """
-        Error: Use the CSD Python API only if the asymmetric unit is given (use openbabel otherwise).
         Add a new set of structures in the project_folder/Input/Sets/Set_name directory.
-        :param asymmetric_unit:
         :param path_structures:
         :return:
         """
@@ -202,8 +435,9 @@ class Project(object):
         if not path_structures.endswith("/"):
             path_structures += "/"
 
-        available_file_formats_csd = ("aser", "cif", "csdsql", "csdsqlx", "identifiers", "mariadb", "mol", "mol2",
-                                      "res", "sdf", "sqlite", "sqlmol2", "pdb")  # change for openbabel
+        # TODO remove
+        # available_file_formats_csd = ("aser", "cif", "csdsql", "csdsqlx", "identifiers", "mariadb", "mol", "mol2",
+        #                               "res", "sdf", "sqlite", "sqlmol2", "pdb")
         available_file_formats_ob = ("abinit", "acesout", "acr", "adfband", "adfdftb", "adfout", "alc", "aoforce",
                                      "arc", "axsf", "bgf", "box", "bs", "c09out", "c3d1", "c3d2", "caccrt", "can",
                                      "car", "castep", "ccc", "cdjson", "cdx", "cdxml", "cif", "ck", "cml", "cmlr",
@@ -232,25 +466,27 @@ class Project(object):
         for item in items:
 
             id_name, extension = get_identifier(path_structures + item)
-            path_id = self.path_input_structures + id_name
+            path_id = self._path_input_structures + id_name
             path_structure_pdb = path_id + "/pc.pdb"
             path_structure_mol2 = path_id + "/pc.mol2"
             path_structure_ac = path_id + "/pc.ac"
-            path_structure = path_id + "/" + item
 
-            if asymmetric_unit:
-                if extension in available_file_formats_csd:
-                    # Create folder in Input
-                    create(path_id, arg_type='dir', backup=True)
-                    os.chdir(path_id)
-                    os.system("cp {}{} {}".format(path_structures, item, path_id))
-                    # Change fileformat to pdb
-                    self._file2pdb(path_structure)
-                else:
-                    print("Ignore structure '{}': unknown file format".format(item))
-                    continue
-
-            elif extension in available_file_formats_ob:
+            # TODO Remove after test ---> module moved to preprocessing.py
+            # path_structure = path_id + "/" + item
+            # if gen_unit_cell:
+            #     if extension in available_file_formats_csd:
+            #         # Create folder in Input
+            #         create(path_id, arg_type='dir', backup=True)
+            #         os.chdir(path_id)
+            #         os.system("cp {}{} {}".format(path_structures, item, path_id))
+            #         # Change fileformat to pdb
+            #         self._file2pdb(path_structure)
+            #     else:
+            #         print("Ignore structure '{}': unknown file format".format(item))
+            #         continue
+            #
+            # elif extension in available_file_formats_ob:
+            if extension in available_file_formats_ob:
                 # Create folder in Input
                 create(path_id, arg_type='dir', backup=True)
                 os.chdir(path_id)
@@ -272,81 +508,83 @@ class Project(object):
             mol = openbabel.OBMol()
             ob_conversion.ReadFile(mol, path_structure_pdb)
             ob_conversion.WriteFile(mol, path_structure_mol2)
-            os.system(self.atomtype + " -i " + path_structure_mol2 + " -f mol2 -p gaff -o " + path_structure_ac)
+            os.system(self._atomtype + " -i " + path_structure_mol2 + " -f mol2 -p gaff -o " + path_structure_ac)
 
-            new_crystal = Crystal.loadfrompdb(id_name, path_structure_pdb, include_atomtype=True)
-            new_crystal.index = len(self.initial_crystals)
-            self.initial_crystals.append(new_crystal)
-            new_crystal.save()
+            new_crystal = Crystal._loadfrompdb(id_name, path_structure_pdb, include_atomtype=True)
+            new_crystal._sim_index = len(self._initial_crystals)
+            self._initial_crystals.append(new_crystal)
+            new_crystal._save_coordinates()
 
         self.save()
         print("=" * 100)
 
-    def method(self, method_name):
+    def new_method(self, name: str, package="gromacs"):
+        """
+        Add a method to the project.
+        :param name:
+        :param package:
+        :return:
+        """
+        import copy
+        if package.lower() == "gromacs":
+            from PyPol.gromacs import Method
+            from PyPol.utilities import create
+            if self._methods:
+                for existing_method in self._methods:
+                    if existing_method._name == name:
+                        print("Error: Method name already used")
+                        return
+
+            path_new_data_directory = self._path_data + name + "/"
+            create(path_new_data_directory, arg_type="dir")
+
+            path_new_input_directory = self._path_input + name + "/"
+            create(path_new_input_directory, arg_type="dir")
+
+            path_new_output_directory = self._path_output + name + "/"
+            create(path_new_output_directory, arg_type="dir")
+
+            method = Method(name=name, command=self._gromacs, mdrun_options="", atomtype=self._atomtype,
+                            pypol_directory=self._pypol_directory, path_data=path_new_data_directory,
+                            path_output=path_new_output_directory, path_input=path_new_input_directory,
+                            intermol=self._intermol, lammps=self._lammps,
+                            initial_crystals=copy.deepcopy(self._initial_crystals), plumed=self._plumed,
+                            htt_plumed=self._htt_plumed)
+            self._methods.append(method)
+
+    def get_method(self, method_name):
         """
         Find an existing method by its name.
         :param method_name:
         :return:
         """
-        if self.methods:
-            for existing_method in self.methods:
-                if existing_method.name == method_name:
+        if self._methods:
+            for existing_method in self._methods:
+                if existing_method._name == method_name:
                     return existing_method
         print("No method found with name {}".format(method_name))
 
-    def delete_method(self, method_name):
+    def del_method(self, method_name):
         """
         Delete an existing method.
         :param method_name:
         :return:
         """
         import shutil
-        for method in self.methods:
-            if method.name == method_name:
-                shutil.rmtree(method.path_output)
-                shutil.rmtree(method.path_input)
-                shutil.rmtree(method.path_data)
-                self.methods.remove(method)
+
+        for method in self._methods:
+            if method._name == method_name:
+                delete = input("All files in folders:\n{}\n{}\n{}\nwill be deleted. Continue [y/n]? ")
+                if delete == "y":
+                    shutil.rmtree(method._path_output)
+                    shutil.rmtree(method._path_input)
+                    shutil.rmtree(method._path_data)
+                    self._methods.remove(method)
                 return
         print("No method found with name {}".format(method_name))
 
-    def add_method(self, method):
-        """
-        Add a method to the project.
-        :param method:
-        :return:
-        """
-        import copy
-        from PyPol.utilities import create
-        if self.methods:
-            for existing_method in self.methods:
-                if existing_method.name == method.name:
-                    print("Method name already used")
-                    return
 
-        method.initial_crystals = copy.deepcopy(self.initial_crystals)
-
-        path_new_data_directory = self.path_data + method.name + "/"
-        method.path_data = path_new_data_directory
-        create(path_new_data_directory, arg_type="dir")
-
-        path_new_input_directory = self.path_input + method.name + "/"
-        method.path_input = path_new_input_directory
-        create(path_new_input_directory, arg_type="dir")
-
-        path_new_output_directory = self.path_output + method.name + "/"
-        method.path_output = path_new_output_directory
-        create(path_new_output_directory, arg_type="dir")
-
-        method.atomtype = self.atomtype
-        method.pypol_directory = self.pypol_directory
-        method.command = self.gromacs
-        self.methods.append(method)
-        method.project = self
-        self.save()
-
-
-def load_project(project_folder, use_backup=False):
+def load_project(project_folder: str, use_backup=False):
     """
     Load an existing project.
     :param project_folder:
@@ -360,8 +598,44 @@ def load_project(project_folder, use_backup=False):
         file_pickle = project_folder + "/.pypol.bck.pkl"
     if os.path.exists(file_pickle):
         project = pickle.load(open(file_pickle, "rb"))
-        print("PyPol {}\nProject Name: {}\n".format(project.version, project.name))
+        print("PyPol {}\nProject Name: {}\n".format(project._version, project._name))
         return project
     else:
         print("No PyPol project found in '{}'. Use the 'Project.new_project' module to create a new project."
               "".format(project_folder))
+
+
+def new_project(path_working_directory: str, name="project", overwrite=False):
+    """
+    Generate all the fundamental directories in the project folder.
+    :param name: Name of the new project.
+    :param path_working_directory: Path to the new project directory.
+    :param overwrite: if True, delete the previous folder.
+    :return: Project
+    """
+
+    from PyPol.utilities import create
+    from PyPol import check_package_paths
+
+    check_package_paths()
+    nproject = Project(path_working_directory, name)
+
+    if not os.path.exists(nproject._working_directory):
+        print("PyPol {}\nNew Project: {}".format(nproject._version, nproject._name))
+        print("=" * 100)
+        create(nproject._working_directory, arg_type='dir', backup=False)
+    else:
+        if overwrite:
+            print("PyPol {}\nNew Project: {}".format(nproject._version, nproject._name))
+            print("=" * 100)
+            create(nproject._working_directory, arg_type='dir', backup=False)
+        else:
+            print("Error: Folder already exists.\n "
+                  "You can change directory name or overwrite with 'overwrite=True' "
+                  "(everything inside will be deleted)")
+            exit()
+    create(nproject._path_input, arg_type='dir')
+    create(nproject._path_output, arg_type='dir')
+    create(nproject._path_data, arg_type='dir')
+
+    return nproject
