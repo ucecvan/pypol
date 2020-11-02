@@ -10,5 +10,5 @@ setuptools.setup(
     author='',
     author_email='',
     description='',
-    platforms=["Linux"] # Unix?
+    platforms=["Linux"]  # Unix?
 )
