@@ -16,16 +16,16 @@ class _GroDef(object):
     Default Properties to be used in the Gromacs method and simulation classes.
 
     Attributes:\n
-    - name: Name used to specify the object and print outputs\n
-    - command: Gromacs command line\n
-    - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.\n
-    - atomtype: 'atomtype' command line\n
-    - pypol_directory: PyPol directory with defaults inputs\n
-    - path_data: data folder in which simulations are performed\n
-    - path_output: Output folder in which results are written\n
-    - path_input: Input folder to store inputs\n
-    - intermol: Path of the 'convert.py' InterMol program\n
-    - lammps: LAMMPS command line\n
+    - name: Name used to specify the object and print outputs
+    - command: Gromacs command line
+    - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
+    - atomtype: 'atomtype' command line
+    - pypol_directory: PyPol directory with defaults inputs
+    - path_data: data folder in which simulations are performed
+    - path_output: Output folder in which results are written
+    - path_input: Input folder to store inputs
+    - intermol: Path of the 'convert.py' InterMol program
+    - lammps: LAMMPS command line
     """
 
     def __init__(self, name: str, gromacs: str, mdrun_options: str, atomtype: str, pypol_directory: str,
