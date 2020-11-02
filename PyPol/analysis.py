@@ -9,7 +9,7 @@ from typing import Union
 
 from PyPol.utilities import get_list_crystals
 from PyPol.crystals import Molecule
-from PyPol.gromacs import EnergyMinimization, CellRelaxation, MolecularDynamics
+from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation  # , Metadynamics
 
 
 #

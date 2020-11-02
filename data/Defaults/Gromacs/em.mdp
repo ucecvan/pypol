@@ -3,7 +3,7 @@ emtol           = 1e-12
 emstep          = 0.01
 nsteps          = 50000
 energygrps      = system
-nstxout-compressed = 50
+nstxout         = 50
 
 cutoff-scheme   = Verlet
 nstlist         = 10

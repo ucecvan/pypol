@@ -11,8 +11,8 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
     :param generate_charges: Charge generation method used by antechamber
     :return:
     """
-    import pickle
-    package_paths = pickle.load(os.path.dirname(os.path.realpath(__file__)) + "/packages.pkl")
+    from PyPol import check_package_paths
+    package_paths = check_package_paths()
 
     path_ambertools = os.path.dirname(package_paths["atomtype"])
     path_acpype = input("Enter path for acpype.py program: ")  # https://pypi.org/project/acpype/
@@ -81,6 +81,7 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
     res_name = res_name.upper()
 
     # Generate MOL2 file with charges
+    print("Generate MOL2 molecule file")
     os.system(
         path_antechamber + " -i {0} -fi {4} -o {1}/{2}.mol2 -fo mol2 -c {3} -rn {2} -pf y -at {5} -nc 0".format(
             path_coord,
@@ -136,28 +137,34 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
     os.system("python " + path_acpype + " -p {0}.prmtop -x {0}.inpcrd -a 'gaff'".format(res_name))
 
     # Generate .itp and .top files from acpype output
-    file_top = open(path_wd + "/topol.top", "w")
-    file_top.write('; File .top created by acpype\n\n'
-                   # '#include "amber03.ff/forcefield.itp"\n'
-                   '#include "{0}.itp"\n\n'
-                   '[ System ]\n'
-                   '{0}\n\n'
-                   '[ molecules ]\n'
-                   '; Compound        nmols\n'
-                   ' {0}              1'.format(res_name))
-    file_top.close()
-
     file_acpype = open(path_wd + "/{}_GMX.top".format(res_name), "r")
+    file_top = open(path_wd + "/topol.top", "w")
+    file_top.write('; File .top created by acpype\n\n')
     file_itp = open(path_wd + "/{}.itp".format(res_name), "w")
     file_itp.write("; File .top created by acpype\n\n")
     write_to_file = False
     for line in file_acpype:
-        if line.startswith("[ atomtypes ]"):
-            write_to_file = True
-        if line.startswith("[ moleculetype ]"):
-            write_to_file = True
-        if line.startswith("[ system ]"):
+
+        if line.rstrip().startswith(("[ defaults ]", "[ system ]", "[ molecules ]")):
             write_to_file = False
+            if line.rstrip().startswith("[ defaults ]"):
+                file_top.write(line)
+                file_top.write(next(file_acpype))
+                file_top.write(next(file_acpype))
+                file_top.write('#include "{0}.itp\n\n'.format(res_name))
+            elif line.rstrip().startswith("[ system ]"):
+                file_top.write(line)
+                file_top.write(next(file_acpype))
+                file_top.write("\n")
+            elif line.rstrip().startswith("[ molecules ]"):
+                file_top.write(line)
+                file_top.write(next(file_acpype))
+                file_top.write(next(file_acpype))
+                file_top.write("\n")
+
+        elif line.rstrip().startswith(("[ moleculetype ]", "[ atomtypes ]", "[ atoms ]", "[ bonds ]", "[ pairs ]", "[ angles ]", "[ dihedrals ]")):
+            write_to_file = True
+
         if write_to_file:
             file_itp.write(line)
     file_itp.close()
@@ -182,7 +189,7 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
                   "pbc             = no      \n"
                   "emtol           = 1e-12   \n"
                   "emstep          = 0.01    \n"
-                  "cutoff-scheme   = group   \n"
+                  "cutoff-scheme   = Verlet  \n"
                   "comm-mode       = Angular \n")
     file_em.close()
 

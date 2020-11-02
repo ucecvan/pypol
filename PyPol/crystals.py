@@ -220,6 +220,7 @@ Methods:
         new_crystal._path = crystal._path
         new_crystal._cell_parameters = copy.deepcopy(crystal._cell_parameters)
         new_crystal._box = copy.deepcopy(crystal._box)
+        new_crystal._state = "incomplete"
         return new_crystal
 
     # @staticmethod
@@ -545,7 +546,7 @@ class Molecule(object):
     def __str__(self):
         return """
 Molecule {0._index}: ResidueName = {0._residue}, NumberOfAtoms = {0._natoms} 
-        """
+        """.format(self)
 
     @staticmethod
     def help():
@@ -588,18 +589,18 @@ for molecule in crystal.molecules:
 
     @property
     def centroid(self):
-        if self._centroid.any():
+        if self._centroid is None:
+            self._calculate_centroid()
             return self._centroid
         else:
-            self._calculate_centroid()
             return self._centroid
 
     @property
     def contact_matrix(self):
-        if self._contact_matrix:
+        if self._contact_matrix is None:
+            self._generate_contact_matrix()
             return self._contact_matrix
         else:
-            self._generate_contact_matrix()
             return self._contact_matrix
 
     # TODO remove after test

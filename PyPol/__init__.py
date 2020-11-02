@@ -56,7 +56,6 @@ def check_package_paths():
         package_paths = {
             "path": os.path.dirname(os.path.realpath(__file__)) + "/",
             "data": os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + "/data/",
-            "run_csd_python_api": "",
             "atomtype": "",
             "gromacs": "",
             "intermol": "",
@@ -64,11 +63,9 @@ def check_package_paths():
             "plumed": "",
             "htt_plumed": ""
         }
-        print("saving...")
         with open(os.path.dirname(os.path.realpath(__file__)) + "/packages.pkl", "wb") as file_pickle:
             pickle.dump(package_paths, file_pickle)
         print("saved")
-        print(package_paths)
 
     # Gromacs >= 2020
     if not os.path.exists(package_paths["gromacs"]):
@@ -90,31 +87,56 @@ def check_package_paths():
     if not os.path.exists(package_paths["lammps"]):
         print("Check LAMMPS path")
         cmd_lmp = _which(("lmp", "lmp_mpi", "lmp_serial", "lmp_mac", "lmp_mac_mpi"), "LAMMPS")
-        package_paths["lammps"] = cmd_lmp
+        if cmd_lmp:
+            package_paths["lammps"] = cmd_lmp
+        else:
+            print("Error: LAMMPS package not found."
+                  "Download LAMMPS at https://lammps.sandia.gov/")
+            exit()
 
     # Atomtype (AmberTools)
     if not os.path.exists(package_paths["atomtype"]):
         print("Check AmberTools folder")
         cmd_atomtype = _which(("atomtype"), "atomtype")
-        package_paths["atomtype"] = cmd_atomtype
+        if cmd_atomtype:
+            package_paths["atomtype"] = cmd_atomtype
+        else:
+            print("Error: 'atomtype' program not found."
+                  "Download AmberTools at https://ambermd.org/AmberTools.php")
+            exit()
 
     # Plumed
     if not os.path.exists(package_paths["plumed"]):
         print("Check plumed2.6 path")
         cmd_plumed = _which(("plumed", "plumed2.6", "plumed2.7"), "Plumed")
-        package_paths["plumed"] = cmd_plumed
+        if cmd_plumed:
+            package_paths["plumed"] = cmd_plumed
+        else:
+            print("Error: Plumed2 not found."
+                  "Download Plumed2 at https://github.com/plumed/plumed2")
+            exit()
 
     if not os.path.exists(package_paths["htt_plumed"]):
         print("Check hack-the-tree branch path")
         cmd_htt_plumed = _which(("htt_plumed"), "Hack-The-Tree")
-        package_paths["htt_plumed"] = cmd_htt_plumed
+        if cmd_htt_plumed:
+            package_paths["htt_plumed"] = cmd_htt_plumed
+        else:
+            print("Error: Plumed2 not found."
+                  "Download Plumed2 at https://github.com/plumed/plumed2")
+            exit()
 
     # InterMol
     if not os.path.exists(package_paths["intermol"]):
         cmd_intermol = input("Enter path of the InterMol module convert.py: ")
-        package_paths["intermol"] = cmd_intermol
+        if cmd_intermol:
+            package_paths["intermol"] = cmd_intermol
+        else:
+            print("Error: InterMol not found."
+                  "Download InterMol at https://github.com/shirtsgroup/InterMol")
+            exit()
 
     with open(os.path.dirname(os.path.realpath(__file__)) + "/packages.pkl", "wb") as file_pickle:
         pickle.dump(package_paths, file_pickle)
 
-    return
+    return package_paths

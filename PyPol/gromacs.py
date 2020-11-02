@@ -5,8 +5,8 @@ from shutil import copyfile
 from typing import Union
 
 import numpy as np
+import networkx as nx
 
-import PyPol.analysis as analysis
 from PyPol.crystals import Crystal, Molecule, Atom
 from PyPol.utilities import create, box2cell, cell2box, get_list_crystals
 
@@ -171,42 +171,43 @@ class Method(_GroDef):
     # Private methods
     def __str__(self):
         txt = """
-    Method Name: {}    
-    MD package: {}\t({})
-    Number of Molecules: {} # Only one molecule is accepted for the moment
-    Molecules:
-        """.format(self._name, self._package, self._gromacs, len(self._molecules))
+Method Name: {}    
+MD package: {}\t({})
+Number of Molecules: {} # Only one molecule is accepted for the moment
+
+Molecules:""".format(self._name, self._package, self._gromacs, len(self._molecules))
         for molecule in self._molecules:
             txt += """
-        Molecule: {}
-        Molecule .itp file: {}
-        Atoms:
-          {:8} {:8} {:8} {:8}
-            """.format(molecule._residue, molecule._forcefield, "Index", "Label", "Type", "Bonds")
+Molecule: {0._residue}
+Molecule .itp file: {0._forcefield}
+Atoms:
+  {1:8} {2:8} {3:8}{4:>6}  {5:>8}   {6:8}""".format(molecule, "Index", "Label", "Type", "Charge", "Mass", "Bonds")
             for atom in molecule._atoms:
                 txt += """
-          {:<8} {:<8} {:<8} {:<8}
-                """.format(atom._index, atom._label, atom._type, " ".join(str(bond) for bond in atom._bonds))
-
+  {0._index:<8} {0._label:<8} {0._type:<8}{0._charge:>6.3f}  {0._mass:>8.3f}   {1:<8}""".format(
+                    atom, " ".join(str(bond) for bond in atom._bonds))
+            txt += "\n"
         return txt
 
-    @staticmethod
-    def _sort_atom_types(molecularproperties: Molecule):
-        """
-        Identify the least recurring atom type in the molecule before performing atom reindex.\n
-        :param molecularproperties: Molecule obj
-        :return: starting atom for _recursive_index_search and alternatives
-        """
-        atom_types = {}
-        for atom in molecularproperties._atoms:
-            if atom._type not in atom_types.keys():
-                atom_types[atom._type] = {'number': 1, 'connections': len(atom._bonds), 'atoms': [atom._index]}
-            else:
-                atom_types[atom._type]['number'] += 1
-                atom_types[atom._type]['atoms'].append(atom._index)
-
-        starting = sorted(atom_types.items(), key=lambda t: (t[1]['number'], t[1]['connections'], t[0]))[0][1]['atoms']
-        return starting, atom_types
+    # @staticmethod
+    # def _sort_atom_types(molecularproperties: Molecule):
+    #     """
+    #     TODO Remove after test
+    #     Identify the least recurring atom type in the molecule before performing atom reindex.\n
+    #     :param molecularproperties: Molecule obj
+    #     :return: starting atom for _recursive_index_search and alternatives
+    #     """
+    #     atom_types = {}
+    #     for atom in molecularproperties._atoms:
+    #         if atom._type not in atom_types.keys():
+    #             atom_types[atom._type] = {'number': 1, 'connections': len(atom._bonds), 'atoms': [atom._index]}
+    #         else:
+    #             atom_types[atom._type]['number'] += 1
+    #             atom_types[atom._type]['atoms'].append(atom._index)
+    #
+    #     starting = sorted(atom_types.items(),
+    #                       key=lambda t: (t[1]['number'], t[1]['connections'], t[0]))[0][1]['atoms']
+    #     return starting, atom_types
 
     @staticmethod
     def _merge_atom(mol_atom: Atom, ref_atom: Atom):
@@ -222,79 +223,125 @@ class Method(_GroDef):
         new_atom._previous_index = mol_atom._index
         return new_atom
 
-    def _recursive_index_search(self, molecule: Molecule, reference: Molecule, start_1=0, start_2=0, output=None):
-        """
-        Sort atom index by checking the connection between each pair of bonded atoms and their atom types. (Algorithm)
-        TODO Explain Algorithm\n
-        :param molecule: Target Molecule
-        :param reference: Reference Molecule with forcefield parameters
-        :param start_1: Starting atom for the search
-        :param start_2: Starting reference atom for the search
-        :param output: Molecule object
-        :return:
-        """
-        if output is None:
-            output = Molecule(molecule._residue, molecule._index)
+    def _graph_v2f_index_serch(self, molecule, reference):
+        # TODO Not suitable for more than one molecule. ===> Split between molecules can be done before (new_molecule?)
+        from networkx.algorithms import isomorphism
 
-        connections_1 = [molecule._atoms[x1] for x1 in molecule._atoms[start_1]._bonds if
-                         x1 not in [mol_atom._previous_index for mol_atom in output.atoms]]
-        connections_2 = [reference._atoms[x2] for x2 in reference._atoms[start_2]._bonds if
-                         x2 not in [ref_atom._index for ref_atom in output.atoms]]
+        reference._generate_contact_matrix()
+        molecule._generate_contact_matrix()
 
-        if len(connections_1) == 0 and len(connections_2) == 0:
-            return True, output
+        nodes1, nodes2 = [], []
+        for atom in range(len(reference.atoms)):
+            nodes1.append((reference.atoms[atom]._index, {"type": reference.atoms[atom]._type}))
+            nodes2.append((molecule.atoms[atom]._index, {"type": molecule.atoms[atom]._type}))
 
-        match = False
-        for mol_atom in connections_1:
-            for ref_atom in connections_2:
-                if mol_atom._type == ref_atom._type and len(connections_1) >= len(connections_2):
-                    new_atom = self._merge_atom(mol_atom, ref_atom)
-                    output.atoms.append(new_atom)
-                    match, output = self._recursive_index_search(molecule, reference, mol_atom._index, ref_atom._index,
-                                                                 output)
-                    if match:
-                        connections_2 = [reference._atoms[x2] for x2 in reference._atoms[start_2]._bonds if
-                                         x2 not in [ref_atom._index for ref_atom in output._atoms]]
-                        break
-                    else:
-                        output._atoms.remove(new_atom)
+        def _create_graph(adjacency_matrix, nodes):
+            rows, cols = np.where(adjacency_matrix == 1)
+            edges = zip(rows.tolist(), cols.tolist())
+            gr = nx.Graph()
+            gr.add_nodes_from(nodes)
+            gr.add_edges_from(edges)
+            return gr
 
-        return match, output
+        graph1 = _create_graph(reference.contact_matrix, nodes1)
+        graph2 = _create_graph(molecule.contact_matrix, nodes2)
 
-    def _reassign_atom_index(self, molecule: Molecule, reference: Molecule):
-        """
-        Sort atom index by checking the connection between each pair of bonded atoms and their atom types.\n
-        :param molecule: Target Molecule
-        :param reference: Reference Molecule with forcefield parameters
-        :return: Molecule with forcefield atom index
-        """
-        molecule_sorted, t1 = self._sort_atom_types(molecule)
-        reference_sorted, t2 = self._sort_atom_types(reference)
+        new_molecule = Molecule(reference._residue, molecule._index)
+        GM = isomorphism.GraphMatcher(graph2, graph1, node_match=lambda a, b: a["type"] == b["type"])
+        if GM.is_isomorphic():
+            atom_map = GM.mapping
+            for i_r, i_m in atom_map.items():
+                new_atom = self._merge_atom(molecule._atoms[i_r], reference._atoms[i_m])
+                new_molecule._atoms.append(new_atom)
+            new_molecule._atoms.sort(key=lambda a: a._index)
+            new_molecule._natoms = len(new_molecule._atoms)
+            return new_molecule
+        else:
+            print("An error occurred during the index assignation:\n{}\n{}".format(new_molecule, molecule))
+            exit()
 
-        i = 0
-        new_mol = None
-        while i < len(reference_sorted):
-            mol_atom = molecule._atoms[molecule_sorted[0]]
-            ref_atom = reference._atoms[reference_sorted[i]]
-            output = Molecule(reference._residue, molecule._index)
-            new_atom = self._merge_atom(mol_atom, ref_atom)
-            output._atoms.append(new_atom)
-            condition, new_mol = self._recursive_index_search(molecule, reference,
-                                                              mol_atom._index, ref_atom._index, output)
-            if not condition:
-                i += 1
-            else:
-                new_mol._atoms.sort(key=lambda k: k._index)
-                new_mol._natoms = len(new_mol._atoms)
-                break
-
-        if new_mol.natoms != molecule._natoms:
-            print("An error occurred during the index assignation.")
-
-        return new_mol
+    #
+    # def _recursive_index_search(self, molecule: Molecule, reference: Molecule, start_1=0, start_2=0, output=None):
+    #     """
+    #     TODO Remove After V2F test
+    #     Sort atom index by checking the connection between each pair of bonded atoms and their atom types. (Algorithm)
+    #     TODO Explain Algorithm\n
+    #     :param molecule: Target Molecule
+    #     :param reference: Reference Molecule with forcefield parameters
+    #     :param start_1: Starting atom for the search
+    #     :param start_2: Starting reference atom for the search
+    #     :param output: Molecule object
+    #     :return:
+    #     """
+    #     if output is None:
+    #         output = Molecule(molecule._residue, molecule._index)
+    #
+    #     connections_1 = [molecule._atoms[x1] for x1 in molecule._atoms[start_1]._bonds if
+    #                      x1 not in [mol_atom._previous_index for mol_atom in output._atoms]]
+    #     connections_2 = [reference._atoms[x2] for x2 in reference._atoms[start_2]._bonds if
+    #                      x2 not in [ref_atom._index for ref_atom in output._atoms]]
+    #
+    #     if len(connections_1) == 0 and len(connections_2) == 0:
+    #         return True, output
+    #
+    #     match = False
+    #     for mol_atom in connections_1:
+    #         for ref_atom in connections_2:
+    #             if mol_atom._type == ref_atom._type:
+    #                 print(mol_atom._label, ref_atom._label, len(connections_1), len(connections_2))
+    #             if mol_atom._type == ref_atom._type and len(connections_1) >= len(connections_2):
+    #                 new_atom = self._merge_atom(mol_atom, ref_atom)
+    #                 output.atoms.append(new_atom)
+    #                 match, output = self._recursive_index_search(molecule, reference, mol_atom._index,
+    #                                                              ref_atom._index, output)
+    #                 if match:
+    #                     connections_2 = [reference._atoms[x2] for x2 in reference._atoms[start_2]._bonds if
+    #                                      x2 not in [ref_atom._index for ref_atom in output._atoms]]
+    #                     break
+    #                 else:
+    #                     output._atoms.remove(new_atom)
+    #
+    #     return match, output
+    #
+    # def _reassign_atom_index(self, molecule: Molecule, reference: Molecule):
+    #     """
+    #     TODO Remove After test
+    #     Sort atom index by checking the connection between each pair of bonded atoms and their atom types.\n
+    #     :param molecule: Target Molecule
+    #     :param reference: Reference Molecule with forcefield parameters
+    #     :return: Molecule with forcefield atom index
+    #     """
+    #     molecule_sorted, t1 = self._sort_atom_types(molecule)
+    #     reference_sorted, t2 = self._sort_atom_types(reference)
+    #
+    #     i = 0
+    #     new_mol = None
+    #     while i < len(reference_sorted):
+    #         mol_atom = molecule._atoms[molecule_sorted[0]]
+    #         ref_atom = reference._atoms[reference_sorted[i]]
+    #         output = Molecule(reference._residue, molecule._index)
+    #         new_atom = self._merge_atom(mol_atom, ref_atom)
+    #         output._atoms.append(new_atom)
+    #         condition, new_mol = self._recursive_index_search(molecule, reference,
+    #                                                           mol_atom._index, ref_atom._index, output)
+    #         if not condition:
+    #             i += 1
+    #         else:
+    #             new_mol._atoms.sort(key=lambda k: k._index)
+    #             new_mol._natoms = len(new_mol._atoms)
+    #             break
+    #
+    #     if new_mol._natoms != molecule._natoms:
+    #         print("An error occurred during the index assignation:\n{}\n{}".format(new_mol, molecule))
+    #         for at in range(len(new_mol._atoms)):
+    #             print(new_mol._atoms[at], "    ", molecule._atoms[at])
+    #         exit()
+    #
+    #     return new_mol
 
     def _orthogonalize(self, crystal: Crystal, target_lengths=(60., 60.)):
         """
+        TODO Probably there is a better algorithm
         Find the most orthogonal, non-primitive cell starting from the CSP-generated cell.
         Cell vector length are limited by the target length parameters defined in the generate_input module.\n
         :param crystal: Target Crystal
@@ -405,17 +452,18 @@ class Method(_GroDef):
         file_output.write(self.__str__())
 
         # Print CV available
-        file_output.write("\n   Collective Variables:\n")
-        file_output.close()
-        for cv in self._cvp:
-            cv._write_output(path_output)
+        if self._cvp:
+            file_output.write("\n   Collective Variables:\n")
+            file_output.close()
+            for cv in self._cvp:
+                cv._write_output(path_output)
 
         # Print Relative Potential Energy
         file_output = open(path_output, "a")
         file_output.write("\nSimulations:\n{:<20} ".format("IDs"))
         for simulation in self._simulations:
             if simulation._completed and not simulation._hide:
-                file_output.write("{:10} ".format(simulation._name))
+                file_output.write("{:>10} ".format(simulation._name))
         for crystal in self._initial_crystals:
             file_output.write("\n{:20} ".format(crystal._name))
             for simulation in self._simulations:
@@ -475,7 +523,8 @@ Methods:\n
                     - path_crd:         Path of the coordinate file used to generate the forcefield. The conformation of
                                         the isolated molecule is not relevant but the atom order MUST be the same one of
                                         the forcefield.
-                    - name:             Three-letters residue name of the molecule. 
+                    - name:             Three-letters residue name of the molecule, as usually specified in the topology 
+                                        file. 
                     - potential_energy: Potential energy of an isolated molecule. This is used to calculate the lattice 
                                         energy
     - get_molecule(name): return the molecule object with the specified name.
@@ -532,8 +581,8 @@ gaff = project.get_method('GAFF')                             # Retrieve an exis
 path_top = '/home/Work/InputFiles/topol.top'                  # Topology file to be used in simulations
 path_itp = '/home/Work/InputFiles/MOL.itp'                    # Molecular forcefield file
 path_crd = '/home/Work/InputFiles/molecule.mol2'              # Isolated molecule file. 
-gaff.import_topology(path_top)                                # Copy relevant part of the topology to the project folder
-gaff.import_molecule(path_itp, path_crd, "MOL", -100.00)      # Copy molecular forcefield of molecule "MOL"
+gaff.new_topology(path_top)                                # Copy relevant part of the topology to the project folder
+gaff.new_molecule(path_itp, path_crd, "MOL", -100.00)      # Copy molecular forcefield of molecule "MOL"
 gaff.generate_input(box=(50., 50., 50.), orthogonalize=True)  # Generates the input files for the simulation
 project.save()                                                # Save project to be used later  
 
@@ -586,7 +635,7 @@ project = pp.load_project(r'/home/Work/Project/')             # Load project fro
 gaff = project.get_method('GAFF')                             # Retrieve an existing method
 rdf = gaff.get_cv("rdf-com", "rdf")                           # Create the RDF object for the radial distribution func
 nvt = gaff.get_simulation("nvt")                              # Retrieve a completed simulation
-rdf.check_normal_termination(nvt)                             # Check and import resulting distributions
+rdf.get_results(nvt)                             # Check and import resulting distributions
 project.save()                                                # Save project to be used later
 
 - Create two Torsions CV and combine them in 2D distributions:
@@ -705,8 +754,8 @@ project.save()
                 atom_coordinates = [float(line[30:38]), float(line[38:46]), float(line[46:54])]
                 if atom_type in equivalent_atom_types:
                     atom_type = equivalent_atom_types[atom_type]
-                molecule.atoms.append(Atom(atom_label, index=atom_index, ff_type=atom_type, atomtype=atom_type, bonds=None,
-                                           coordinates=atom_coordinates))
+                molecule.atoms.append(Atom(atom_label, index=atom_index, ff_type=atom_type, atomtype=atom_type,
+                                           bonds=[], coordinates=atom_coordinates))
             elif line.startswith("BOND"):
                 a1 = int(line.split()[2]) - 1
                 a2 = int(line.split()[3]) - 1
@@ -767,21 +816,21 @@ project.save()
         """
         if os.path.exists(path_top):
             file_top = open(path_top, "r")
-            file_top_new = open(self._path_input + os.path.basename(path_top))
+            file_top_new = open(self._path_input + os.path.basename(path_top), "w")
             file_top_new.write("; Topology from file {}, commenting everything except Default section"
                                " and imports other than .itp files\n".format(path_top))
             for line in file_top:
-                line = line.strip()
+                line = line.lstrip()
                 if line.startswith(";") or not line:
                     continue
                 elif line.startswith("[ defaults ]"):
                     file_top_new.write(line)
-                    line = next(file_top).strip()
-                    while not line.startswith(";"):
-                        file_top.write(line)
-                        line = next(file_top).strip()
-                    file_top.write(line)
-                elif line.startswith("#include") and not line.endswith(('.itp"', ".itp'")):
+                    line = next(file_top).lstrip()
+                    while line.startswith(";"):
+                        file_top_new.write(line)
+                        line = next(file_top).lstrip()
+                    file_top_new.write(line)
+                elif line.startswith("#include") and not line.rstrip().endswith(('.itp"', ".itp'", ".itp")):
                     file_top_new.write(line)
                 else:
                     file_top_new.write("; " + line)
@@ -810,7 +859,7 @@ project.save()
             new_molecules = list()
             print("Index check...", end="")
             for molecule in crystal._load_coordinates():
-                new_molecule = self._reassign_atom_index(molecule, self._molecules[0])
+                new_molecule = self._graph_v2f_index_serch(molecule, self._molecules[0])
                 new_molecules.append(new_molecule)
 
             crystal._nmoleculestypes = np.full((len(self._molecules)), 0)
@@ -863,21 +912,21 @@ project.save()
             print("-" * 100)
         self._initial_crystals = new_crystal_list
 
-    def new_simulation(self, name, simtype, crystals="all", path_mdp=None, path_lmp_in=None, path_lmp_ff=None):
-        if simtype in ("Energy Minimisation", "em", "Cell Relaxation", "cr"):
-
-            if simtype == "Energy Minimisation":
+    def new_simulation(self, name, simtype, path_mdp=None, path_lmp_in=None, path_lmp_ff=None, crystals="all"):
+        if simtype.lower() in ("energy minimisation", "em", "cell relaxation", "cr"):
+            if simtype.lower() in ("energy minimisation", "em"):
 
                 if (name == "em" or name == "relax") and not path_mdp:
-                    print("Default file {} will be used".format(self._pypol_directory + "Defaults/Gromacs/em.mdp"))
-                    copyfile(self._pypol_directory + "Defaults/Gromacs/em.mdp", self._path_input + name + ".mdp")
-                    path_mdp = self._path_input + name + ".mdp"
+                    path_gromacs_data = os.path.dirname(self._pypol_directory[:-1]) + "/data/Defaults/Gromacs/"
+                    print("Default file {} will be used".format(path_gromacs_data + "em.mdp"))
+                    path_mdp = path_gromacs_data + "em.mdp"
 
                 simulation = EnergyMinimization(name=name,
                                                 command=self._gromacs,
                                                 mdrun_options=self._mdrun_options,
                                                 atomtype=self._atomtype,
-                                                pypol_directory=self._pypol_directory, path_data=self._path_data,
+                                                pypol_directory=self._pypol_directory,
+                                                path_data=self._path_data,
                                                 path_output=self._path_output,
                                                 path_input=self._path_input,
                                                 intermol=self._intermol,
@@ -927,7 +976,7 @@ project.save()
                 list_crystals = get_list_crystals(self._simulations[-1]._crystals, crystals)
                 for crystal in list_crystals:
                     simulation_crystal = Crystal._copy_properties(crystal)
-                    simulation_crystal.cvs = dict()
+                    simulation_crystal._cvs = dict()
                     simulation._crystals.append(simulation_crystal)
 
             if simulation._type == "Energy Minimisation":
@@ -939,14 +988,47 @@ project.save()
                     copyfile(simulation._path_lmp_in, self._path_input + "input.in")
                     simulation._path_lmp_in = self._path_input + "input.in"
                     copyfile(path_lmp_ff,
-                             self._path_input + simulation.Method._molecules[0]._name + ".lmp")  # Iter here
-                    simulation._path_lmp_ff = self._path_input + simulation.Method._molecules[0]._name + ".lmp"
+                             self._path_input + self._molecules[0]._name + ".lmp")  # Iter here
+                    simulation._path_lmp_ff = self._path_input + self._molecules[0]._name + ".lmp"
                 simulation._lammps = self._lammps
                 simulation._intermol = self._intermol
 
             self._simulations.append(simulation)
+            return simulation
 
         elif simtype in ("Molecular Dynamics", "md"):
+            if path_mdp is None:
+                path_gromacs_data = os.path.dirname(self._pypol_directory[:-1]) + "/data/Defaults/Gromacs/"
+                if name == "nvt" and not path_mdp:
+                    print("Default file {} will be used".format(path_gromacs_data + "nvt.mdp"))
+                    copyfile(path_gromacs_data + "nvt.mdp", self._path_input + "nvt.mdp")
+                    path_mdp = self._path_input + "nvt.mdp"
+                elif name == "berendsen" and not path_mdp:
+                    print("Default file {} will be used".format(path_gromacs_data + "berendsen.mdp"))
+                    copyfile(path_gromacs_data + "berendsen.mdp", self._path_input + "berendsen.mdp")
+                    path_mdp = self._path_input + "berendsen.mdp"
+                elif name == "parrinello" and not path_mdp:
+                    print("Default file {} will be used".format(path_gromacs_data + "parrinello.mdp"))
+                    copyfile(path_gromacs_data + "parrinello.mdp", self._path_input + "parrinello.mdp")
+                    path_mdp = self._path_input + "parrinello.mdp"
+                else:
+                    print("Error: No mdp file has been found.\n"
+                          "You can use the defaults mdp parameters by using the names "
+                          "'nvt', 'berendsen' or 'parrinello'\n"
+                          "You can check the relative mdp files in folder: {}"
+                          "".format(path_gromacs_data))
+                    exit()
+            else:
+                if os.path.exists(path_mdp):
+                    copyfile(path_mdp, self._path_input + name + ".mdp")
+                    path_mdp = self._path_input + name + ".mdp"
+                else:
+                    print("Error: No mdp file has been found.\n"
+                          "You can use the defaults mdp parameters by using the names "
+                          "'nvt', 'berendsen' or 'parrinello'\n"
+                          "You can check the relative mdp files in folder: {}"
+                          "".format(os.path.dirname(self._pypol_directory) + "/data/Defaults/Gromacs/"))
+                    exit()
             simulation = MolecularDynamics(name=name,
                                            command=self._gromacs,
                                            mdrun_options=self._mdrun_options,
@@ -982,7 +1064,7 @@ project.save()
                 list_crystals = get_list_crystals(self._simulations[-1]._crystals, crystals)
                 for crystal in list_crystals:
                     simulation_crystal = Crystal._copy_properties(crystal)
-                    simulation_crystal.cvs = dict()
+                    simulation_crystal._cvs = dict()
                     simulation._crystals.append(simulation_crystal)
 
             simulation._gromacs = self._gromacs
@@ -990,35 +1072,19 @@ project.save()
             simulation._path_data = self._path_data
             simulation._path_output = self._path_output
             simulation._path_input = self._path_input
-            simulation.Method = self
-            if os.path.exists(simulation._path_mdp):
-                copyfile(simulation._path_mdp, self._path_input + simulation._name + ".mdp")
-                simulation._path_mdp = self._path_input + simulation._name + ".mdp"
-            elif not os.path.exists(simulation._path_mdp):
-                if simulation._name == "nvt" and not simulation._path_mdp:
-                    print("Default file {} will be used".format(self._pypol_directory + "Defaults/Gromacs/nvt.mdp"))
-                    copyfile(self._pypol_directory + "Defaults/Gromacs/nvt.mdp", self._path_input + "nvt.mdp")
-                    simulation._path_mdp = self._path_input + "nvt.mdp"
-                elif simulation._name == "berendsen" and not simulation._path_mdp:
-                    print("Default file {} will be used"
-                          "".format(self._pypol_directory + "Defaults/Gromacs/berendsen.mdp"))
-                    copyfile(self._pypol_directory + "Defaults/Gromacs/berendsen.mdp",
-                             self._path_input + "berendsen.mdp")
-                    simulation._path_mdp = self._path_input + "berendsen.mdp"
-                elif simulation._name == "parrinello" and not simulation._path_mdp:
-                    print("Default file {} will be used"
-                          "".format(self._pypol_directory + "Defaults/Gromacs/parrinello.mdp"))
-                    copyfile(self._pypol_directory + "Defaults/Gromacs/parrinello.mdp", self._path_input +
-                             "parrinello.mdp")
-                    simulation._path_mdp = self._path_input + "parrinello.mdp"
-                else:
-                    print("Error: No mdp file has been found.\n"
-                          "You can use the defaults mdp parameters by using the names "
-                          "'nvt', 'berendsen' or 'parrinello'\n"
-                          "You can check the relative mdp files in folder: {}"
-                          "".format(self._pypol_directory + "Defaults/Gromacs/"))
-                    exit()
+
             self._simulations.append(simulation)
+            return simulation
+        else:
+            print("""
+Simulation Type '{}' not recognized. Choose between:
+- "em":   Energy minimization using Gromacs. If no mdp file is specified, the default one is used.
+- "cr":   Cell relaxation using LAMMPS. If no input or forcefiled file are specified, a new topology 
+          is obtained converting the Gromacs one with InterMol.
+- "md":   Molecular Dynamics using Gromacs. If no mdp file is specified the default ones are used.
+          Check the PyPol/data/Defaults/Gromacs folder to see or modify them.
+- "wtmd": Well-Tempered Metadynamics simulations (TODO)""".format(simtype))
+            exit()
 
     def get_simulation(self, simulation_name: str):
         """
@@ -1098,8 +1164,9 @@ project.save()
             exit()
 
     def combine_cvs(self, name, cvs):
+        from PyPol.analysis import Combine
         if all(cv.type == cvs[0].type for cv in cvs) and cvs[0].type in ("Torsional Angle", "Molecular Orientation"):
-            cv = analysis.Combine(name, cvs=cvs)
+            cv = Combine(name, cvs=cvs)
             self._cvp.append(cv)
             return cv
 
@@ -1215,7 +1282,7 @@ class _GroSim(_GroDef):
         self._type = simtype
         self._sim_index = index
         self._previous_sim = previous_sim
-        if not os.path.exists(path_mdp):
+        if not os.path.exists(path_mdp) and simtype != "Cell Relaxation":
             print("Error: File '{}' not found".format(path_mdp))
             exit()
         self._path_mdp = path_mdp
@@ -1264,7 +1331,7 @@ class _GroSim(_GroDef):
         if self.completed:
             return self._global_minima
         else:
-            print("Error: run '<simulation>.check_normal_termination()' to identify a global minima")
+            print("Error: run '<simulation>.get_results()' to identify a global minima")
 
     @property
     def hide(self):
@@ -1294,7 +1361,7 @@ class _GroSim(_GroDef):
         file_mdp.close()
         return mdp
 
-    def _check_normal_termination(self, crystal):
+    def _get_results(self, crystal):
         path_output = crystal._path + self.name + ".log"
         if os.path.exists(path_output):
             file_output = open(path_output)
@@ -1344,7 +1411,7 @@ class EnergyMinimization(_GroSim):
     Methods:\n
     - help(): Print attributes and methods
     - generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
-    - check_normal_termination(crystals="all"): check if simulations ended or a rerun is necessary.
+    - get_results(crystals="all"): check if simulations ended or a rerun is necessary.
     """
 
     def __init__(self, name, command, mdrun_options, atomtype, pypol_directory, path_data, path_output,
@@ -1411,7 +1478,7 @@ Attributes:
 Methods:
 - help(): Print attributes and methods
 - generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
-- check_normal_termination(crystals="all"): check if simulations ended or a rerun is necessary.
+- get_results(crystals="all"): check if simulations ended or a rerun is necessary.
 
 Examples: TODO"""
 
@@ -1442,7 +1509,7 @@ Examples: TODO"""
                               ''.format(self._gromacs, self._name, self._previous_sim, self._mdrun_options))
             file_script.close()
 
-    def check_normal_termination(self, crystals="all"):
+    def get_results(self, crystals="all"):
         """
         Verify if the simulation ended correctly and upload new crystal properties.
         :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
@@ -1463,7 +1530,7 @@ Examples: TODO"""
                             lattice_energy = float(line.split()[-1]) / crystal._Z - \
                                              self._molecules[0]._potential_energy
                             crystal._energy = lattice_energy
-                            crystal._completed = True
+                            crystal._state = "complete"
                             break
                 else:
                     print("An error has occurred with Gromacs. Check simulation {} in folder {}."
@@ -1532,7 +1599,7 @@ class CellRelaxation(_GroSim):
 
     Methods:\n
     - generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
-    - check_normal_termination(crystals="all"): check if simulations ended or a rerun is necessary.
+    - get_results(crystals="all"): check if simulations ended or a rerun is necessary.
 
     TODO not suitable for more than 1 molecule + not possible to define user input and forcefield.
          Transform path_lmp_ff in iterable obj for all mol
@@ -1630,7 +1697,7 @@ Attributes:
 
 Methods:
 - generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
-- check_normal_termination(crystals="all"): check if simulations ended or a rerun is necessary.
+- get_results(crystals="all"): check if simulations ended or a rerun is necessary.
 
 Examples: TODO"""
 
@@ -1642,7 +1709,7 @@ Examples: TODO"""
         :return:
         """
         os.chdir(path_gmx)
-        os.system("{0} --gro_in {1}.gro {1}.top --lammps".format(self._intermol, molecule._residue))
+        os.system("python {0} --gro_in {1}.gro {1}.top --lammps".format(self._intermol, molecule._residue))
         path_lmp = path_gmx + molecule._residue + "_converted.lmp"
 
         # Check combination rule
@@ -2011,7 +2078,7 @@ Examples: TODO"""
                 exit()
 
         if self._path_lmp_in is None:
-            self._path_lmp_in = self._pypol_directory + "/Defaults/lmp.in"
+            self._path_lmp_in = os.path.dirname(self._pypol_directory[:-1]) + "/data/Defaults/LAMMPS/lmp.in"
         else:
             print("Warning: The input file must contain the keyword 'read_data' that will be later modified to "
                   "include the generated input files")
@@ -2038,7 +2105,7 @@ Examples: TODO"""
                               ''.format(self._lammps, "input.in"))
             file_script.close()
 
-    def check_normal_termination(self, crystals="incomplete"):
+    def get_results(self, crystals="all"):
         """
         Verify if the simulation ended correctly and upload new crystal properties.
         Convert files back to the Gromacs file format.
@@ -2049,7 +2116,6 @@ Examples: TODO"""
         list_crystals = get_list_crystals(self._crystals, crystals)
         for crystal in list_crystals:
             os.chdir(crystal._path + "lammps/")
-            print(crystal._name)
             path_coord = crystal._path + "lammps/coordinates.xtc"
             path_output = crystal._path + "lammps/log.lammps"
             if os.path.exists(path_output) and os.path.exists(path_coord):
@@ -2059,10 +2125,10 @@ Examples: TODO"""
                         line = next(file_output)
                         ref_pot = self._molecules[0]._potential_energy
                         crystal._energy = float(line.split()[-1]) * 4.184 / crystal._Z - ref_pot
-                        crystal._completed = True
+                        crystal._state = "complete"
                         break
 
-                os.system("{} trjconv -f coordinates.xtc -s ../{}.tpr -pbc mol -o {}.gro <<< 2"
+                os.system("{} trjconv -f coordinates.xtc -s ../{}.tpr -pbc mol -o {}.gro <<< 0 &> PYPOL_TRJCONV_TMP "
                           "".format(self._gromacs, self._previous_sim, self._name))
 
                 os.system("tail -{0} {1}.gro > ../{1}.gro"
@@ -2127,7 +2193,7 @@ class MolecularDynamics(_GroSim):
     Methods:\n
     - help(): Print attributes and methods
     - generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
-    - check_normal_termination(crystals="all"): check if simulations ended or a rerun is necessary.
+    - get_results(crystals="all"): check if simulations ended or a rerun is necessary.
 
     TODO Example
     """
@@ -2181,7 +2247,7 @@ Attributes:
 Methods:
 - help(): Print attributes and methods
 - generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
-- check_normal_termination(crystals="all"): check if simulations ended or a rerun is necessary.
+- get_results(crystals="all"): check if simulations ended or a rerun is necessary.
 
 Examples: TODO"""
 
@@ -2203,7 +2269,8 @@ Examples: TODO"""
                               'crystal_paths="\n')
             for crystal in self.crystals:
                 file_script.write(crystal._path + "\n")
-            if self.sim_index > 0:
+
+            if os.path.exists(self.crystals[0]._path + self._previous_sim + "cpt"):
                 file_script.write('"\n\n'
                                   'for crystal in $crystal_paths ; do\n'
                                   'cd "$crystal" || exit \n'
@@ -2221,7 +2288,7 @@ Examples: TODO"""
                                   ''.format(self.command, self.name, self._previous_sim, self.mdrun_options))
             file_script.close()
 
-    def check_normal_termination(self, crystals="incomplete"):
+    def get_results(self, crystals="incomplete"):
         """
         Verify if the simulation ended correctly and upload new crystal properties.
         :param crystals: List of Crystal objects
@@ -2230,7 +2297,7 @@ Examples: TODO"""
         list_crystals = get_list_crystals(self._crystals, crystals)
 
         for crystal in list_crystals:
-            if super()._check_normal_termination(crystal):
+            if super()._get_results(crystal):
                 os.chdir(crystal._path)
                 os.system('{} energy -f {}.edr <<< "Potential" > PyPol_Temporary_Potential.txt'
                           ''.format(self.command, self.name))

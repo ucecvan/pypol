@@ -33,11 +33,9 @@ class Project(object):
         :param name:
         """
         from PyPol import version
-        import pickle
-        path_packages = os.path.dirname(os.path.realpath(__file__) + "/packages.pkl")
-        if os.path.exists(path_packages):
-            with open(path_packages, "rb") as packages:
-                package_paths = pickle.load(packages)
+        from PyPol import check_package_paths
+        package_paths = check_package_paths()
+
         if path_working_directory.rstrip().endswith("/"):
             path_working_directory = path_working_directory.rstrip()[:-1]
 
@@ -65,7 +63,7 @@ class Project(object):
     # Read-Only Properties
     @property
     def initial_crystals(self):
-        txt = "IDs:"
+        txt = "IDs:\n"
         if self._initial_crystals:
             for crystal in self._initial_crystals:
                 txt += crystal._name + "\n"
@@ -238,8 +236,6 @@ from PyPol import pypol as pp
 project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder
 print(project.name)                                           # Name of the project
 print(project.working_directory)                              # Path to the project folder
-print(project.methods)                                        # List of methods used in the project
-print(project.initial_crystals)                               # List of structures imported in the project
 project.save()                                                # Save project to be used later
 
 - Change the working directory. Copy/Move the project in the new path and then run:
@@ -253,6 +249,7 @@ from PyPol import pypol as pp
 project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
 project.add_structures(r'/home/Work/Structures/')             # Add all crystal structures in the given folder
 project.add_structures(r'/home/Work/Structures/str1.pdb')     # Add the specified crystal structure
+print(project.initial_crystals)                               # List of structures imported in the project
 project.save()                                                # Save project to be used later      
 
 - Create a new method and print its manual:                                                                            
@@ -272,12 +269,11 @@ project.save()                                                # Save project to 
 - Delete an existing method:
 from PyPol import pypol as pp                                                                                           
 project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
-gaff = project.del_method('GAFF')                             # Delete an existing method
+project.del_method('GAFF')                                    # Delete an existing method
 project.save()                                                # Save project to be used later""")
 
     def __str__(self):
-        return """
-PyPol {0._version} {1}
+        return """PyPol {0._version} {1}
 Project Name: {0._name}\n
 Working Directory: {0._working_directory}
 Number of Structures: {2}
@@ -404,12 +400,9 @@ Number of Methods: {3}
                     crystal._path = method._path_data + crystal._name + "/"
 
         if reset_program_paths:
-            import pickle
-            path_packages = os.path.dirname(os.path.realpath(__file__) + "/packages.pkl")
-            if os.path.exists(path_packages):
-                with open(path_packages, "rb") as packages:
-                    packages.seek(0)
-                    package_paths = pickle.load(packages)
+
+            from PyPol import check_package_paths
+            package_paths = check_package_paths()
 
             from PyPol import version
             self._pypol_directory = package_paths["path"]
@@ -432,12 +425,9 @@ Number of Methods: {3}
         from PyPol.utilities import create, get_identifier
         from PyPol.crystals import Crystal
 
-        if not path_structures.endswith("/"):
+        if not path_structures.endswith("/") and os.path.isdir(path_structures):
             path_structures += "/"
 
-        # TODO remove
-        # available_file_formats_csd = ("aser", "cif", "csdsql", "csdsqlx", "identifiers", "mariadb", "mol", "mol2",
-        #                               "res", "sdf", "sqlite", "sqlmol2", "pdb")
         available_file_formats_ob = ("abinit", "acesout", "acr", "adfband", "adfdftb", "adfout", "alc", "aoforce",
                                      "arc", "axsf", "bgf", "box", "bs", "c09out", "c3d1", "c3d2", "caccrt", "can",
                                      "car", "castep", "ccc", "cdjson", "cdx", "cdxml", "cif", "ck", "cml", "cmlr",
@@ -458,7 +448,7 @@ Number of Methods: {3}
         if os.path.isdir(path_structures):
             items = [f for f in os.listdir(path_structures) if os.path.isfile(path_structures + f)]
         elif os.path.isfile(path_structures):
-            items = list(os.path.basename(path_structures))
+            items = [os.path.basename(path_structures)]
             path_structures = os.path.dirname(path_structures) + "/"
         else:
             print("No such file or directory")
@@ -471,21 +461,6 @@ Number of Methods: {3}
             path_structure_mol2 = path_id + "/pc.mol2"
             path_structure_ac = path_id + "/pc.ac"
 
-            # TODO Remove after test ---> module moved to preprocessing.py
-            # path_structure = path_id + "/" + item
-            # if gen_unit_cell:
-            #     if extension in available_file_formats_csd:
-            #         # Create folder in Input
-            #         create(path_id, arg_type='dir', backup=True)
-            #         os.chdir(path_id)
-            #         os.system("cp {}{} {}".format(path_structures, item, path_id))
-            #         # Change fileformat to pdb
-            #         self._file2pdb(path_structure)
-            #     else:
-            #         print("Ignore structure '{}': unknown file format".format(item))
-            #         continue
-            #
-            # elif extension in available_file_formats_ob:
             if extension in available_file_formats_ob:
                 # Create folder in Input
                 create(path_id, arg_type='dir', backup=True)
@@ -511,11 +486,9 @@ Number of Methods: {3}
             os.system(self._atomtype + " -i " + path_structure_mol2 + " -f mol2 -p gaff -o " + path_structure_ac)
 
             new_crystal = Crystal._loadfrompdb(id_name, path_structure_pdb, include_atomtype=True)
-            new_crystal._sim_index = len(self._initial_crystals)
+            new_crystal._index = len(self._initial_crystals)
+            new_crystal._save_pdb(path_structure_pdb)
             self._initial_crystals.append(new_crystal)
-            new_crystal._save_coordinates()
-
-        self.save()
         print("=" * 100)
 
     def new_method(self, name: str, package="gromacs"):
@@ -551,6 +524,7 @@ Number of Methods: {3}
                             initial_crystals=copy.deepcopy(self._initial_crystals), plumed=self._plumed,
                             htt_plumed=self._htt_plumed)
             self._methods.append(method)
+            return method
 
     def get_method(self, method_name):
         """
@@ -574,7 +548,8 @@ Number of Methods: {3}
 
         for method in self._methods:
             if method._name == method_name:
-                delete = input("All files in folders:\n{}\n{}\n{}\nwill be deleted. Continue [y/n]? ")
+                delete = input("All files in folders:\n{}\n{}\n{}\nwill be deleted. Continue [y/n]? "
+                               "".format(method._path_output, method._path_input, method._path_data))
                 if delete == "y":
                     shutil.rmtree(method._path_output)
                     shutil.rmtree(method._path_input)
@@ -615,9 +590,6 @@ def new_project(path_working_directory: str, name="project", overwrite=False):
     """
 
     from PyPol.utilities import create
-    from PyPol import check_package_paths
-
-    check_package_paths()
     nproject = Project(path_working_directory, name)
 
     if not os.path.exists(nproject._working_directory):
