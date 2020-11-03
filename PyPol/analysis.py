@@ -860,8 +860,10 @@ class Combine(object):
                         for atom in cv._atoms[idx_mol]:
                             file_output.write("{}({})  ".format(atom, cv._molecules[idx_mol]._atoms[atom]._label))
                 elif self._type.startswith("Torsional Angle"):
-                    # TODO add output
-                    pass
+                    file_output.write("Atoms:\n")
+                    file_output.write("\nMolecule '{}': ".format(cv._molecule._residue))
+                    for atom in cv._atoms:
+                        file_output.write("{}({})  ".format(atom, cv._molecule._atoms[atom]._label))
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
 

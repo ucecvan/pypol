@@ -189,26 +189,6 @@ Atoms:
             txt += "\n"
         return txt
 
-    # @staticmethod
-    # def _sort_atom_types(molecularproperties: Molecule):
-    #     """
-    #     TODO Remove after test
-    #     Identify the least recurring atom type in the molecule before performing atom reindex.\n
-    #     :param molecularproperties: Molecule obj
-    #     :return: starting atom for _recursive_index_search and alternatives
-    #     """
-    #     atom_types = {}
-    #     for atom in molecularproperties._atoms:
-    #         if atom._type not in atom_types.keys():
-    #             atom_types[atom._type] = {'number': 1, 'connections': len(atom._bonds), 'atoms': [atom._index]}
-    #         else:
-    #             atom_types[atom._type]['number'] += 1
-    #             atom_types[atom._type]['atoms'].append(atom._index)
-    #
-    #     starting = sorted(atom_types.items(),
-    #                       key=lambda t: (t[1]['number'], t[1]['connections'], t[0]))[0][1]['atoms']
-    #     return starting, atom_types
-
     @staticmethod
     def _merge_atom(mol_atom: Atom, ref_atom: Atom):
         """
@@ -259,85 +239,6 @@ Atoms:
         else:
             print("An error occurred during the index assignation:\n{}\n{}".format(new_molecule, molecule))
             exit()
-
-    #
-    # def _recursive_index_search(self, molecule: Molecule, reference: Molecule, start_1=0, start_2=0, output=None):
-    #     """
-    #     TODO Remove After V2F test
-    #     Sort atom index by checking the connection between each pair of bonded atoms and their atom types. (Algorithm)
-    #     TODO Explain Algorithm\n
-    #     :param molecule: Target Molecule
-    #     :param reference: Reference Molecule with forcefield parameters
-    #     :param start_1: Starting atom for the search
-    #     :param start_2: Starting reference atom for the search
-    #     :param output: Molecule object
-    #     :return:
-    #     """
-    #     if output is None:
-    #         output = Molecule(molecule._residue, molecule._index)
-    #
-    #     connections_1 = [molecule._atoms[x1] for x1 in molecule._atoms[start_1]._bonds if
-    #                      x1 not in [mol_atom._previous_index for mol_atom in output._atoms]]
-    #     connections_2 = [reference._atoms[x2] for x2 in reference._atoms[start_2]._bonds if
-    #                      x2 not in [ref_atom._index for ref_atom in output._atoms]]
-    #
-    #     if len(connections_1) == 0 and len(connections_2) == 0:
-    #         return True, output
-    #
-    #     match = False
-    #     for mol_atom in connections_1:
-    #         for ref_atom in connections_2:
-    #             if mol_atom._type == ref_atom._type:
-    #                 print(mol_atom._label, ref_atom._label, len(connections_1), len(connections_2))
-    #             if mol_atom._type == ref_atom._type and len(connections_1) >= len(connections_2):
-    #                 new_atom = self._merge_atom(mol_atom, ref_atom)
-    #                 output.atoms.append(new_atom)
-    #                 match, output = self._recursive_index_search(molecule, reference, mol_atom._index,
-    #                                                              ref_atom._index, output)
-    #                 if match:
-    #                     connections_2 = [reference._atoms[x2] for x2 in reference._atoms[start_2]._bonds if
-    #                                      x2 not in [ref_atom._index for ref_atom in output._atoms]]
-    #                     break
-    #                 else:
-    #                     output._atoms.remove(new_atom)
-    #
-    #     return match, output
-    #
-    # def _reassign_atom_index(self, molecule: Molecule, reference: Molecule):
-    #     """
-    #     TODO Remove After test
-    #     Sort atom index by checking the connection between each pair of bonded atoms and their atom types.\n
-    #     :param molecule: Target Molecule
-    #     :param reference: Reference Molecule with forcefield parameters
-    #     :return: Molecule with forcefield atom index
-    #     """
-    #     molecule_sorted, t1 = self._sort_atom_types(molecule)
-    #     reference_sorted, t2 = self._sort_atom_types(reference)
-    #
-    #     i = 0
-    #     new_mol = None
-    #     while i < len(reference_sorted):
-    #         mol_atom = molecule._atoms[molecule_sorted[0]]
-    #         ref_atom = reference._atoms[reference_sorted[i]]
-    #         output = Molecule(reference._residue, molecule._index)
-    #         new_atom = self._merge_atom(mol_atom, ref_atom)
-    #         output._atoms.append(new_atom)
-    #         condition, new_mol = self._recursive_index_search(molecule, reference,
-    #                                                           mol_atom._index, ref_atom._index, output)
-    #         if not condition:
-    #             i += 1
-    #         else:
-    #             new_mol._atoms.sort(key=lambda k: k._index)
-    #             new_mol._natoms = len(new_mol._atoms)
-    #             break
-    #
-    #     if new_mol._natoms != molecule._natoms:
-    #         print("An error occurred during the index assignation:\n{}\n{}".format(new_mol, molecule))
-    #         for at in range(len(new_mol._atoms)):
-    #             print(new_mol._atoms[at], "    ", molecule._atoms[at])
-    #         exit()
-    #
-    #     return new_mol
 
     def _orthogonalize(self, crystal: Crystal, target_lengths=(60., 60.)):
         """
@@ -555,10 +456,10 @@ Methods:\n
                     - "energy":  TODO
                 Use the <cv>.help() method to obtain details on how to use it.
     - combine_cvs(name, cvs): Torsions ("tor") and MolecularOrientation ("mo") objects are combined in ND distributions.
+    - ggfd(name, cv): Sort crystals in groups according to their similarity in the distribution used or to predefined
+                group boundaries.
     - get_cv(name): return the CV parameters object with the specified name.
     - del_cv(name): delete the CV parameters object with the specified name.
-    - ggfd(name, cv): Sort crystals in groups according to their similarity in the distribution used or to predifined
-                group boundaries
     - new_clustering_parameters(name, cvs): Creates a new clustering parameters object. CVs are divided in group and 
                 distribution types. Initially, crystals are sorted according to the group they belong. A distance matrix
                 is generated and a clustering analysis using the FSFDP algorithm is then performed in each group.
@@ -581,8 +482,8 @@ gaff = project.get_method('GAFF')                             # Retrieve an exis
 path_top = '/home/Work/InputFiles/topol.top'                  # Topology file to be used in simulations
 path_itp = '/home/Work/InputFiles/MOL.itp'                    # Molecular forcefield file
 path_crd = '/home/Work/InputFiles/molecule.mol2'              # Isolated molecule file. 
-gaff.new_topology(path_top)                                # Copy relevant part of the topology to the project folder
-gaff.new_molecule(path_itp, path_crd, "MOL", -100.00)      # Copy molecular forcefield of molecule "MOL"
+gaff.new_topology(path_top)                                   # Copy relevant part of the topology to the project folder
+gaff.new_molecule(path_itp, path_crd, "MOL", -100.00)         # Copy molecular forcefield of molecule "MOL"
 gaff.generate_input(box=(50., 50., 50.), orthogonalize=True)  # Generates the input files for the simulation
 project.save()                                                # Save project to be used later  
 
@@ -617,7 +518,7 @@ path_mdp = '/home/Work/InputFiles/nvt.mdp'                    # Gromacs mdp file
 nvt = gaff.new_simulation("nvt", "md", path_mdp)              # Create a new simulation
 project.save()                                                # Save project to be used later
 
-- Create a new CollectiveVariable object, modify some of his attributes and generate the plumed inputs: 
+- Create a new Collective Variable object, modify some of his attributes and generate the plumed inputs: 
 from PyPol import pypol as pp                                                                                           
 project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
 gaff = project.get_method('GAFF')                             # Retrieve an existing method
@@ -635,7 +536,7 @@ project = pp.load_project(r'/home/Work/Project/')             # Load project fro
 gaff = project.get_method('GAFF')                             # Retrieve an existing method
 rdf = gaff.get_cv("rdf-com", "rdf")                           # Create the RDF object for the radial distribution func
 nvt = gaff.get_simulation("nvt")                              # Retrieve a completed simulation
-rdf.get_results(nvt)                             # Check and import resulting distributions
+rdf.get_results(nvt)                                          # Check and import resulting distributions
 project.save()                                                # Save project to be used later
 
 - Create two Torsions CV and combine them in 2D distributions:
@@ -939,6 +840,8 @@ project.save()
                                                 hide=False)
             else:
                 # TODO Check if CellRelaxation needs an Energy minimization step before
+                # if (not self._simulations and path_lmp_in is None) or (not self._simulations and path_lmp_ff is None):
+                #     print("Error: You must specify LAMMPS inputs")
                 simulation = CellRelaxation(name=name,
                                             command=self._gromacs,
                                             mdrun_options=self._mdrun_options,
@@ -1480,7 +1383,25 @@ Methods:
 - generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
 - get_results(crystals="all"): check if simulations ended or a rerun is necessary.
 
-Examples: TODO"""
+Examples: 
+- Generate inputs for all the crystals, including a bash script to run all simulations:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Retrieve an existing method
+em = gaff.get_simulation("em")                                # Retrieve an existing simulation
+em.generate_input(bash_script=True)                           # Copy the MDP file in each crystal directory
+project.save()                                                # Save project to be used later
+
+- Check the normal termination of each simulation and get the energy landscape:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Retrieve an existing method
+em = gaff.get_simulation("em")                                # Retrieve an existing simulation
+em.get_results()                                              # Check normal termination and import potential energy
+for crystal in em.crystals:                                   # Print the lattice energy of each crystal
+    print(crystal.name, crystal.energy)
+project.save()                                                # Save project to be used later
+"""
 
     def generate_input(self, bash_script=False, crystals="all"):
         """
@@ -1531,6 +1452,11 @@ Examples: TODO"""
                                              self._molecules[0]._potential_energy
                             crystal._energy = lattice_energy
                             crystal._state = "complete"
+                            if os.path.exists(crystal._path + self._name + ".trr"):
+                                os.chdir(crystal._path)
+                                os.system("{0._gromacs} trjconv -f {0.name}.trr -o {0.name}.xtc -s {0.name}.tpr"
+                                          "".format(self))
+                                os.remove("{0.name}.trr".format(self))
                             break
                 else:
                     print("An error has occurred with Gromacs. Check simulation {} in folder {}."
@@ -1699,7 +1625,22 @@ Methods:
 - generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
 - get_results(crystals="all"): check if simulations ended or a rerun is necessary.
 
-Examples: TODO"""
+Examples: 
+- Generate inputs for all the crystals, including a bash script to run all simulations:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Retrieve an existing method
+cr = gaff.get_simulation("cr")                                # Retrieve an existing simulation
+cr.generate_input(bash_script=True)                           # Copy the MDP file in each crystal directory
+project.save()                                                # Save project to be used later
+
+- Check the normal termination of each simulation and get the energy landscape:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Retrieve an existing method
+cr = gaff.get_simulation("cr")                                # Retrieve an existing simulation
+cr.get_results()                                              # Check normal termination and import potential energy
+project.save()                                                # Save project to be used later"""
 
     def _convert_topology(self, path_gmx, molecule):
         """
@@ -1818,7 +1759,6 @@ Examples: TODO"""
     def _check_lmp_input(self):
         """
         Check if conversion is done correctly.
-        TODO Add energy check.
         :return:
         """
         file_lmp_in = open(self._path_lmp_in)
@@ -2194,8 +2134,6 @@ class MolecularDynamics(_GroSim):
     - help(): Print attributes and methods
     - generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
     - get_results(crystals="all"): check if simulations ended or a rerun is necessary.
-
-    TODO Example
     """
 
     def __init__(self, name, command, mdrun_options, atomtype, pypol_directory, path_data, path_output,
@@ -2249,7 +2187,22 @@ Methods:
 - generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
 - get_results(crystals="all"): check if simulations ended or a rerun is necessary.
 
-Examples: TODO"""
+Examples: 
+- Generate inputs for all the crystals, including a bash script to run all simulations:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Retrieve an existing method
+nvt = gaff.get_simulation("nvt")                              # Retrieve an existing simulation
+nvt.generate_input(bash_script=True)                          # Copy the MDP file in each crystal directory
+project.save()                                                # Save project to be used later
+
+- Check the normal termination of each simulation and get the energy landscape:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Retrieve an existing method
+nvt = gaff.get_simulation("nvt")                              # Retrieve an existing simulation
+nvt.get_results()                                             # Check normal termination and import potential energy
+project.save()                                                # Save project to be used later"""
 
     def generate_input(self, bash_script=False, crystals="all"):
         """

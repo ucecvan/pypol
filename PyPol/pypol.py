@@ -568,12 +568,15 @@ def load_project(project_folder: str, use_backup=False):
     """
     import pickle
     import os
+    project_folder = os.path.realpath(project_folder)
     file_pickle = project_folder + "/.pypol.pkl"
     if use_backup:
         file_pickle = project_folder + "/.pypol.bck.pkl"
     if os.path.exists(file_pickle):
         project = pickle.load(open(file_pickle, "rb"))
         print("PyPol {}\nProject Name: {}\n".format(project._version, project._name))
+        if os.path.realpath(project._working_directory) != project_folder:
+            project.working_directory = project_folder
         return project
     else:
         print("No PyPol project found in '{}'. Use the 'Project.new_project' module to create a new project."
@@ -590,6 +593,7 @@ def new_project(path_working_directory: str, name="project", overwrite=False):
     """
 
     from PyPol.utilities import create
+    path_working_directory = os.path.realpath(path_working_directory)
     nproject = Project(path_working_directory, name)
 
     if not os.path.exists(nproject._working_directory):
