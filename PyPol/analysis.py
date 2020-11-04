@@ -403,14 +403,14 @@ project.save()                                                # Save project"""
                 cv = np.genfromtxt(path_plumed_output, skip_header=1)[:, 1:]
                 cv = np.average(cv, axis=0)
                 cv /= cv.sum()
-                crystal._cvp[self._name] = cv
+                crystal._cvs[self._name] = cv
                 # Save output and plot distribution
                 x = np.linspace(self._grid_min, self._grid_max, len(cv))
                 np.savetxt(crystal._path + "plumed_{}_{}_data.dat".format(simulation._name, self._name),
                            np.column_stack((x, cv)), fmt=("%1.3f", "%1.5f"),
                            header="Angle ProbabilityDensity")
                 if plot:
-                    plt.plot(x, crystal._cvp[self._name], "-")
+                    plt.plot(x, crystal._cvs[self._name], "-")
                     plt.xlabel("Torsional Angle / rad")
                     plt.xlim(self._grid_min, self._grid_max)
                     plt.ylabel("Probability Density")
@@ -705,14 +705,14 @@ project.save()                                                # Save project"""
             if os.path.exists(path_output):
                 cv = np.genfromtxt(path_output, skip_header=2)[:, 1:]
                 cv = np.average(cv, axis=0)
-                crystal._cvp[self._name] = cv
+                crystal._cvs[self._name] = cv
                 # Save output and plot distribution
                 x = np.linspace(self._grid_min, self._grid_max, len(cv))
                 np.savetxt(crystal._path + "plumed_{}_{}_data.dat".format(simulation._name, self._name),
                            np.column_stack((x, cv)), fmt=("%1.3f", "%1.5f"),
                            header="Angle ProbabilityDensity")
                 if plot:
-                    plt.plot(x, crystal._cvp[self._name], "-")
+                    plt.plot(x, crystal._cvs[self._name], "-")
                     plt.xlabel("Intermolecular Angle / rad")
                     plt.xlim(self._grid_min, self._grid_max)
                     plt.ylabel("Probability Density")
@@ -741,11 +741,11 @@ project.save()                                                # Save project"""
         file_hd.write("# Tolerance = {}\n#\n# Structures HD".format(round(cutoff, 5)))
         ref = np.sin(np.linspace(0., np.pi, self._grid_bins))
         for crystal in list_crystals:
-            if not (self._name in crystal._cvp):
+            if not (self._name in crystal._cvs):
                 print("Error: A distribution for this simulation has not been generated.\n"
                       "Remember to run the check_normal_termination after running plumed.")
                 exit()
-            hd = hellinger(crystal._cvp[self._name], ref)
+            hd = hellinger(crystal._cvs[self._name], ref)
             file_hd.write("{:35} {:3.3f}\n".format(crystal._name, hd))
             if hd < cutoff:
                 crystal._state = "melted"
@@ -1074,15 +1074,15 @@ project.save()                                                # Save project"""
             if os.path.exists(path_output):
                 cv_dist = np.genfromtxt(path_output, skip_header=1)[:, 1:]
                 cv_dist = np.average(cv_dist, axis=0)
-                crystal._cvp[self._name] = cv_dist.reshape(self._grid_bins)
+                crystal._cvs[self._name] = cv_dist.reshape(self._grid_bins)
                 if len(self._cvs) == 2:
                     # Save output and plot distribution
                     np.savetxt(crystal._path + "plumed_{}_{}_data.dat".format(simulation._name, self._name),
-                               crystal._cvp[self._name],
+                               crystal._cvs[self._name],
                                header="Probability Density Grid.")
                     extent = self._cvs[0].grid_min, self._cvs[0].grid_max, self._cvs[1].grid_min, self._cvs[1].grid_max
 
-                    plt.imshow(crystal._cvp[self._name], interpolation="nearest", cmap="viridis", extent=extent)
+                    plt.imshow(crystal._cvs[self._name], interpolation="nearest", cmap="viridis", extent=extent)
                     plt.xlabel("{} / rad".format(self._cvs[0]._name))
                     plt.ylabel("{} / rad".format(self._cvs[1]._name))
                     plt.savefig(crystal._path + "plumed_{}_{}_plot.png".format(simulation._name, self._name), dpi=300)
@@ -1420,13 +1420,13 @@ project.save()                                                # Save project
                 rho = crystal._Z / crystal._volume
 
                 cv = np.where(r > 0, dn_r / (4 * np.pi * rho * r ** 2 * self._grid_space) / crystal._Z * 2.0, 0.)
-                crystal._cvp[self._name] = cv
+                crystal._cvs[self._name] = cv
                 # Save output and plot distribution
                 np.savetxt(crystal._path + "plumed_{}_{}_data.dat".format(simulation._name, self._name),
                            np.column_stack((r, cv)), fmt=("%1.4f", "%1.5f"),
                            header="r RDF")
                 if plot:
-                    plt.plot(r, crystal._cvp[self._name], "-")
+                    plt.plot(r, crystal._cvs[self._name], "-")
                     plt.xlabel("r / nm")
                     plt.xlim(self._r_0, d_max)
                     plt.ylabel("Probability Density")
@@ -1720,7 +1720,7 @@ project.save()
                     continue
 
                 index.append(crystal._name)
-                dist = crystal._cvp[self._dist_cv._name] / np.sum(crystal._cvp[self._dist_cv._name])
+                dist = crystal._cvs[self._dist_cv._name] / np.sum(crystal._cvs[self._dist_cv._name])
                 c = 0
                 for i in its.product(*combinations):
                     dataset[cidx, c] = np.sum(dist[np.ix_(self._group_bins[i[0]], self._group_bins[i[1]])])
@@ -1736,10 +1736,10 @@ project.save()
 
             for crystal in simulation._crystals:
                 if crystal._state != "melted":
-                    crystal._cvp[self._name] = copy.deepcopy(cvg)
+                    crystal._cvs[self._name] = copy.deepcopy(cvg)
                     for group in groups.keys():
                         if crystal._name in groups[group]:
-                            crystal._cvp[self._name][group] += 1
+                            crystal._cvs[self._name][group] += 1
                             break
 
         elif self._grouping_method == "similarity":
@@ -1757,10 +1757,10 @@ project.save()
             nbar = 1
 
             for i in range(len(crystals) - 1):
-                di = crystals[i]._cvp[self._dist_cv._name]
+                di = crystals[i]._cvs[self._dist_cv._name]
                 ci = crystals[i]._name
                 for j in range(i + 1, len(crystals)):
-                    dj = crystals[j]._cvp[self._dist_cv._name]
+                    dj = crystals[j]._cvs[self._dist_cv._name]
                     cj = crystals[j]._name
                     bar.update(nbar)
                     nbar += 1
@@ -1791,10 +1791,10 @@ project.save()
                 cvg[i] = 0
 
             for crystal in crystals:
-                crystal._cvp[self._name] = copy.deepcopy(cvg)
+                crystal._cvs[self._name] = copy.deepcopy(cvg)
                 for group in groups.keys():
                     if crystal._name in groups[group]:
-                        crystal._cvp[self._name][group] += 1
+                        crystal._cvs[self._name][group] += 1
                         break
 
         file_hd = open("{}/Groups_{}_{}.dat".format(simulation._path_output, self._name, simulation._name), "w")
@@ -1996,11 +1996,11 @@ class Clustering(object):
     def _sort_crystal(crystal, combinations, threshold=0.8):
         for i in combinations._index[:-1]:
             for j in combinations.columns[:-2]:
-                if crystal._cvp[j][combinations.loc[i, j]] > threshold and j == combinations.columns[-3]:
+                if crystal._cvs[j][combinations.loc[i, j]] > threshold and j == combinations.columns[-3]:
                     combinations.loc[i, "Structures"].append(crystal)
                     combinations.loc[i, "Number of structures"] += 1
                     return combinations
-                elif crystal._cvp[j][combinations.loc[i, j]] < threshold:
+                elif crystal._cvs[j][combinations.loc[i, j]] < threshold:
                     break
         combinations.loc["Others", "Structures"].append(crystal)
         combinations.loc["Others", "Number of structures"] += 1
@@ -2081,9 +2081,9 @@ class Clustering(object):
                         nbar = 1
 
                         for i in range(len(crystals) - 1):
-                            di = crystals[i]._cvp[cv._name]
+                            di = crystals[i]._cvs[cv._name]
                             for j in range(i + 1, len(crystals)):
-                                dj = crystals[j]._cvp[cv._name]
+                                dj = crystals[j]._cvs[cv._name]
                                 bar.update(nbar)
                                 nbar += 1
                                 if cv._type == "Radial Distribution Function":
