@@ -195,6 +195,19 @@ class Project(object):
                     if hasattr(cv, "_plumed") and cv._type.startswith(("Torsional Angle", "Molecular Orientation")):
                         cv._plumed = new_path
 
+    @property
+    def pypol_path(self):
+        return self._pypol_directory
+
+    @pypol_path.setter
+    def pypol_path(self, new_path: str):
+        new_path = os.path.realpath(new_path)
+        if os.path.exists(new_path) and os.path.exists(new_path + "/PyPol/pypol.py"):
+            self._pypol_directory = new_path
+            for method in self._methods:
+                if hasattr(method, "_pypol_directory"):
+                    method._pypol_directory = new_path
+
     @staticmethod
     def help():
         print("""
@@ -403,7 +416,7 @@ Number of Methods: {3}
             package_paths = check_package_paths()
 
             from PyPol import version
-            self._pypol_directory = package_paths["path"]
+            self.pypol_path = package_paths["path"]
             self._version = version
             self.atomtype_path = package_paths["atomtype"]
             self.gromacs_path = package_paths["gromacs"]

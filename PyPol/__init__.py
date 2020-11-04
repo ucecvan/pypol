@@ -67,6 +67,12 @@ def check_package_paths():
             pickle.dump(package_paths, file_pickle)
         print("saved")
 
+    # Pypol
+    if not os.path.exists(package_paths["path"]):
+        package_paths["path"] = os.path.dirname(os.path.realpath(__file__)) + "/"
+    if not os.path.exists(package_paths["data"]):
+        package_paths["data"] = os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + "/data/"
+
     # Gromacs >= 2020
     if not os.path.exists(package_paths["gromacs"]):
         print("Check Gromacs path")
