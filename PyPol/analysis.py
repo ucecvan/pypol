@@ -401,7 +401,16 @@ project.save()                                                # Save project"""
             path_plumed_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_plumed_output):
                 cv = np.genfromtxt(path_plumed_output, skip_header=1)[:, 1:]
-                cv = np.average(cv, axis=0)
+                if any(np.isnan(cv)):
+                    cv = np.nanmean(cv, axis=0)
+                    if any(np.isnan(cv)):
+                        print("Error: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
+                              "".format(crystal))
+                        exit()
+                    print("Warning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
+                          "".format(crystal))
+                else:
+                    cv = np.average(cv, axis=0)
                 cv /= cv.sum()
                 crystal._cvs[self._name] = cv
                 # Save output and plot distribution
@@ -704,7 +713,16 @@ project.save()                                                # Save project"""
             path_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_output):
                 cv = np.genfromtxt(path_output, skip_header=2)[:, 1:]
-                cv = np.average(cv, axis=0)
+                if any(np.isnan(cv)):
+                    cv = np.nanmean(cv, axis=0)
+                    if any(np.isnan(cv)):
+                        print("Error: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
+                              "".format(crystal))
+                        exit()
+                    print("Warning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
+                          "".format(crystal))
+                else:
+                    cv = np.average(cv, axis=0)
                 crystal._cvs[self._name] = cv
                 # Save output and plot distribution
                 x = np.linspace(self._grid_min, self._grid_max, len(cv))
@@ -738,8 +756,8 @@ project.save()                                                # Save project"""
         list_crystals = get_list_crystals(simulation._crystals, crystals)
 
         file_hd = open("{}/HD_{}.dat".format(simulation._path_output, simulation._name), "w")
-        file_hd.write("# Tolerance = {}\n#\n# Structures HD".format(round(cutoff, 5)))
-        ref = np.sin(np.linspace(0., np.pi, self._grid_bins))
+        file_hd.write("# Tolerance = {}\n#\n# Structures HD\n".format(round(cutoff, 5)))
+        ref = np.sin(np.linspace(0., np.pi, self._grid_bins + 1))
         for crystal in list_crystals:
             if not (self._name in crystal._cvs):
                 print("Error: A distribution for this simulation has not been generated.\n"
@@ -1073,7 +1091,16 @@ project.save()                                                # Save project"""
             path_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_output):
                 cv_dist = np.genfromtxt(path_output, skip_header=1)[:, 1:]
-                cv_dist = np.average(cv_dist, axis=0)
+                if any(np.isnan(cv_dist)):
+                    cv_dist = np.nanmean(cv_dist, axis=0)
+                    if any(np.isnan(cv_dist)):
+                        print("Error: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
+                              "".format(crystal))
+                        exit()
+                    print("Warning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
+                          "".format(crystal))
+                else:
+                    cv_dist = np.average(cv_dist, axis=0)
                 crystal._cvs[self._name] = cv_dist.reshape(self._grid_bins)
                 if len(self._cvs) == 2:
                     # Save output and plot distribution
@@ -1412,7 +1439,16 @@ project.save()                                                # Save project
             path_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_output):
                 dn_r = np.genfromtxt(path_output, skip_header=1)[:, 2:]
-                dn_r = np.average(dn_r, axis=0)
+                if any(np.isnan(dn_r)):
+                    dn_r = np.nanmean(dn_r, axis=0)
+                    if any(np.isnan(dn_r)):
+                        print("Error: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
+                              "".format(crystal))
+                        exit()
+                    print("Warning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
+                          "".format(crystal))
+                else:
+                    dn_r = np.average(dn_r, axis=0)
 
                 d_max = 0.5 * np.min(np.array([crystal._box[0, 0], crystal._box[1, 1], crystal._box[2, 2]]))
                 nbins = int(round((d_max - self._r_0) / self._grid_space, 0))
