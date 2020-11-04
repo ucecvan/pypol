@@ -494,6 +494,18 @@ class MolecularOrientation(_CollectiveVariable):
     def molecules(self):
         return self._molecules
 
+    def __str__(self):
+        txt = super(MolecularOrientation, self).__str__()
+        if self._atoms:
+            for idx_mol in range(len(self._molecules)):
+                txt += "\nMolecule '{}': ".format(self._molecules[idx_mol]._residue)
+                for atom in self._atoms[idx_mol]:
+                    txt += "{}({})    ".format(atom, self._molecules[idx_mol]._atoms[atom]._label)
+            txt += "\n"
+        else:
+            txt += "No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n".format(self._name)
+        return txt
+
     @staticmethod
     def help():
         return """
