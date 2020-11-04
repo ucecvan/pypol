@@ -401,13 +401,13 @@ project.save()                                                # Save project"""
             path_plumed_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_plumed_output):
                 cv = np.genfromtxt(path_plumed_output, skip_header=1)[:, 1:]
-                if any(np.isnan(cv)):
+                if np.isnan(cv).any():
                     cv = np.nanmean(cv, axis=0)
-                    if any(np.isnan(cv)):
-                        print("Error: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
+                    if np.isnan(cv).any():
+                        print("\nError: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
                               "".format(crystal))
                         exit()
-                    print("Warning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
+                    print("\nWarning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
                           "".format(crystal))
                 else:
                     cv = np.average(cv, axis=0)
@@ -713,13 +713,13 @@ project.save()                                                # Save project"""
             path_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_output):
                 cv = np.genfromtxt(path_output, skip_header=2)[:, 1:]
-                if any(np.isnan(cv)):
+                if np.isnan(cv).any():
                     cv = np.nanmean(cv, axis=0)
-                    if any(np.isnan(cv)):
-                        print("Error: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
+                    if np.isnan(cv).any():
+                        print("\nError: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
                               "".format(crystal))
                         exit()
-                    print("Warning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
+                    print("\nWarning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
                           "".format(crystal))
                 else:
                     cv = np.average(cv, axis=0)
@@ -1091,13 +1091,13 @@ project.save()                                                # Save project"""
             path_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_output):
                 cv_dist = np.genfromtxt(path_output, skip_header=1)[:, 1:]
-                if any(np.isnan(cv_dist)):
+                if np.isnan(cv_dist).any():
                     cv_dist = np.nanmean(cv_dist, axis=0)
-                    if any(np.isnan(cv_dist)):
-                        print("Error: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
+                    if np.isnan(cv_dist).any():
+                        print("\nError: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
                               "".format(crystal))
                         exit()
-                    print("Warning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
+                    print("\nWarning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
                           "".format(crystal))
                 else:
                     cv_dist = np.average(cv_dist, axis=0)
@@ -1439,13 +1439,13 @@ project.save()                                                # Save project
             path_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_output):
                 dn_r = np.genfromtxt(path_output, skip_header=1)[:, 2:]
-                if any(np.isnan(dn_r)):
+                if np.isnan(dn_r).any():
                     dn_r = np.nanmean(dn_r, axis=0)
-                    if any(np.isnan(dn_r)):
-                        print("Error: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
+                    if np.isnan(dn_r).any():
+                        print("\nError: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
                               "".format(crystal))
                         exit()
-                    print("Warning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
+                    print("\nWarning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
                           "".format(crystal))
                 else:
                     dn_r = np.average(dn_r, axis=0)
