@@ -1270,12 +1270,12 @@ project.save()                                                # Save project
         if atoms == "all":
             atoms = list()
             for atom in molecule._atoms:
-                atoms.append(atom._sim_index)
+                atoms.append(atom._index)
         elif atoms == "non-hydrogen":
             atoms = list()
             for atom in molecule._atoms:
                 if atom._element.upper() != "H":
-                    atoms.append(atom._sim_index)
+                    atoms.append(atom._index)
         self._atoms.append(list(atoms))
         self._molecules.append(molecule)
 
@@ -1860,7 +1860,7 @@ def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, in
             else:
                 line = "{}=".format(keyword)
             for atom in atoms:
-                atom_idx = atom + mol._sim_index * mol._natoms + 1
+                atom_idx = atom + mol._index * mol._natoms + 1
                 line += str(atom_idx) + ","
             line = line[:-1] + "\n"
             lines.append(line)
@@ -1991,7 +1991,7 @@ class Clustering(object):
 
     @staticmethod
     def _sort_crystal(crystal, combinations, threshold=0.8):
-        for i in combinations._sim_index[:-1]:
+        for i in combinations._index[:-1]:
             for j in combinations.columns[:-2]:
                 if crystal._cvp[j][combinations.loc[i, j]] > threshold and j == combinations.columns[-3]:
                     combinations.loc[i, "Structures"].append(crystal)
@@ -2122,7 +2122,7 @@ class Clustering(object):
             for index in combinations.index:
                 if combinations.at[index, "Structures"]:
                     idx = [i._name for i in combinations.at[index, "Structures"]]
-                    for mat in combinations.loc[index, "Distance Matrix":]._sim_index:
+                    for mat in combinations.loc[index, "Distance Matrix":]._index:
                         combinations.at[index, mat] = pd.DataFrame(combinations.at[index, mat], index=idx, columns=idx)
                         with open(simulation._path_output + str(self._name) + "_similarity_matrix_" +
                                   mat.replace(" ", "") + "_" + index + ".dat", 'w') as fo:
@@ -2162,7 +2162,7 @@ class Clustering(object):
                         fo.write(self._cluster_data[index].__str__())
 
                 self._clusters[index] = {
-                    k: self._cluster_data[index]._sim_index[self._cluster_data[index]["cluster"] == k].tolist()
+                    k: self._cluster_data[index]._index[self._cluster_data[index]["cluster"] == k].tolist()
                     for k in list(self._cluster_data[index]["cluster"].unique())}
 
                 if self._centers.lower() == "energy":
@@ -2370,17 +2370,17 @@ def FSFDP(dmat: Union[pd.DataFrame, np.ndarray],
             rho[i] += kernel_function(dmat.values[i][j])
             rho[j] += kernel_function(dmat.values[i][j])
 
-    rho = pd.Series(rho, index=dmat._sim_index, name="rho")
+    rho = pd.Series(rho, index=dmat._index, name="rho")
 
     # Find sigma vector
-    sigma = pd.Series(np.full(rho.shape, -1.0), dmat._sim_index, name="sigma")
-    nn = pd.Series(np.full(rho.shape, pd.NA), dmat._sim_index, dtype="string", name="NN")
+    sigma = pd.Series(np.full(rho.shape, -1.0), dmat._index, name="sigma")
+    nn = pd.Series(np.full(rho.shape, pd.NA), dmat._index, dtype="string", name="NN")
     for i in sigma.index:
         if rho[i] == np.max(rho.values):
             continue
         else:
             sigma[i] = np.nanmin(np.where(rho > rho[i], dmat[i].values, np.nan))
-            nn[i] = str(dmat._sim_index[np.nanargmin(np.where(rho > rho[i], dmat[i].values, np.nan))])
+            nn[i] = str(dmat._index[np.nanargmin(np.where(rho > rho[i], dmat[i].values, np.nan))])
     sigma[rho.idxmax()] = np.nanmax(sigma.values)
 
     # plot results
@@ -2389,8 +2389,8 @@ def FSFDP(dmat: Union[pd.DataFrame, np.ndarray],
 
     # Assign structures to cluster centers
     dataset = pd.concat((rho, sigma, nn,
-                         pd.Series(np.full(rho.shape, pd.NA), dmat._sim_index, name="cluster"),
-                         pd.Series(np.full(rho.shape, pd.NA), dmat._sim_index, name="distance")),
+                         pd.Series(np.full(rho.shape, pd.NA), dmat._index, name="cluster"),
+                         pd.Series(np.full(rho.shape, pd.NA), dmat._index, name="distance")),
                         axis=1).sort_values(by="rho", ascending=False)
 
     for i in dataset.index:

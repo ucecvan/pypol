@@ -534,7 +534,7 @@ project.save()                                                # Save project to 
 from PyPol import pypol as pp                                                                                           
 project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
 gaff = project.get_method('GAFF')                             # Retrieve an existing method
-rdf = gaff.get_cv("rdf-com", "rdf")                           # Create the RDF object for the radial distribution func
+rdf = gaff.get_cv("rdf-com")                                  # Retrieve the RDF object
 nvt = gaff.get_simulation("nvt")                              # Retrieve a completed simulation
 rdf.get_results(nvt)                                          # Check and import resulting distributions
 project.save()                                                # Save project to be used later
@@ -2252,14 +2252,14 @@ project.save()                                                # Save project to 
         for crystal in list_crystals:
             if super()._get_results(crystal):
                 os.chdir(crystal._path)
-                os.system('{} energy -f {}.edr <<< "Potential" > PyPol_Temporary_Potential.txt'
+                os.system('{} energy -f {}.edr <<< "Potential" &> PyPol_Temporary_Potential.txt'
                           ''.format(self.gromacs, self.name))
                 file_pot = open(crystal._path + 'PyPol_Temporary_Potential.txt')
                 for line in file_pot:
                     if line.startswith("Potential"):
                         lattice_energy = float(line.split()[1]) / crystal._Z - self._molecules[0]._potential_energy
                         crystal._energy = lattice_energy
-                        crystal._completed = True
+                        crystal._state = "complete"
                         break
                 file_pot.close()
                 os.remove(crystal._path + 'PyPol_Temporary_Potential.txt')
@@ -2270,7 +2270,7 @@ project.save()                                                # Save project to 
         new_rank = dict()
         incomplete_simulations = False
         for crystal in self.crystals:
-            if crystal._completed:
+            if crystal._state == "complete":
                 new_rank[crystal._name] = crystal._energy
                 file_gro = open(crystal._path + self.name + ".gro", "r")
                 new_box = file_gro.readlines()[-1].split()
