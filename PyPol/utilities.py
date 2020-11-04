@@ -93,7 +93,7 @@ def get_list_crystals(scrystals, crystals):
         for sc in scrystals:
             if sc._state == "incomplete":
                 list_crystals.append(sc)
-    if crystals == "all":
+    elif crystals == "all":
         for sc in scrystals:
             if sc._state != "melted":
                 list_crystals.append(sc)

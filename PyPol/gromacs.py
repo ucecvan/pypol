@@ -17,7 +17,7 @@ class _GroDef(object):
 
     Attributes:\n
     - name: Name used to specify the object and print outputs
-    - command: Gromacs command line
+    - gromacs: Gromacs command line
     - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
     - atomtype: 'atomtype' command line
     - pypol_directory: PyPol directory with defaults inputs
@@ -49,7 +49,7 @@ class _GroDef(object):
         return self._name
 
     @property
-    def command(self):
+    def gromacs(self):
         return self._gromacs
 
     @property
@@ -97,7 +97,7 @@ class Method(_GroDef):
     - topology: Path to the Gromacs topology file .top.
     - nmolecules: Number of molecules (or .itp files) in the topology TODO include more than one molecule
     - crystals: list of Crystal objects contained in the method. This refers to the crystals prior to any simulation.
-    - command: Gromacs command line
+    - gromacs: Gromacs command line
     - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
     - atomtype: 'atomtype' command line
     - intermol: Path of the 'convert.py' InterMol program
@@ -115,14 +115,14 @@ class Method(_GroDef):
     - generate_input(self, box=(4., 4., 4.), orthogonalize=False): Generate the coordinate and the topology files
     """
 
-    def __init__(self, name: str, command: str, mdrun_options: str, atomtype: str, pypol_directory: str,
+    def __init__(self, name: str, gromacs: str, mdrun_options: str, atomtype: str, pypol_directory: str,
                  path_data: str, path_output: str, path_input: str, intermol: str, lammps: str, initial_crystals,
                  plumed: str, htt_plumed: str):
         """
         The Method object defines the forcefield and the simulations to be used in the analysis.
         Gromacs is used for MD simulations.\n
         :param name: Name used to specify the object and print outputs
-        :param command: Gromacs command line
+        :param gromacs: Gromacs command line
         :param mdrun_options: Options to be added to Gromacs mdrun command.
         :param atomtype: 'atomtype' command line
         :param pypol_directory: PyPol directory with defaults inputs
@@ -133,7 +133,7 @@ class Method(_GroDef):
         :param lammps: LAMMPS command line
         :param initial_crystals: list of Crystal objects
         """
-        super().__init__(name, command, mdrun_options, atomtype, pypol_directory, path_data, path_output,
+        super().__init__(name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                          path_input, intermol, lammps)
 
         self._package = "Gromacs"
@@ -405,7 +405,7 @@ Attributes:\n
     - topology: Path to the Gromacs topology file .top.
     - nmolecules: Number of molecules (or .itp files) in the topology TODO include more than one molecule
     - crystals: list of Crystal objects contained in the method. This refers to the crystals prior to any simulation.
-    - command: Gromacs command line
+    - gromacs: Gromacs command line
     - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
     - atomtype: 'atomtype' command line
     - intermol: Path of the 'convert.py' InterMol program
@@ -823,7 +823,7 @@ project.save()
                     path_mdp = path_gromacs_data + "em.mdp"
 
                 simulation = EnergyMinimization(name=name,
-                                                command=self._gromacs,
+                                                gromacs=self._gromacs,
                                                 mdrun_options=self._mdrun_options,
                                                 atomtype=self._atomtype,
                                                 pypol_directory=self._pypol_directory,
@@ -843,7 +843,7 @@ project.save()
                 # if (not self._simulations and path_lmp_in is None) or (not self._simulations and path_lmp_ff is None):
                 #     print("Error: You must specify LAMMPS inputs")
                 simulation = CellRelaxation(name=name,
-                                            command=self._gromacs,
+                                            gromacs=self._gromacs,
                                             mdrun_options=self._mdrun_options,
                                             atomtype=self._atomtype,
                                             pypol_directory=self._pypol_directory,
@@ -933,7 +933,7 @@ project.save()
                           "".format(os.path.dirname(self._pypol_directory) + "/data/Defaults/Gromacs/"))
                     exit()
             simulation = MolecularDynamics(name=name,
-                                           command=self._gromacs,
+                                           gromacs=self._gromacs,
                                            mdrun_options=self._mdrun_options,
                                            atomtype=self._atomtype,
                                            pypol_directory=self._pypol_directory,
@@ -1153,7 +1153,7 @@ class _GroSim(_GroDef):
 
     Attributes:\n
     - name: Name used to specify the object and print outputs
-    - command: Gromacs command line
+    - gromacs: Gromacs command line
     - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
     - atomtype: 'atomtype' command line
     - pypol_directory: PyPol directory with defaults inputs
@@ -1171,14 +1171,14 @@ class _GroSim(_GroDef):
     - hide: show or not the the relative potential energy file in the output file
     """
 
-    def __init__(self, name, command, mdrun_options, atomtype, pypol_directory, path_data, path_output,
+    def __init__(self, name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                  path_input, intermol, lammps, simtype: str, crystals: list, path_mdp: str, molecules: list,
                  index: int, previous_sim: str, hide=False):
         """
         Create a new Simulation Objects that uses the Gromacs MD package.
         :param name: name of the new Simulation
         """
-        super().__init__(name, command, mdrun_options, atomtype, pypol_directory, path_data, path_output,
+        super().__init__(name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                          path_input, intermol, lammps)
         self._molecules = molecules
 
@@ -1294,7 +1294,7 @@ class EnergyMinimization(_GroSim):
 
     Attributes:\n
     - name: Name used to specify the object and print outputs
-    - command: Gromacs command line
+    - gromacs: Gromacs command line
     - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
     - atomtype: 'atomtype' command line
     - pypol_directory: PyPol directory with defaults inputs
@@ -1317,12 +1317,12 @@ class EnergyMinimization(_GroSim):
     - get_results(crystals="all"): check if simulations ended or a rerun is necessary.
     """
 
-    def __init__(self, name, command, mdrun_options, atomtype, pypol_directory, path_data, path_output,
+    def __init__(self, name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                  path_input, intermol, lammps, crystals, path_mdp, molecules, index, previous_sim, hide):
         """
         Perform Energy Minimization simulations using Gromacs.
         :param name: Name used to specify the object and print outputs
-        :param command: Gromacs command line
+        :param gromacs: Gromacs command line
         :param mdrun_options: Options to be added to Gromacs mdrun command.
         :param atomtype: 'atomtype' command line
         :param pypol_directory: PyPol directory with defaults inputs
@@ -1336,7 +1336,7 @@ class EnergyMinimization(_GroSim):
         """
 
         super().__init__(name=name,
-                         command=command,
+                         gromacs=gromacs,
                          mdrun_options=mdrun_options,
                          atomtype=atomtype,
                          pypol_directory=pypol_directory,
@@ -1360,7 +1360,7 @@ Perform Energy Minimization simulations using Gromacs.
 
 Attributes:
 - name: Name used to specify the object and print outputs
-- command: Gromacs command line
+- gromacs: Gromacs command line
 - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
 - atomtype: 'atomtype' command line
 - pypol_directory: PyPol directory with defaults inputs
@@ -1504,7 +1504,7 @@ class CellRelaxation(_GroSim):
 
     Attributes:\n
     - name: Name used to specify the object and print outputs
-    - command: Gromacs command line
+    - gromacs: Gromacs command line
     - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
     - atomtype: 'atomtype' command line
     - pypol_directory: PyPol directory with defaults inputs
@@ -1532,7 +1532,7 @@ class CellRelaxation(_GroSim):
          Divide bonded from non-bonded parameters and add read_data at the end with the LJ coeff.
     """
 
-    def __init__(self, name, command, mdrun_options, atomtype, pypol_directory, path_data, path_output,
+    def __init__(self, name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                  path_input, intermol, lammps, crystals, path_mdp, molecules, index,
                  previous_sim, hide, topology, path_lmp_in=None, path_lmp_ff=None):
         """
@@ -1543,7 +1543,7 @@ class CellRelaxation(_GroSim):
         Parameters:\n
         :param topology: Path to the .top Gromacs file
         :param name: Name used to specify the object and print outputs
-        :param command: Gromacs command line
+        :param gromacs: Gromacs command line
         :param mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1'
         :param atomtype: 'atomtype' command line
         :param pypol_directory: PyPol directory with defaults inputs
@@ -1557,7 +1557,7 @@ class CellRelaxation(_GroSim):
         :param path_lmp_in: Input file for LAMMPS
         :param path_lmp_ff:LAMMPS Topology file for molecule
         """
-        super().__init__(name, command, mdrun_options, atomtype, pypol_directory, path_data, path_output,
+        super().__init__(name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                          path_input, intermol, lammps, "Cell Relaxation", crystals, path_mdp, molecules, index,
                          previous_sim, hide)
 
@@ -1602,7 +1602,7 @@ LAMMPS ones with InterMol.
 
 Attributes:
 - name: Name used to specify the object and print outputs
-- command: Gromacs command line
+- gromacs: Gromacs command line
 - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
 - atomtype: 'atomtype' command line
 - pypol_directory: PyPol directory with defaults inputs
@@ -2113,7 +2113,7 @@ class MolecularDynamics(_GroSim):
 
     Attributes:\n
     - name: Name used to specify the object and print outputs
-    - command: Gromacs command line
+    - gromacs: Gromacs command line
     - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
     - atomtype: 'atomtype' command line
     - pypol_directory: PyPol directory with defaults inputs
@@ -2136,12 +2136,12 @@ class MolecularDynamics(_GroSim):
     - get_results(crystals="all"): check if simulations ended or a rerun is necessary.
     """
 
-    def __init__(self, name, command, mdrun_options, atomtype, pypol_directory, path_data, path_output,
+    def __init__(self, name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                  path_input, intermol, lammps, crystals, path_mdp, molecules, index, previous_sim, hide):
         """
         Perform Energy Minimization simulations using Gromacs.
         :param name: Name used to specify the object and print outputs
-        :param command: Gromacs command line
+        :param gromacs: Gromacs command line
         :param mdrun_options: Options to be added to Gromacs mdrun command.
         :param atomtype: 'atomtype' command line
         :param pypol_directory: PyPol directory with defaults inputs
@@ -2154,7 +2154,7 @@ class MolecularDynamics(_GroSim):
         :param hide: show or not the the relative potential energy file in the output file
         """
 
-        super().__init__(name, command, mdrun_options, atomtype, pypol_directory, path_data, path_output,
+        super().__init__(name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                          path_input, intermol, lammps, "Molecular Dynamics", crystals, path_mdp, molecules, index,
                          previous_sim, hide)
 
@@ -2165,7 +2165,7 @@ Perform Energy Minimization simulations using Gromacs.
 
 Attributes:
 - name: Name used to specify the object and print outputs
-- command: Gromacs command line
+- gromacs: Gromacs command line
 - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
 - atomtype: 'atomtype' command line
 - pypol_directory: PyPol directory with defaults inputs
@@ -2230,7 +2230,7 @@ project.save()                                                # Save project to 
                                   '{0} grompp -f {1}.mdp -c {2}.gro -t {2}.cpt -o {1}.tpr -p topol.top -maxwarn 1 \n'
                                   '{0} mdrun {3} -deffnm {1} \n'
                                   'done \n'
-                                  ''.format(self.command, self.name, self._previous_sim, self.mdrun_options))
+                                  ''.format(self.gromacs, self.name, self._previous_sim, self.mdrun_options))
             else:
                 file_script.write('"\n\n'
                                   'for crystal in $crystal_paths ; do\n'
@@ -2238,7 +2238,7 @@ project.save()                                                # Save project to 
                                   '{0} grompp -f {1}.mdp -c {2}.gro -o {1}.tpr -p topol.top -maxwarn 1 \n'
                                   '{0} mdrun {3} -deffnm {1} \n'
                                   'done \n'
-                                  ''.format(self.command, self.name, self._previous_sim, self.mdrun_options))
+                                  ''.format(self.gromacs, self.name, self._previous_sim, self.mdrun_options))
             file_script.close()
 
     def get_results(self, crystals="incomplete"):
@@ -2253,7 +2253,7 @@ project.save()                                                # Save project to 
             if super()._get_results(crystal):
                 os.chdir(crystal._path)
                 os.system('{} energy -f {}.edr <<< "Potential" > PyPol_Temporary_Potential.txt'
-                          ''.format(self.command, self.name))
+                          ''.format(self.gromacs, self.name))
                 file_pot = open(crystal._path + 'PyPol_Temporary_Potential.txt')
                 for line in file_pot:
                     if line.startswith("Potential"):

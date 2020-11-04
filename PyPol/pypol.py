@@ -386,10 +386,8 @@ Number of Methods: {3}
             method._project = self
             for crystal in method._initial_crystals:
                 crystal._path = method._path_data + crystal._name + "/"
-                crystal._molecules = crystal._load_coordinates()
-                crystal._save_coordinates()
 
-            for simulation in method._simulations + method._simulations:  # TODO Add method.metadynamics
+            for simulation in method._simulations:  # TODO Add method.metadynamics
                 simulation._path_data = method._path_data
                 simulation._path_output = method._path_output
                 simulation._path_input = method._path_input
@@ -517,7 +515,7 @@ Number of Methods: {3}
             path_new_output_directory = self._path_output + name + "/"
             create(path_new_output_directory, arg_type="dir")
 
-            method = Method(name=name, command=self._gromacs, mdrun_options="", atomtype=self._atomtype,
+            method = Method(name=name, gromacs=self._gromacs, mdrun_options="", atomtype=self._atomtype,
                             pypol_directory=self._pypol_directory, path_data=path_new_data_directory,
                             path_output=path_new_output_directory, path_input=path_new_input_directory,
                             intermol=self._intermol, lammps=self._lammps,
