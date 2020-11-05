@@ -686,7 +686,7 @@ project.save()                                                # Save project"""
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
             for crystal in simulation._crystals:
-                if crystal._completed:
+                if crystal._state == "complete":
                     file_script.write(crystal._path + "\n")
             file_script.write('"\n\n'
                               'for crystal in $crystal_paths ; do\n'
