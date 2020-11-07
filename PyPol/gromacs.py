@@ -2241,7 +2241,7 @@ project.save()                                                # Save project to 
                                   ''.format(self.gromacs, self.name, self._previous_sim, self.mdrun_options))
             file_script.close()
 
-    def get_results(self, crystals="incomplete"):
+    def get_results(self, crystals="incomplete", timeinterval=200):
         """
         Verify if the simulation ended correctly and upload new crystal properties.
         :param crystals: List of Crystal objects
@@ -2249,11 +2249,13 @@ project.save()                                                # Save project to 
 
         list_crystals = get_list_crystals(self._crystals, crystals)
 
+        traj_start = int(float(self._mdp["dt"]) * float(self._mdp["nsteps"])) - timeinterval
+
         for crystal in list_crystals:
             if super()._get_results(crystal):
                 os.chdir(crystal._path)
-                os.system('{} energy -f {}.edr <<< "Potential" &> PyPol_Temporary_Potential.txt'
-                          ''.format(self.gromacs, self.name))
+                os.system('{} energy -f {}.edr -b {}<<< "Potential" &> PyPol_Temporary_Potential.txt'
+                          ''.format(self.gromacs, self.name, traj_start))
                 file_pot = open(crystal._path + 'PyPol_Temporary_Potential.txt')
                 for line in file_pot:
                     if line.startswith("Potential"):

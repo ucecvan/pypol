@@ -603,20 +603,6 @@ project.save()                                                # Save project"""
     def _write_output(self, path_output):
         file_output = open(path_output, "a")
         file_output.write(self.__str__())
-        # file_output.write("CV: {} ({})\n".format(self._name, self._type))
-        # if self._atoms:
-        #     file_output.write("Atoms: ")
-        #     for idx_mol in range(len(self._molecules)):
-        #         file_output.write("\nMolecule '{}': ".format(self._molecules[idx_mol]._residue))
-        #         for atom in self._atoms[idx_mol]:
-        #             file_output.write("{}({})".format(atom, self._molecules[idx_mol]._atoms[atom]._label))
-        # else:
-        #     file_output.write("No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n"
-        #                       "".format(self._name))
-        #
-        # file_output.write("\nClustering type: Distribution\n"
-        #                   "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2:.3f} UPPER={3:.3f} LOWER={4:.3f}\n"
-        #                   "".format(self._kernel, self._grid_bins, self._bandwidth, self._grid_max, self._grid_min))
         file_output.close()
 
     def generate_input(self, simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
