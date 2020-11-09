@@ -377,7 +377,7 @@ Atoms:
                             break
                         # Melted
                         elif scrystal._name == crystal._name and scrystal._state == "melted":
-                            file_output.write("{:10} ".format(str(scrystal._state)))
+                            file_output.write("{:>10} ".format(str(scrystal._state)))
                             break
                         # Cluster centers
                         elif scrystal._name == crystal._name and scrystal._state == scrystal._name:
@@ -569,18 +569,17 @@ project.save()
 
 """)
 
-    def new_molecule(self, path_itp: str, path_crd: str, name="", potential_energy=0.0):
+    def new_molecule(self, path_itp: str, path_crd: str, potential_energy=0.0):
         """
         Define the molecular forcefield. The coordinate file used to generate the force field is necessary to
         identify atom properties, index order and bonds. If it is not a .mol2 file, it is converted to it with
         openbabel. A 3 letters name can be assigned to the molecule.\n
         :param path_itp: Path to the .itp file containing the molecular forcefield.
         :param path_crd: Path of the coordinate file used to generate the forcefield.
-        :param name: 3-letters name of the molecule
         :param potential_energy: Potential energy of an isolated molecule used to calculate the Lattice energy of
         Crystals
         """
-
+        # :param name: 3-letters name of the molecule
         # Atom types that can be switched by antechamber, especially from experimental data. They are considered
         # equivalent only during the index assignation in the generate_input module but not during the simulation.
         equivalent_atom_types = {
@@ -595,18 +594,7 @@ project.save()
             'pf': 'pe',
         }
 
-        if not name:
-            mol_number = str(self._nmolecules + 1)
-            name = "M00"[:3 - len(mol_number)] + mol_number
-        else:
-            if len(name) != 3:
-                print("Use a 3-letters string for the Molecule name.".format(name))
-                exit()
-            for molecule in self._molecules:
-                if name == molecule.residue:
-                    print("Molecule name '{}' already used.".format(name))
-                    exit()
-
+        name = ""
         if not os.path.exists(path_itp):
             print("Error: no file found at: " + path_itp)
             exit()
@@ -614,7 +602,16 @@ project.save()
             print("Error: no file found at: " + path_crd)
             exit()
         else:
-            copyfile(path_itp, self._path_input + os.path.basename(path_itp))
+            file_itp = open(path_itp, "r")
+            for line in file_itp:
+                if "[ moleculetype ]" in line:
+                    line = next(file_itp)
+                    while line.lstrip().startswith(";"):
+                        line = next(file_itp)
+                    name = line.split()[0]
+            file_itp.close()
+            if path_itp != self._path_input + os.path.basename(path_itp):
+                copyfile(path_itp, self._path_input + os.path.basename(path_itp))
             path_itp = self._path_input + os.path.basename(path_itp)
 
         molecule = Molecule(name, len(self._molecules))
@@ -637,12 +634,13 @@ project.save()
             ob_conversion.ReadFile(mol, working_directory + file_name + "." + file_format)
             ob_conversion.WriteFile(mol, working_directory + "PyPol_Temporary_" + file_name + ".mol2")
             file_name = "PyPol_Temporary_" + file_name + ".mol2"
-
             path_file_ac = working_directory + file_name[:-4] + ".ac"
+            copyfile(working_directory + file_name, self._path_input + f"molecule_{name}.mol2")
             os.system(self._atomtype + " -i " + file_name + " -f mol2 -p gaff -o " + path_file_ac)
-            # os.remove(working_directory + file_name)
 
         else:
+            if path_crd != f"{self._path_input}molecule_{name}.mol2":
+                copyfile(path_crd, self._path_input + f"molecule_{name}.mol2")
             path_file_ac = working_directory + "PyPol_Temporary_" + file_name[:-4] + ".ac"
             os.system(self._atomtype + " -i " + file_name + " -f mol2 -p gaff -o " + path_file_ac)
 
@@ -655,8 +653,9 @@ project.save()
                 atom_coordinates = [float(line[30:38]), float(line[38:46]), float(line[46:54])]
                 if atom_type in equivalent_atom_types:
                     atom_type = equivalent_atom_types[atom_type]
+                atom_element = ''.join([i for i in atom_label if not i.isdigit()])  # TODO Assignation based on label?
                 molecule.atoms.append(Atom(atom_label, index=atom_index, ff_type=atom_type, atomtype=atom_type,
-                                           bonds=[], coordinates=atom_coordinates))
+                                           bonds=[], coordinates=atom_coordinates, element=atom_element))
             elif line.startswith("BOND"):
                 a1 = int(line.split()[2]) - 1
                 a2 = int(line.split()[3]) - 1
@@ -883,7 +882,8 @@ project.save()
                     simulation._crystals.append(simulation_crystal)
 
             if simulation._type == "Energy Minimisation":
-                copyfile(simulation._path_mdp, self._path_input + simulation._name + ".mdp")
+                if simulation._path_mdp != self._path_input + simulation._name + ".mdp":
+                    copyfile(simulation._path_mdp, self._path_input + simulation._name + ".mdp")
                 simulation._path_mdp = self._path_input + simulation._name + ".mdp"
 
             elif simulation._type == "Cell Relaxation":
@@ -2241,7 +2241,7 @@ project.save()                                                # Save project to 
                                   ''.format(self.gromacs, self.name, self._previous_sim, self.mdrun_options))
             file_script.close()
 
-    def get_results(self, crystals="incomplete", timeinterval=200):
+    def get_results(self, crystals="all", timeinterval=200):
         """
         Verify if the simulation ended correctly and upload new crystal properties.
         :param crystals: List of Crystal objects

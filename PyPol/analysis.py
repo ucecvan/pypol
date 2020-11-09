@@ -160,19 +160,20 @@ Alternatively, you can change the bin space or the number of bins.""".format(sel
 
     def __str__(self):
         if self._grid_max:
-            return """
+            txt = """
 CV: {0._name} ({0._type})
 Clustering Type: {0._clustering_type}
 Plumed command: {0._plumed}      
 KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} 
 NBINS={0._grid_bins} GRIDSPACE={0._grid_space:.3f} UPPER={0._grid_max:.3f} LOWER={0._grid_min:.3f}""".format(self)
         else:
-            return """
+            txt = """
 CV: {0._name} ({0._type})
 Clustering Type: {0._clustering_type}
 Plumed command: {0._plumed}      
 KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} 
 NBINS={0._grid_bins} GRIDSPACE={0._grid_space:.3f} LOWER={0._grid_min:.3f}""".format(self)
+        return txt
 
 
 class Torsions(_CollectiveVariable):
@@ -853,24 +854,24 @@ class Combine(object):
         idx_cv = 0
         grid_min, grid_max, grid_bins, bandwidth, args = ("", "", "", "", "")
         file_output = open(path_output, "a")
-        file_output.write("\nCV: {} ({})".format(self._name, self._type))
+        file_output.write("\nCV: {} ({})\n".format(self._name, self._type))
         for cv in self._cvs:
-            file_output.write("CV{}: {} ({})".format(idx_cv, cv._name, cv._type))
-            if not cv._atoms:
-                file_output.write("No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n"
-                                  "".format(cv._name))
-            else:
-                if self._type.startswith("Molecular Orientation"):
-                    file_output.write("Atoms:\n")
-                    for idx_mol in range(len(cv._molecules)):
-                        file_output.write("\nMolecule '{}': ".format(cv._molecules[idx_mol]._residue))
-                        for atom in cv._atoms[idx_mol]:
-                            file_output.write("{}({})  ".format(atom, cv._molecules[idx_mol]._atoms[atom]._label))
-                elif self._type.startswith("Torsional Angle"):
-                    file_output.write("Atoms:\n")
-                    file_output.write("\nMolecule '{}': ".format(cv._molecule._residue))
-                    for atom in cv._atoms:
-                        file_output.write("{}({})  ".format(atom, cv._molecule._atoms[atom]._label))
+            file_output.write("CV{}: {} ({})\n".format(idx_cv, cv._name, cv._type))
+            # if not cv._atoms:
+            #     file_output.write("No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n"
+            #                       "".format(cv._name))
+            # else:
+            #     if self._type.startswith("Molecular Orientation"):
+            #         file_output.write("Atoms:\n")
+            #         for idx_mol in range(len(cv._molecules)):
+            #             file_output.write("\nMolecule '{}': ".format(cv._molecules[idx_mol]._residue))
+            #             for atom in cv._atoms[idx_mol]:
+            #                 file_output.write("{}({})  ".format(atom, cv._molecules[idx_mol]._atoms[atom]._label))
+            #     elif self._type.startswith("Torsional Angle"):
+            #         file_output.write("Atoms:\n")
+            #         file_output.write("\nMolecule '{}': ".format(cv._molecule._residue))
+            #         for atom in cv._atoms:
+            #             file_output.write("{}({})  ".format(atom, cv._molecule._atoms[atom]._label))
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
 
@@ -880,7 +881,7 @@ class Combine(object):
 
         file_output.write("\nClustering type: {5}-D Distribution\n"
                           "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2} UPPER={3} LOWER={4}"
-                          "".format(self._kernel, grid_bins, bandwidth, grid_max, grid_min, len(self._cvs)))
+                          "\n".format(self._kernel, grid_bins, bandwidth, grid_max, grid_min, len(self._cvs)))
         file_output.close()
 
     @staticmethod

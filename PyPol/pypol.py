@@ -1,5 +1,6 @@
 import datetime
 import os
+import pickle
 
 
 class Project(object):
@@ -502,11 +503,12 @@ Number of Methods: {3}
             self._initial_crystals.append(new_crystal)
         print("=" * 100)
 
-    def new_method(self, name: str, package="gromacs"):
+    def new_method(self, name: str, package="gromacs", _import=False):
         """
         Add a method to the project.
         :param name:
         :param package:
+        :param _import:
         :return:
         """
         import copy
@@ -520,13 +522,12 @@ Number of Methods: {3}
                         return
 
             path_new_data_directory = self._path_data + name + "/"
-            create(path_new_data_directory, arg_type="dir")
-
             path_new_input_directory = self._path_input + name + "/"
-            create(path_new_input_directory, arg_type="dir")
-
             path_new_output_directory = self._path_output + name + "/"
-            create(path_new_output_directory, arg_type="dir")
+            if not _import:
+                create(path_new_data_directory, arg_type="dir")
+                create(path_new_input_directory, arg_type="dir")
+                create(path_new_output_directory, arg_type="dir")
 
             method = Method(name=name, gromacs=self._gromacs, mdrun_options="", atomtype=self._atomtype,
                             pypol_directory=self._pypol_directory, path_data=path_new_data_directory,
@@ -577,8 +578,6 @@ def load_project(project_folder: str, use_backup=False):
     :param use_backup:
     :return:
     """
-    import pickle
-    import os
     project_folder = os.path.realpath(project_folder)
     file_pickle = project_folder + "/.pypol.pkl"
     if use_backup:
@@ -626,3 +625,64 @@ def new_project(path_working_directory: str, name="project", overwrite=False):
     create(nproject._path_data, arg_type='dir')
 
     return nproject
+
+# TODO Problem in method initial structures generation
+# def import_project(path_working_directory):
+#     from PyPol.crystals import Crystal
+#     path_working_directory = os.path.realpath(path_working_directory)
+#     name = ""
+#     if os.path.exists(path_working_directory):
+#         for item in os.listdir(path_working_directory):
+#             if item.endswith("_output.dat"):
+#                 name = item.replace("_output.dat", "")
+#     if not name:
+#         print("Error: Path '{}' does not exist".format(path_working_directory))
+#     nproject = Project(path_working_directory, name)
+#
+#     if os.path.exists(nproject._path_input_structures):
+#         for item in os.listdir(nproject._path_input_structures):
+#             new_crystal = Crystal._loadfrompdb(item, nproject._path_input_structures + item + "/pc.pdb",
+#                                                include_atomtype=True)
+#             new_crystal._index = len(nproject._initial_crystals)
+#             nproject._initial_crystals.append(new_crystal)
+#
+#     for item in os.listdir(nproject._path_input):
+#         if item != "Initial_Structures" and ".bkp." not in item:
+#             for item2 in os.listdir(nproject._path_input):
+#                 if item2.endswith(".mdp"):
+#                     nmethod = nproject.new_method(item, _import=True)
+#                     nproject._methods.append(nmethod)
+#                     break  # TODO Add other packages
+#
+#     for m in nproject._methods:
+#         # Import Molecules
+#         for item in os.listdir(m._path_input):
+#             if item.endswith(".itp"):
+#
+#                 file_itp = open(m._path_input + item, "r")
+#                 for line in file_itp:
+#                     if "[ moleculetype ]" in line:
+#                         line = next(file_itp)
+#                         while line.lstrip().startswith(";"):
+#                             line = next(file_itp)
+#                         name = line.split()[0]
+#                 file_itp.close()
+#                 m.new_molecule(m._path_input + item, m._path_input + f"molecule_{name}.mol2")
+#
+#         # Import Simulations
+#         for item in sorted(os.listdir(m._path_input), key=os.path.getctime):
+#             if item.endswith(".mdp"):
+#                 type = ""
+#                 file_mdp = open(m._path_input + item, "r")
+#                 for line in file_mdp:
+#                     if line.startswith("integrator"):
+#                         type = line.split(sep="=")[1].strip().lower()
+#
+#                 file_mdp.close()
+#                 if type in ("steep", "cg", "l-bfgs"):
+#                     nsim = m.new_simulation(item[:-4], "em", m._path_input + item)
+#                     nsim.get_results()
+#                 elif type in ("md", "md-vv", "md-vv-avek", "sd", "bd"):
+#                     # TODO Add Metadynamics check
+#                     nsim = m.new_simulation(item[:-4], "md", m._path_input + item)
+#                     nsim.get_results()
