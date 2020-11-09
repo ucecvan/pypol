@@ -1046,7 +1046,7 @@ Simulation Type '{}' not recognized. Choose between:
                 exit()
 
         if cv_type.lower() in ("torsions", "tor"):
-            cv = als.Torsions(name, self._plumed)
+            cv = als.Torsions(name, self._htt_plumed)
             self._cvp.append(cv)
             return cv
         elif cv_type.lower() in ("molecularorientation", "mo"):
