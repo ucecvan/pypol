@@ -788,10 +788,12 @@ class Combine(object):
         self._grid_min = []
         self._grid_max = []
         self._grid_bins = []
+        self._bandwidth = []
         for cv in self._cvs:
             self._grid_min.append(cv._grid_min)
             self._grid_max.append(cv._grid_max)
             self._grid_bins.append(cv._grid_bins)
+            self._bandwidth.append(cv._bandwidth)
 
     @property
     def kernel(self):
@@ -1494,9 +1496,7 @@ class GGFD(object):
         self._kernel = cv._kernel
         self._bandwidth = cv._bandwidth
         self._timeinterval = cv._timeinterval
-        self._atoms = cv._atoms
-        self._molecule = cv._molecule
-        if isinstance(cv.grid_bins, int):
+        if isinstance(cv._grid_bins, int):
             self._grid_min = [cv._grid_min]
             self._grid_max = [cv._grid_max]
             self._grid_bins = [cv._grid_bins]
@@ -1601,6 +1601,23 @@ Error: Grouping selection method not recognized. Choose between:
         ibins[(step, 0)] = [j for j in range(grid_bins) if j * bins_space + grid_min < bins[1]] + \
                            [j for j in range(grid_bins) if bins[-1] <= j * bins_space + grid_min]
         return ibins, bins
+
+    def __str__(self):
+        txt = """
+CV: {0._name} ({0._type})
+Clustering Type: {0._clustering_type}
+Grouping Method: {0._grouping_method} """.format(self)
+        if self._grouping_method == "similarity":
+            txt += "Threshold: {}\n".format(self._group_threshold)
+        elif self._grouping_method == "group" and self._group_bins:
+            for k, item in self._group_bins.items():
+                txt += "{}: {}\n".format(k, item)
+        return txt
+
+    def _write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write(self.__str__())
+        file_output.close()
 
     @staticmethod
     def help():
