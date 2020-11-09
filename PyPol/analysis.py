@@ -322,15 +322,7 @@ project.save()                                                # Save project"""
             print("Error: no atoms found. select atoms with the set_atoms module.")
             exit()
         print("=" * 100)
-        print("Generate plumed input files")
-        print("CV: {} ({})".format(self._name, self._type))
-        print("Atoms:", end=" ")
-        for atom in self._atoms:
-            print("{}({})".format(atom, self._molecule._atoms[atom]._label), end="  ")
-
-        print("\nClustering type: Distribution\n"
-              "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2:.3f} UPPER={3:.3f} LOWER={4:.3f}"
-              "".format(self._kernel, self._grid_bins, self._bandwidth, self._grid_max, self._grid_min))
+        print(self.__str__())
 
         for crystal in simulation._crystals:
             print(crystal._name)
@@ -441,7 +433,7 @@ project.save()                                                # Save project"""
                 txt += "{}({})  ".format(atom, self._molecule._atoms[atom]._label)
         else:
             txt += "No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n".format(self._name)
-
+        txt += "\n"
         return txt
 
     def _write_output(self, path_output):
@@ -933,24 +925,12 @@ project.save()                                                # Save project"""
         list_bins = list()
         grid_min, grid_max, grid_bins, bandwidth, args = ("", "", "", "", "")
         print("=" * 100)
+        print(self.__str__())
         print("Generate plumed input files")
-        print("CV: {} ({})".format(idx_cv, self._name, self._type))
         for cv in self._cvs:
             if not cv._atoms:
                 print("Error: no atoms found in CV {}. select atoms with the set_atoms module.".format(cv._name))
                 exit()
-
-            print("CV{}: {} ({})".format(idx_cv, cv._name, cv._type))
-            print("Atoms:", end=" ")
-            if self._type.startswith("Molecular Orientation"):
-                for idx_mol in range(len(cv._molecules)):
-                    print("\nMolecule '{}': ".format(cv._molecules[idx_mol]._residue))
-                    for atom in cv._atoms[idx_mol]:
-                        print("{}({})".format(atom, cv._molecules[idx_mol]._atoms[atom]._label), end="  ")
-
-            elif self._type.startswith("Torsional Angle"):
-                # TODO add output + else section to stop module
-                pass
 
             grid_min += "{:.3f},".format(cv.grid_min)
             grid_max += "{:.3f},".format(cv.grid_max)
@@ -969,9 +949,6 @@ project.save()                                                # Save project"""
             print("\n")
 
         self._grid_bins = tuple(list_bins)
-        print("\nClustering type: {5}-D Distribution\n"
-              "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2} UPPER={3} LOWER={4}"
-              "".format(self._kernel, grid_bins, bandwidth, grid_max, grid_min, len(self._cvs)))
 
         if self._type.startswith("Molecular Orientation"):
             for crystal in simulation._crystals:
@@ -1200,7 +1177,6 @@ class RDF(_CollectiveVariable):
     def __str__(self):
         txt = super().__str__()
         if self._atoms:
-            txt += "Atoms:"
             for idx_mol in range(len(self._molecules)):
                 txt += "\nMolecule '{}': ".format(self._molecules[idx_mol]._residue)
                 for atom in self._atoms[idx_mol]:
