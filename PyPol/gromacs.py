@@ -1068,6 +1068,11 @@ Simulation Type '{}' not recognized. Choose between:
 
     def combine_cvs(self, name, cvs):
         from PyPol.analysis import Combine
+        for cv in self._cvp:
+            if cv._name == name:
+                print("Error: CV with label {} already present in this method. Remove it or change CV label"
+                      "".format(name))
+                exit()
         if all(cv.type == cvs[0].type for cv in cvs) and cvs[0].type in ("Torsional Angle", "Molecular Orientation"):
             cv = Combine(name, cvs=cvs)
             self._cvp.append(cv)
@@ -1075,6 +1080,11 @@ Simulation Type '{}' not recognized. Choose between:
 
     def ggfd(self, name, cv):
         from PyPol.analysis import GGFD
+        for cv in self._cvp:
+            if cv._name == name:
+                print("Error: CV with label {} already present in this method. Remove it or change CV label"
+                      "".format(name))
+                exit()
         cv = GGFD(name, cv)
         self._cvp.append(cv)
         return cv

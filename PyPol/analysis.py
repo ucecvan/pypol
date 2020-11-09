@@ -1488,7 +1488,7 @@ class GGFD(object):
         self._clustering_type = "classification"
         self._int_type = "discrete"
         self._grouping_method = "similarity"  # Alternatively, "group"
-        self._group_threshold = 0.05
+        self._group_threshold = 0.1
         self._group_bins = {}
 
         # Original CV Properties (Read-only)
@@ -1606,10 +1606,9 @@ Error: Grouping selection method not recognized. Choose between:
         txt = """
 CV: {0._name} ({0._type})
 Clustering Type: {0._clustering_type}
-Grouping Method: {0._grouping_method} """.format(self)
-        if self._grouping_method == "similarity":
-            txt += "Threshold: {}\n".format(self._group_threshold)
-        elif self._grouping_method == "group" and self._group_bins:
+Grouping Method: {0._grouping_method} 
+Threshold: {0._group_threshold}\n""".format(self)
+        if self._grouping_method == "group" and self._group_bins:
             for k, item in self._group_bins.items():
                 txt += "{}: {}\n".format(k, item)
         return txt
@@ -2008,7 +2007,7 @@ class Clustering(object):
 
     @staticmethod
     def _sort_crystal(crystal, combinations, threshold=0.8):
-        for i in combinations._index[:-1]:
+        for i in combinations.index[:-1]:
             for j in combinations.columns[:-2]:
                 if crystal._cvs[j][combinations.loc[i, j]] > threshold and j == combinations.columns[-3]:
                     combinations.loc[i, "Structures"].append(crystal)
@@ -2036,7 +2035,7 @@ class Clustering(object):
             group_names = []
             for cv in self._cvp:
                 if cv.clustering_type == "classification":
-                    group_options.append(list(cv.groups.keys()))
+                    group_options.append(list(cv._group_bins.keys()))
                     group_names.append(cv._name)
             if group_options:
                 combinations = list(its.product(*group_options)) + [tuple([None for _ in range(len(group_options[0]))])]
@@ -2139,7 +2138,7 @@ class Clustering(object):
             for index in combinations.index:
                 if combinations.at[index, "Structures"]:
                     idx = [i._name for i in combinations.at[index, "Structures"]]
-                    for mat in combinations.loc[index, "Distance Matrix":]._index:
+                    for mat in combinations.loc[index, "Distance Matrix":].index:
                         combinations.at[index, mat] = pd.DataFrame(combinations.at[index, mat], index=idx, columns=idx)
                         with open(simulation._path_output + str(self._name) + "_similarity_matrix_" +
                                   mat.replace(" ", "") + "_" + index + ".dat", 'w') as fo:
@@ -2179,7 +2178,7 @@ class Clustering(object):
                         fo.write(self._cluster_data[index].__str__())
 
                 self._clusters[index] = {
-                    k: self._cluster_data[index]._index[self._cluster_data[index]["cluster"] == k].tolist()
+                    k: self._cluster_data[index].index[self._cluster_data[index]["cluster"] == k].tolist()
                     for k in list(self._cluster_data[index]["cluster"].unique())}
 
                 if self._centers.lower() == "energy":
@@ -2387,17 +2386,17 @@ def FSFDP(dmat: Union[pd.DataFrame, np.ndarray],
             rho[i] += kernel_function(dmat.values[i][j])
             rho[j] += kernel_function(dmat.values[i][j])
 
-    rho = pd.Series(rho, index=dmat._index, name="rho")
+    rho = pd.Series(rho, index=dmat.index, name="rho")
 
     # Find sigma vector
-    sigma = pd.Series(np.full(rho.shape, -1.0), dmat._index, name="sigma")
-    nn = pd.Series(np.full(rho.shape, pd.NA), dmat._index, dtype="string", name="NN")
+    sigma = pd.Series(np.full(rho.shape, -1.0), dmat.index, name="sigma")
+    nn = pd.Series(np.full(rho.shape, pd.NA), dmat.index, dtype="string", name="NN")
     for i in sigma.index:
         if rho[i] == np.max(rho.values):
             continue
         else:
             sigma[i] = np.nanmin(np.where(rho > rho[i], dmat[i].values, np.nan))
-            nn[i] = str(dmat._index[np.nanargmin(np.where(rho > rho[i], dmat[i].values, np.nan))])
+            nn[i] = str(dmat.index[np.nanargmin(np.where(rho > rho[i], dmat[i].values, np.nan))])
     sigma[rho.idxmax()] = np.nanmax(sigma.values)
 
     # plot results
@@ -2406,8 +2405,8 @@ def FSFDP(dmat: Union[pd.DataFrame, np.ndarray],
 
     # Assign structures to cluster centers
     dataset = pd.concat((rho, sigma, nn,
-                         pd.Series(np.full(rho.shape, pd.NA), dmat._index, name="cluster"),
-                         pd.Series(np.full(rho.shape, pd.NA), dmat._index, name="distance")),
+                         pd.Series(np.full(rho.shape, pd.NA), dmat.index, name="cluster"),
+                         pd.Series(np.full(rho.shape, pd.NA), dmat.index, name="distance")),
                         axis=1).sort_values(by="rho", ascending=False)
 
     for i in dataset.index:
