@@ -171,8 +171,7 @@ NBINS={0._grid_bins} GRIDSPACE={0._grid_space:.3f} UPPER={0._grid_max:.3f} LOWER
 CV: {0._name} ({0._type})
 Clustering Type: {0._clustering_type}
 Plumed command: {0._plumed}      
-KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} 
-NBINS={0._grid_bins} GRIDSPACE={0._grid_space:.3f} LOWER={0._grid_min:.3f}""".format(self)
+KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}""".format(self)
         return txt
 
 
@@ -846,17 +845,11 @@ class Combine(object):
 
     def __str__(self):
         txt = ""
-        for cv in self._cvs:
-            txt += cv.__str__()
-        return txt
-
-    def _write_output(self, path_output):
         idx_cv = 0
         grid_min, grid_max, grid_bins, bandwidth, args = ("", "", "", "", "")
-        file_output = open(path_output, "a")
-        file_output.write("\nCV: {} ({})\n".format(self._name, self._type))
+        txt += "\nCV: {} ({})\n".format(self._name, self._type)
         for cv in self._cvs:
-            file_output.write("CV{}: {} ({})\n".format(idx_cv, cv._name, cv._type))
+            txt += "CV{}: {} ({})\n".format(idx_cv, cv._name, cv._type)
             # if not cv._atoms:
             #     file_output.write("No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n"
             #                       "".format(cv._name))
@@ -879,9 +872,14 @@ class Combine(object):
             bandwidth += "{:.3f},".format(cv.grid_min)
             idx_cv += 1
 
-        file_output.write("\nClustering type: {5}-D Distribution\n"
-                          "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2} UPPER={3} LOWER={4}"
-                          "\n".format(self._kernel, grid_bins, bandwidth, grid_max, grid_min, len(self._cvs)))
+        txt += "Clustering type: {5}-D Distribution\n" \
+               "Parameters: KERNEL={0} NBINS={1} BANDWIDTH={2} UPPER={3} LOWER={4}\n" \
+               "".format(self._kernel, grid_bins, bandwidth, grid_max, grid_min, len(self._cvs))
+        return txt
+
+    def _write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write(self.__str__())
         file_output.close()
 
     @staticmethod
