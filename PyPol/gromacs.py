@@ -2103,7 +2103,7 @@ project.save()                                                # Save project to 
         new_rank = dict()
         incomplete_simulations = False
         for crystal in self._crystals:
-            if crystal._completed:
+            if crystal._state != "incomplete":
                 new_rank[crystal._name] = crystal._energy
                 file_gro = open(crystal._path + self._name + ".gro", "r")
                 new_box = file_gro.readlines()[-1].split()
