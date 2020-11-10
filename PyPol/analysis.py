@@ -2023,6 +2023,8 @@ class Clustering(object):
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
             group_threshold: float = 0.8,
             gen_sim_mat: bool = True):
+        self._clusters = {}
+        self._cluster_data = {}
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -2042,7 +2044,6 @@ class Clustering(object):
                             group_names.append(cv._name)
                             break
             if group_options:
-
                 if len(group_names) == 1:
                     combinations = group_options[0] + [None]
                     index = [str(i) for i in range(len(combinations) - 1)] + ["Others"]
@@ -2171,9 +2172,9 @@ class Clustering(object):
         changes_string = ""
         for index in self._distance_matrix.index:
             if self._distance_matrix.at[index, "Number of structures"] == 1:
-                nc = self._distance_matrix.at[index, "Structures"][0]
+                nc = self._distance_matrix.at[index, "Structures"][0]._name
                 columns = ["rho", "sigma", "NN", "cluster", "distance"]
-                self._cluster_data[index] = pd.DataFrame([[0, 0, pd.NA, nc, 0]], index=nc, columns=columns)
+                self._cluster_data[index] = pd.DataFrame([[0, 0, pd.NA, nc, 0]], index=[nc], columns=columns)
                 self._clusters[index] = {nc: [nc]}
             if self._distance_matrix.at[index, "Number of structures"] > 1:
                 if self._algorithm == "fsfdp":
