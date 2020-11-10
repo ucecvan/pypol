@@ -2149,7 +2149,7 @@ class Clustering(object):
                     idx = [i._name for i in combinations.at[index, "Structures"]]
                     for mat in combinations.loc[index, "Distance Matrix":].index:
                         combinations.at[index, mat] = pd.DataFrame(combinations.at[index, mat], index=idx, columns=idx)
-                        with open(simulation._path_output + str(self._name) + "_similarity_matrix_" +
+                        with open(simulation._path_output + str(self._name) + "_" +
                                   mat.replace(" ", "") + "_" + index + ".dat", 'w') as fo:
                             fo.write(combinations.loc[index, mat].__str__())
 
@@ -2159,7 +2159,7 @@ class Clustering(object):
             file_output = pd.concat((self._distance_matrix.loc[:, :"Number of structures"],
                                      pd.Series(list_crys, name="IDs", index=self._distance_matrix.index)), axis=1)
 
-            with open(simulation._path_output + str(self._name) + "_similarity_matrix_groups.dat", 'w') as fo:
+            with open(simulation._path_output + str(self._name) + "_groups.dat", 'w') as fo:
                 fo.write("Normalization Factors:\n")
                 for n in n_factors.keys():
                     fo.write("{:15}: {:<1.3f}\n".format(n, n_factors[n]))
