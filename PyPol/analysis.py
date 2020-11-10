@@ -2126,7 +2126,7 @@ class Clustering(object):
             for cv in distributions:
                 normalization.append(1. / n_factors[cv._name])
                 for index in combinations.index:
-                    if combinations.at[index, "Structures"]:
+                    if combinations.at[index, "Number of structures"] > 1:
                         combinations.at[index, cv._name] /= n_factors[cv._name]
             print("done")
 
@@ -2134,7 +2134,7 @@ class Clustering(object):
             print("Generating Distance Matrix...", end="")
             normalization = np.linalg.norm(np.array(normalization))
             for index in combinations.index:
-                if combinations.at[index, "Structures"]:
+                if combinations.at[index, "Number of structures"] > 1:
                     for i in range(combinations.at[index, "Number of structures"] - 1):
                         for j in range(i + 1, combinations.at[index, "Number of structures"]):
                             dist_ij = np.linalg.norm([k[i, j] for k in
@@ -2144,7 +2144,7 @@ class Clustering(object):
                             self._d_c.append(dist_ij)
 
             for index in combinations.index:
-                if combinations.at[index, "Structures"]:
+                if combinations.at[index, "Number of structures"] > 1:
                     idx = [i._name for i in combinations.at[index, "Structures"]]
                     for mat in combinations.loc[index, "Distance Matrix":].index:
                         combinations.at[index, mat] = pd.DataFrame(combinations.at[index, mat], index=idx, columns=idx)
@@ -2170,7 +2170,12 @@ class Clustering(object):
         print("Clustering...", end="")
         changes_string = ""
         for index in self._distance_matrix.index:
-            if self._distance_matrix.at[index, "Structures"]:
+            if self._distance_matrix.at[index, "Number of structures"] == 1:
+                nc = self._distance_matrix.at[index, "Structures"][0]
+                columns = ["rho", "sigma", "NN", "cluster", "distance"]
+                self._cluster_data[index] = pd.DataFrame([[0, 0, pd.NA, nc, 0]], index=nc, columns=columns)
+                self._clusters[index] = {nc: [nc]}
+            if self._distance_matrix.at[index, "Number of structures"] > 1:
                 if self._algorithm == "fsfdp":
                     self._cluster_data[index], sc = FSFDP(self._distance_matrix.at[index, "Distance Matrix"],
                                                           kernel=self._kernel,
