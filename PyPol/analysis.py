@@ -2037,20 +2037,25 @@ class Clustering(object):
                 if cv.clustering_type == "classification":
                     for crystal in simulation.crystals:
                         if crystal._state not in ("incomplete", "melted"):
-                            group_options.append(list(simulation.crystals._cvs[cv._name].keys()))
+                            group_options.append(list(crystal._cvs[cv._name].keys()))
                             group_names.append(cv._name)
                             break
             if group_options:
-                combinations = list(its.product(*group_options)) + [tuple([None for _ in range(len(group_options[0]))])]
-                index = [str(i) for i in range(len(combinations) - 1)] + ["Others"]
+                # combinations = list(its.product(*group_options)) + [tuple([None for _ in range(len(group_options[0]))])]
 
                 if len(group_names) == 1:
+                    combinations = group_options[0] + [None]
+                    index = [str(i) for i in range(len(combinations) - 1)] + ["Others"]
                     combinations = pd.concat((pd.Series(combinations, name=group_names[0], index=index),
                                               pd.Series([0 for _ in range(len(combinations))],
                                                         name="Number of structures", dtype=int, index=index),
                                               pd.Series([[] for _ in range(len(combinations))], name="Structures",
                                                         index=index)), axis=1)
                 else:
+
+                    combinations = list(its.product(*group_options)) + \
+                                   [tuple([None for _ in range(len(group_options[0]))])]
+                    index = [str(i) for i in range(len(combinations) - 1)] + ["Others"]
                     combinations = pd.concat((pd.DataFrame(combinations, columns=group_names, index=index),
                                               pd.Series([0 for _ in range(len(combinations))],
                                                         name="Number of structures", dtype=int, index=index),
