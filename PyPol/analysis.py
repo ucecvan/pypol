@@ -1900,7 +1900,7 @@ class Clustering(object):
         self._algorithm = "fsfdp"  # Only possible
         self._kernel = "gaussian"
         self._centers = "energy"
-        self._d_c = []                         # TODO add to properties!!!!!!!!
+        self._d_c = []
         self._d_c_fraction = 0.01
         self._sigma_cutoff = False
 
@@ -2035,8 +2035,11 @@ class Clustering(object):
             group_names = []
             for cv in self._cvp:
                 if cv.clustering_type == "classification":
-                    group_options.append(list(cv._group_bins.keys()))
-                    group_names.append(cv._name)
+                    for crystal in simulation.crystals:
+                        if crystal._state not in ("incomplete", "melted"):
+                            group_options.append(list(simulation.crystals._cvs[cv._name].keys()))
+                            group_names.append(cv._name)
+                            break
             if group_options:
                 combinations = list(its.product(*group_options)) + [tuple([None for _ in range(len(group_options[0]))])]
                 index = [str(i) for i in range(len(combinations) - 1)] + ["Others"]
