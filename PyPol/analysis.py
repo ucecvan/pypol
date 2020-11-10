@@ -2031,6 +2031,7 @@ class Clustering(object):
         pd.set_option('display.max_seq_items', None)
 
         if gen_sim_mat:
+            self._d_c = []
             group_options = []
             group_names = []
             for cv in self._cvp:
@@ -2041,7 +2042,6 @@ class Clustering(object):
                             group_names.append(cv._name)
                             break
             if group_options:
-                # combinations = list(its.product(*group_options)) + [tuple([None for _ in range(len(group_options[0]))])]
 
                 if len(group_names) == 1:
                     combinations = group_options[0] + [None]
@@ -2094,7 +2094,7 @@ class Clustering(object):
                 n_factors[cv._name] = 0.
 
                 for index in combinations.index:
-                    if combinations.at[index, "Structures"]:
+                    if combinations.at[index, "Number of structures"] > 1:
                         crystals = combinations.at[index, "Structures"]
 
                         print("\nCV: {} Group: {}".format(cv._name, index))
