@@ -741,7 +741,7 @@ project.save()
     def del_topology(self):
         self._topology = ""
 
-    def generate_input(self, box=(4., 4., 4.), orthogonalize=False):
+    def generate_input(self, box=(4., 4., 4.), orthogonalize=True):
         """
         Generate the coordinate and the topology files to be used for energy minimization simulations.
         TODO Not suitable for more than 1 molecule!
@@ -796,7 +796,7 @@ project.save()
             for molecule in self._molecules:
                 copyfile(molecule._forcefield, crystal._path + os.path.basename(molecule._forcefield))
             if not self._topology:
-                self.new_topology(self._pypol_directory + "Defaults/topol.top")
+                self.new_topology(os.path.dirname(self._pypol_directory[:-1]) + "/data/Defaults/Gromacs/topol.top")
             copyfile(self._topology, crystal._path + os.path.basename(self._topology))
             file_top = open(crystal._path + os.path.basename(self._topology), "a")
             for molecule in self._molecules:
@@ -1464,8 +1464,8 @@ project.save()                                                # Save project to 
                             crystal._state = "complete"
                             if os.path.exists(crystal._path + self._name + ".trr"):
                                 os.chdir(crystal._path)
-                                os.system("{0._gromacs} trjconv -f {0.name}.trr -o {0.name}.xtc -s {0.name}.tpr"
-                                          "".format(self))
+                                os.system("{0._gromacs} trjconv -f {0.name}.trr -o {0.name}.xtc -s {0.name}.tpr "
+                                          "<<< 0 &> /dev/null".format(self))
                                 os.remove("{0.name}.trr".format(self))
                             break
                 else:
@@ -2255,6 +2255,7 @@ project.save()                                                # Save project to 
         """
         Verify if the simulation ended correctly and upload new crystal properties.
         :param crystals: List of Crystal objects
+        :param timeinterval:
         """
 
         list_crystals = get_list_crystals(self._crystals, crystals)

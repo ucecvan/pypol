@@ -436,6 +436,7 @@ Number of Methods: {3}
         from openbabel import openbabel
         from PyPol.utilities import create, get_identifier
         from PyPol.crystals import Crystal
+        import progressbar
 
         if not path_structures.endswith("/") and os.path.isdir(path_structures):
             path_structures += "/"
@@ -465,8 +466,10 @@ Number of Methods: {3}
         else:
             print("No such file or directory")
 
+        print("Importing structures in folder {}".format(path_structures))
+        bar = progressbar.ProgressBar(maxval=len(items)).start()
+        nbar = 1
         for item in items:
-
             id_name, extension = get_identifier(path_structures + item)
             path_id = self._path_input_structures + id_name
             path_structure_pdb = path_id + "/pc.pdb"
@@ -501,6 +504,9 @@ Number of Methods: {3}
             new_crystal._index = len(self._initial_crystals)
             new_crystal._save_pdb(path_structure_pdb)
             self._initial_crystals.append(new_crystal)
+            bar.update(nbar)
+            nbar += 1
+        bar.finish()
         print("=" * 100)
 
     def new_method(self, name: str, package="gromacs", _import=False):
