@@ -3,6 +3,7 @@ import os
 import subprocess as sbp
 from shutil import copyfile
 from typing import Union
+import progressbar
 
 import numpy as np
 import networkx as nx
@@ -1448,6 +1449,9 @@ project.save()                                                # Save project to 
         """
         list_crystals = get_list_crystals(self._crystals, crystals)
 
+        print("Checking '{}' simulations and loading results:".format(self._name))
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
         for crystal in list_crystals:
             path_output = crystal._path + self._name + ".log"
             if os.path.exists(path_output):
@@ -1472,14 +1476,17 @@ project.save()                                                # Save project to 
                     print("An error has occurred with Gromacs. Check simulation {} in folder {}."
                           "".format(self._name, crystal._path))
                 file_output.close()
+                bar.update(nbar)
+                nbar += 1
             else:
                 print("An error has occurred with Gromacs. Check simulation {} in folder {}."
                       "".format(self._name, crystal._path))
+        bar.finish()
 
         new_rank = dict()
         incomplete_simulations = False
         for crystal in self._crystals:
-            if crystal._completed:
+            if crystal._state != "incomplete":
                 new_rank[crystal._name] = crystal._energy
                 file_gro = open(crystal._path + self._name + ".gro", "r")
                 new_box = file_gro.readlines()[-1].split()
@@ -2062,8 +2069,11 @@ project.save()                                                # Save project to 
         :param crystals:
         :return:
         """
-
         list_crystals = get_list_crystals(self._crystals, crystals)
+        print("Checking '{}' simulations and loading results:".format(self._name))
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
+
         for crystal in list_crystals:
             os.chdir(crystal._path + "lammps/")
             path_coord = crystal._path + "lammps/coordinates.xtc"
@@ -2083,10 +2093,13 @@ project.save()                                                # Save project to 
 
                 os.system("tail -{0} {1}.gro > ../{1}.gro"
                           "".format(int(crystal._Z * self._molecules[0]._natoms + 3), self._name))
+
+                bar.update(nbar)
+                nbar += 1
             else:
                 print("An error has occurred with LAMMPS. Check simulation {} in folder {}."
                       "".format(self._name, crystal._path + "lammps/"))
-
+        bar.finish()
         new_rank = dict()
         incomplete_simulations = False
         for crystal in self._crystals:
@@ -2261,7 +2274,9 @@ project.save()                                                # Save project to 
         list_crystals = get_list_crystals(self._crystals, crystals)
 
         traj_start = int(float(self._mdp["dt"]) * float(self._mdp["nsteps"])) - timeinterval
-
+        print("Checking '{}' simulations and loading results:".format(self._name))
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
         for crystal in list_crystals:
             if super()._get_results(crystal):
                 os.chdir(crystal._path)
@@ -2276,10 +2291,13 @@ project.save()                                                # Save project to 
                         break
                 file_pot.close()
                 os.remove(crystal._path + 'PyPol_Temporary_Potential.txt')
+
+                bar.update(nbar)
+                nbar += 1
             else:
                 print("An error has occurred with Gromacs. Check simulation {} in folder {}."
                       "".format(self.name, crystal._path))
-
+        bar.finish()
         new_rank = dict()
         incomplete_simulations = False
         for crystal in self.crystals:

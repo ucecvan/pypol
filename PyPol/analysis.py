@@ -417,7 +417,6 @@ project.save()                                                # Save project"""
                     plt.ylabel("Probability Density")
                     plt.savefig(crystal._path + "plumed_{}_{}_plot.png".format(simulation._name, self._name), dpi=300)
                     plt.close("all")
-
                 bar.update(nbar)
                 nbar += 1
             else:
