@@ -2272,7 +2272,8 @@ project.save()                                                # Save project to 
         """
 
         list_crystals = get_list_crystals(self._crystals, crystals)
-
+        if not self._mdp:
+            self._mdp = self._import_mdp(self._path_mdp)
         traj_start = int(float(self._mdp["dt"]) * float(self._mdp["nsteps"])) - timeinterval
         print("Checking '{}' simulations and loading results:".format(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
