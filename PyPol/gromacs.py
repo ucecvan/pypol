@@ -2271,7 +2271,7 @@ project.save()                                                # Save project to 
         :param timeinterval:
         """
 
-        list_crystals = get_list_crystals(self._crystals, crystals)
+        list_crystals = get_list_crystals(self._crystals, crystals, _include_melted=True)
         if not self._mdp:
             self._mdp = self._import_mdp(self._path_mdp)
         traj_start = int(float(self._mdp["dt"]) * float(self._mdp["nsteps"])) - timeinterval

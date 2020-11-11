@@ -86,13 +86,16 @@ def get_list(elements):
         return [elements]
 
 
-def get_list_crystals(scrystals, crystals):
+def get_list_crystals(scrystals, crystals, _include_melted=False):
     from PyPol.crystals import Crystal
     list_crystals = list()
     if crystals == "incomplete":
         for sc in scrystals:
             if sc._state == "incomplete":
                 list_crystals.append(sc)
+    elif crystals == "all" and _include_melted:
+        for sc in scrystals:
+            list_crystals.append(sc)
     elif crystals == "all":
         for sc in scrystals:
             if sc._state != "melted":
