@@ -848,26 +848,10 @@ class Combine(object):
         txt += "\nCV: {} ({})\n".format(self._name, self._type)
         for cv in self._cvs:
             txt += "CV{}: {} ({})\n".format(idx_cv, cv._name, cv._type)
-            # if not cv._atoms:
-            #     file_output.write("No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n"
-            #                       "".format(cv._name))
-            # else:
-            #     if self._type.startswith("Molecular Orientation"):
-            #         file_output.write("Atoms:\n")
-            #         for idx_mol in range(len(cv._molecules)):
-            #             file_output.write("\nMolecule '{}': ".format(cv._molecules[idx_mol]._residue))
-            #             for atom in cv._atoms[idx_mol]:
-            #                 file_output.write("{}({})  ".format(atom, cv._molecules[idx_mol]._atoms[atom]._label))
-            #     elif self._type.startswith("Torsional Angle"):
-            #         file_output.write("Atoms:\n")
-            #         file_output.write("\nMolecule '{}': ".format(cv._molecule._residue))
-            #         for atom in cv._atoms:
-            #             file_output.write("{}({})  ".format(atom, cv._molecule._atoms[atom]._label))
-            grid_min += "{:.3f},".format(cv.grid_min)
-            grid_max += "{:.3f},".format(cv.grid_max)
-
-            grid_bins += "{},".format(cv.grid_bins)
-            bandwidth += "{:.3f},".format(cv.grid_min)
+            grid_min += "{:.3f},".format(cv._grid_min)
+            grid_max += "{:.3f},".format(cv._grid_max)
+            grid_bins += "{},".format(cv._grid_bins)
+            bandwidth += "{:.3f},".format(cv._bandwidth)
             idx_cv += 1
 
         txt += "Clustering type: {5}-D Distribution\n" \
@@ -1056,7 +1040,8 @@ project.save()                                                # Save project"""
 
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-                    crystals: Union[str, list, tuple] = "all"):
+                    crystals: Union[str, list, tuple] = "all",
+                    plot: bool = True):
         list_crystals = get_list_crystals(simulation._crystals, crystals)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
@@ -1081,13 +1066,16 @@ project.save()                                                # Save project"""
                     np.savetxt(crystal._path + "plumed_{}_{}_data.dat".format(simulation._name, self._name),
                                crystal._cvs[self._name],
                                header="Probability Density Grid.")
-                    extent = self._cvs[0].grid_min, self._cvs[0].grid_max, self._cvs[1].grid_min, self._cvs[1].grid_max
+                    if plot:
+                        extent = self._cvs[0].grid_min, self._cvs[0].grid_max, \
+                                 self._cvs[1].grid_min, self._cvs[1].grid_max
 
-                    plt.imshow(crystal._cvs[self._name], interpolation="nearest", cmap="viridis", extent=extent)
-                    plt.xlabel("{} / rad".format(self._cvs[0]._name))
-                    plt.ylabel("{} / rad".format(self._cvs[1]._name))
-                    plt.savefig(crystal._path + "plumed_{}_{}_plot.png".format(simulation._name, self._name), dpi=300)
-                    plt.close("all")
+                        plt.imshow(crystal._cvs[self._name], interpolation="nearest", cmap="viridis", extent=extent)
+                        plt.xlabel("{} / rad".format(self._cvs[0]._name))
+                        plt.ylabel("{} / rad".format(self._cvs[1]._name))
+                        plt.savefig(crystal._path + "plumed_{}_{}_plot.png".format(simulation._name, self._name),
+                                    dpi=300)
+                        plt.close("all")
                 else:
                     # TODO use 3D plots (create script to be run afterwards), or 3 2D imshow
                     pass
