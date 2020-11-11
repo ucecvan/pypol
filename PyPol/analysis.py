@@ -310,11 +310,14 @@ project.save()                                                # Save project"""
 
     def generate_input(self,
                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-                       bash_script=True):
+                       bash_script=True,
+                       crystals="all"):
         """
         Generate the plumed input files
+
         :param simulation: Simulation object
         :param bash_script: If True, generate a bash script to run simulations
+        :param crystals:
         :return:
         """
 
@@ -324,7 +327,9 @@ project.save()                                                # Save project"""
         print("=" * 100)
         print(self.__str__())
 
-        for crystal in simulation._crystals:
+        list_crystals = get_list_crystals(simulation._crystals, crystals)
+
+        for crystal in list_crystals:
             print(crystal._name)
             lines_atoms = generate_atom_list(self._atoms, self._molecule, crystal, keyword="ATOMS", lines=[])
             file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
@@ -366,7 +371,7 @@ project.save()                                                # Save project"""
             file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
-            for crystal in simulation._crystals:
+            for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
             file_script.write('"\n\n'
                               'for crystal in $crystal_paths ; do\n'
@@ -597,11 +602,12 @@ project.save()                                                # Save project"""
         file_output.close()
 
     def generate_input(self, simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-                       bash_script=True):
+                       bash_script=True, crystals="all"):
         """
 
         :param simulation:
         :param bash_script:
+        :param crystals:
         :return:
         """
         if not self._atoms:
@@ -610,7 +616,9 @@ project.save()                                                # Save project"""
         print("=" * 100)
         print(self.__str__())
 
-        for crystal in simulation._crystals:
+        list_crystals = get_list_crystals(simulation._crystals, crystals)
+
+        for crystal in list_crystals:
             print(crystal._name)
             # Select atoms and molecules
             lines_atoms = []
@@ -662,9 +670,8 @@ project.save()                                                # Save project"""
             file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
-            for crystal in simulation._crystals:
-                if crystal._state == "complete":
-                    file_script.write(crystal._path + "\n")
+            for crystal in list_crystals:
+                file_script.write(crystal._path + "\n")
             file_script.write('"\n\n'
                               'for crystal in $crystal_paths ; do\n'
                               'cd "$crystal" || exit \n'
@@ -913,13 +920,19 @@ project.save()                                                # Save project"""
 
     def generate_input(self,
                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-                       bash_script: bool = True):
+                       bash_script: bool = True,
+                       crystals="all"):
         """
         TODO output format, only one cv is printed!
+
         :param simulation:
         :param bash_script:
+        :param crystals:
         :return:
         """
+
+        list_crystals = get_list_crystals(simulation._crystals, crystals)
+
         idx_cv = 0
         list_bins = list()
         grid_min, grid_max, grid_bins, bandwidth, args = ("", "", "", "", "")
@@ -950,7 +963,7 @@ project.save()                                                # Save project"""
         self._grid_bins = tuple(list_bins)
 
         if self._type.startswith("Molecular Orientation"):
-            for crystal in simulation._crystals:
+            for crystal in list_crystals:
                 print(crystal._name)
                 file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
                 for cv in self._cvs:
@@ -979,7 +992,7 @@ project.save()                                                # Save project"""
                 file_plumed.close()
 
         if self._type.startswith("Torsional Angle"):
-            for crystal in simulation._crystals:
+            for crystal in list_crystals:
                 print(crystal._name)
                 file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
                 for cv in self._cvs:
@@ -1025,7 +1038,7 @@ project.save()                                                # Save project"""
             file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
-            for crystal in simulation._crystals:
+            for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
             file_script.write('"\n\n'
                               'for crystal in $crystal_paths ; do\n'
@@ -1286,17 +1299,22 @@ project.save()                                                # Save project
 
     def generate_input(self,
                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-                       bash_script: bool = True):
+                       bash_script: bool = True,
+                       crystals="all"):
         """
+
 
         :param bash_script:
         :param simulation:
+        :param crystals:
         :return:
         """
 
         if not self._atoms:
             print("Error: no atoms found. Select atoms with the set_atoms module.")
             exit()
+
+        list_crystals = get_list_crystals(simulation._crystals, crystals)
 
         print("=" * 100)
         print("Generate plumed input files")
@@ -1311,7 +1329,7 @@ project.save()                                                # Save project
               "Parameters: KERNEL={0} BANDWIDTH={1:.3f} LOWER={2:.3f} BIN_SPACE={3:.3f}"
               "".format(self._kernel, self._bandwidth, self._r_0, self._grid_space))
 
-        for crystal in simulation._crystals:
+        for crystal in list_crystals:
             print(crystal._name)
 
             d_max = 0.5 * np.min(np.array([crystal._box[0, 0], crystal._box[1, 1], crystal._box[2, 2]]))
@@ -1373,7 +1391,7 @@ project.save()                                                # Save project
             file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
-            for crystal in simulation._crystals:
+            for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
             file_script.write('"\n\n'
                               'for crystal in $crystal_paths ; do\n'

@@ -466,7 +466,7 @@ Number of Methods: {3}
         else:
             print("No such file or directory")
 
-        print("Importing structures in folder {}".format(path_structures))
+        print("Importing structures from folder {}".format(path_structures))
         bar = progressbar.ProgressBar(maxval=len(items)).start()
         nbar = 1
         for item in items:
