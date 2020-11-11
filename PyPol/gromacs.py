@@ -2314,8 +2314,8 @@ project.save()                                                # Save project to 
                 crystal._cell_parameters = box2cell(crystal._box)
                 crystal._volume = np.linalg.det(crystal._box)
             else:
+                print("The {} simulation of crystal {} is not completed".format(self._name, crystal._name))
                 incomplete_simulations = True
-                break
 
         if not incomplete_simulations:
             rank = 1
@@ -2327,6 +2327,7 @@ project.save()                                                # Save project to 
                             self._global_minima = crystal
                         rank += 1
             self._completed = "complete"
+
 
 
 class Metadynamics(_GroSim):

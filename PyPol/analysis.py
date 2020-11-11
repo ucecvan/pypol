@@ -744,8 +744,6 @@ project.save()                                                # Save project"""
             file_hd.write("{:35} {:3.3f}\n".format(crystal._name, hd))
             if hd < cutoff:
                 crystal._state = "melted"
-            else:
-                crystal._state = False
         file_hd.close()
 
 
@@ -2209,12 +2207,13 @@ class Clustering(object):
                     self._clusters[index] = new_clusters
 
                 for crystal in self._distance_matrix.at[index, "Structures"]:
-                    if crystal._name in self._clusters[index].keys():
-                        crystal._state = False
-                    else:
-                        for cc in self._clusters[index].keys():
-                            if crystal._name in self._clusters[index][cc]:
-                                crystal._state = cc
+                    # if crystal._name in self._clusters[index].keys():
+                    #     crystal._state = False
+                    # else:
+                    for cc in self._clusters[index].keys():
+                        if crystal._name in self._clusters[index][cc]:
+                            crystal._state = cc
+                            break
 
         self._clusters = {k: v for g in self._clusters.keys() for k, v in self._clusters[g].items()}
         self._clusters = pd.concat((

@@ -46,7 +46,7 @@ class Crystal(object):
         self._Z = 0
         self._nmoleculestypes = list()
 
-        self._state = False
+        self._state = "incomplete"
         self._energy = None
         self._rank = 0
 
