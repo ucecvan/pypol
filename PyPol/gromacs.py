@@ -2281,7 +2281,7 @@ project.save()                                                # Save project to 
         for crystal in list_crystals:
             if super()._get_results(crystal):
                 os.chdir(crystal._path)
-                os.system('{} energy -f {}.edr -b {}<<< "Potential" &> PyPol_Temporary_Potential.txt'
+                os.system('{} energy -f {}.edr -b {} <<< "Potential" &> PyPol_Temporary_Potential.txt'
                           ''.format(self.gromacs, self.name, traj_start))
                 file_pot = open(crystal._path + 'PyPol_Temporary_Potential.txt')
                 for line in file_pot:
