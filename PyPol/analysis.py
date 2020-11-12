@@ -2159,9 +2159,10 @@ class Clustering(object):
                             fo.write(combinations.loc[index, mat].__str__())
 
             for i in combinations.loc[:, "Distance Matrix":].columns:
-                total = pd.concat([m for m in combinations[:, i]])
-                with open(simulation._path_output + str(self._name) + "_" + i.replace(" ", "") + ".dat", 'w') as fo:
-                    fo.write(total.__str__())
+                total = pd.concat([m for m in combinations[:, i] if not isinstance(m, np.ndarray)])
+                total.to_csv(simulation._path_output + str(self._name) + "_" + i.replace(" ", "") + ".dat")
+                # with open(, 'w') as fo:
+                #     fo.write(total.__str__())
                 plt.imshow(total, interpolation="nearest", cmap="viridis")
                 plt.colorbar()
                 plt.tight_layout()
@@ -2174,7 +2175,7 @@ class Clustering(object):
             file_output = pd.concat((self._distance_matrix.loc[:, :"Number of structures"],
                                      pd.Series(list_crys, name="IDs", index=self._distance_matrix.index)), axis=1)
 
-            with open(simulation._path_output + str(self._name)+ "_Groups.dat", 'w') as fo:
+            with open(simulation._path_output + str(self._name) + "_Groups.dat", 'w') as fo:
                 fo.write("Normalization Factors:\n")
                 for n in n_factors.keys():
                     fo.write("{:15}: {:<1.3f}\n".format(n, n_factors[n]))
@@ -2185,6 +2186,9 @@ class Clustering(object):
         # Remove structures that are not cluster centers
         print("Clustering...", end="")
         changes_string = ""
+        with open(simulation._path_output + str(self._name) + "_FSFDP.dat", 'w') as fo:
+            fo.write("# FSFDP parameters for every group:\n")
+
         for index in self._distance_matrix.index:
             if self._distance_matrix.at[index, "Number of structures"] == 1:
                 nc = self._distance_matrix.at[index, "Structures"][0]._name
@@ -2219,6 +2223,10 @@ class Clustering(object):
                     with open(path_output + "FSFDP_" + str(index) + ".dat", 'w') as fo:
                         fo.write(self._cluster_data[index].__str__())
 
+                    with open(simulation._path_output + str(self._name) + "_FSFDP.dat", 'a') as fo:
+                        fo.write("# Group {}\n".format(str(index)))
+                        fo.write(self._cluster_data[index].__str__())
+
                 self._clusters[index] = {
                     k: self._cluster_data[index].index[self._cluster_data[index]["cluster"] == k].tolist()
                     for k in list(self._cluster_data[index]["cluster"].unique())}
@@ -2241,11 +2249,12 @@ class Clustering(object):
                         if crystal._name in self._clusters[index][cc]:
                             crystal._state = cc
                             break
-
+        cluster_groups = [g for g in self._clusters.keys() for _ in self._clusters[g].keys()]
         self._clusters = {k: v for g in self._clusters.keys() for k, v in self._clusters[g].items()}
         self._clusters = pd.concat((
             pd.Series(data=[len(self._clusters[x]) for x in self._clusters.keys()], index=self._clusters.keys(),
                       name="Number of Structures"),
+            pd.Series(data=cluster_groups, index=self._clusters.keys(), name="Group"),
             pd.Series(data=[", ".join(str(y) for y in self._clusters[x]) for x in self._clusters.keys()],
                       index=self._clusters.keys(), name="Structures")),
             axis=1).sort_values(by="Number of Structures", ascending=False)
@@ -2255,8 +2264,6 @@ class Clustering(object):
                 fo.write("Cluster centers changed according to potential energy:\n")
                 fo.write(changes_string)
             fo.write(self._clusters.__str__())
-
-
 
         print("done")
 
