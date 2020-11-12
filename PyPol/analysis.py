@@ -2037,6 +2037,10 @@ class Clustering(object):
             print("Simulation {} is not completed yet. Run simulation.get_results() to check termination and import "
                   "results.".format(simulation._name))
 
+        path_output = simulation._path_output + str(self._name) + "_data/"
+        if not os.path.exists(path_output):
+            os.mkdir(path_output)
+
         if gen_sim_mat:
             self._d_c = []
             group_options = []
@@ -2151,9 +2155,18 @@ class Clustering(object):
                     idx = [i._name for i in combinations.at[index, "Structures"]]
                     for mat in combinations.loc[index, "Distance Matrix":].index:
                         combinations.at[index, mat] = pd.DataFrame(combinations.at[index, mat], index=idx, columns=idx)
-                        with open(simulation._path_output + str(self._name) + "_" +
-                                  mat.replace(" ", "") + "_" + index + ".dat", 'w') as fo:
+                        with open(path_output + mat.replace(" ", "") + "_" + index + ".dat", 'w') as fo:
                             fo.write(combinations.loc[index, mat].__str__())
+
+            for i in combinations.loc[:, "Distance Matrix":].columns:
+                total = pd.concat([m for m in combinations[:, i]])
+                with open(simulation._path_output + str(self._name) + "_" + i.replace(" ", "") + ".dat", 'w') as fo:
+                    fo.write(total.__str__())
+                plt.imshow(total, interpolation="nearest", cmap="viridis")
+                plt.colorbar()
+                plt.tight_layout()
+                plt.savefig(simulation._path_output + str(self._name) + "_" + i.replace(" ", "") + ".png")
+                plt.close('all')
 
             self._distance_matrix = combinations
 
@@ -2161,7 +2174,7 @@ class Clustering(object):
             file_output = pd.concat((self._distance_matrix.loc[:, :"Number of structures"],
                                      pd.Series(list_crys, name="IDs", index=self._distance_matrix.index)), axis=1)
 
-            with open(simulation._path_output + str(self._name) + "_groups.dat", 'w') as fo:
+            with open(simulation._path_output + str(self._name)+ "_Groups.dat", 'w') as fo:
                 fo.write("Normalization Factors:\n")
                 for n in n_factors.keys():
                     fo.write("{:15}: {:<1.3f}\n".format(n, n_factors[n]))
@@ -2182,7 +2195,7 @@ class Clustering(object):
                 nc1 = self._distance_matrix.at[index, "Structures"][0]._name
                 nc2 = self._distance_matrix.at[index, "Structures"][1]._name
                 columns = ["rho", "sigma", "NN", "cluster", "distance"]
-                d_12 = self._distance_matrix.at[index, "Distance Matrix"][0, 1]
+                d_12 = self._distance_matrix.at[index, "Distance Matrix"].values[0, 1]
                 if d_12 > self._d_c:
                     self._cluster_data[index] = pd.DataFrame([[0, 0, nc2, nc1, 0], [0, 0, nc1, nc2, 0]],
                                                              index=[nc1, nc2], columns=columns)
@@ -2201,10 +2214,9 @@ class Clustering(object):
                     _save_decision_graph(self._cluster_data[index].loc[:, "rho"].values,
                                          self._cluster_data[index].loc[:, "sigma"].values,
                                          sigma_cutoff=sc,
-                                         path=simulation._path_output + str(self._name) + "_decision_graph_" +
-                                              str(index) + ".png")
+                                         path=path_output + "Decision_graph_" + str(index) + ".png")
 
-                    with open(simulation._path_output + str(self._name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
+                    with open(path_output + "FSFDP_" + str(index) + ".dat", 'w') as fo:
                         fo.write(self._cluster_data[index].__str__())
 
                 self._clusters[index] = {
@@ -2221,14 +2233,10 @@ class Clustering(object):
                                 changes[1] = crystal
                         if changes[1]:
                             new_clusters[changes[1]] = new_clusters.pop(changes[0])
-                            # print("{:>25} ---> {:25}\n".format(changes[0], changes[1]))
                             changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
                     self._clusters[index] = new_clusters
 
                 for crystal in self._distance_matrix.at[index, "Structures"]:
-                    # if crystal._name in self._clusters[index].keys():
-                    #     crystal._state = False
-                    # else:
                     for cc in self._clusters[index].keys():
                         if crystal._name in self._clusters[index][cc]:
                             crystal._state = cc
@@ -2247,6 +2255,8 @@ class Clustering(object):
                 fo.write("Cluster centers changed according to potential energy:\n")
                 fo.write(changes_string)
             fo.write(self._clusters.__str__())
+
+
 
         print("done")
 
