@@ -1711,7 +1711,8 @@ project.save()
                                             if bins[b] < j * bins_space + self._grid_min[i] <= bins[b + 1]]
 
     def run(self,
-            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics]):
+            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+            crystals="all"):
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -1720,6 +1721,7 @@ project.save()
         pd.set_option('display.max_seq_items', None)
 
         groups = {}
+        list_crystals = get_list_crystals(simulation._crystals, crystals)
 
         if self._grouping_method == "group":
             combinations: list = []
@@ -1727,13 +1729,10 @@ project.save()
                 combinations.append([c for c in self._group_bins.keys() if c[0] == i])
 
             # noinspection PyTypeChecker
-            dataset = np.full((len(simulation._crystals), len(its.product(*combinations)) + 1), np.nan)
+            dataset = np.full((len(list_crystals), len(its.product(*combinations)) + 1), np.nan)
             index = []
-            for cidx in range(len(simulation._crystals)):
+            for cidx in range(len(list_crystals)):
                 crystal = simulation._crystals[cidx]
-                if crystal._state == "melted":
-                    np.delete(dataset, cidx, 0)
-                    continue
 
                 index.append(crystal._name)
                 dist = crystal._cvs[self._dist_cv._name] / np.sum(crystal._cvs[self._dist_cv._name])
@@ -1746,38 +1745,35 @@ project.save()
                                    columns=[(i[0][1], i[1][1]) for i in its.product(*combinations)])
 
             groups = dataset.groupby(dataset.colums.to_list()).groups
+            print(groups)
             cvg = {}
             for i in groups.keys():
                 cvg[i] = 0
 
-            for crystal in simulation._crystals:
-                if crystal._state != "melted":
-                    crystal._cvs[self._name] = copy.deepcopy(cvg)
-                    for group in groups.keys():
-                        if crystal._name in groups[group]:
-                            crystal._cvs[self._name][group] += 1
-                            break
+            for crystal in list_crystals:
+                crystal._cvs[self._name] = copy.deepcopy(cvg)
+                for group in groups.keys():
+                    if crystal._name in groups[group]:
+                        crystal._cvs[self._name][group] += 1
+                        break
 
         elif self._grouping_method == "similarity":
             from scipy.sparse import csr_matrix
             from scipy.sparse.csgraph import breadth_first_order
-            crystals = []
             index = []
-            for crystal in simulation._crystals:
-                if crystal._state != "melted":
-                    crystals.append(crystal)
-                    index.append(crystal._name)
+            for crystal in list_crystals:
+                index.append(crystal._name)
 
             dmat = pd.DataFrame(np.zeros((len(index), len(index))), columns=index, index=index)
             bar = progressbar.ProgressBar(maxval=int(len(crystals) * (len(crystals) - 1) / 2)).start()
             nbar = 1
 
-            for i in range(len(crystals) - 1):
-                di = crystals[i]._cvs[self._dist_cv._name]
-                ci = crystals[i]._name
+            for i in range(len(list_crystals) - 1):
+                di = list_crystals[i]._cvs[self._dist_cv._name]
+                ci = list_crystals[i]._name
                 for j in range(i + 1, len(crystals)):
-                    dj = crystals[j]._cvs[self._dist_cv._name]
-                    cj = crystals[j]._name
+                    dj = list_crystals[j]._cvs[self._dist_cv._name]
+                    cj = list_crystals[j]._name
                     bar.update(nbar)
                     nbar += 1
                     if self._dist_cv._type == "Radial Distribution Function":  # ?
@@ -1806,7 +1802,7 @@ project.save()
             for i in groups.keys():
                 cvg[i] = 0
 
-            for crystal in crystals:
+            for crystal in list_crystals:
                 crystal._cvs[self._name] = copy.deepcopy(cvg)
                 for group in groups.keys():
                     if crystal._name in groups[group]:
