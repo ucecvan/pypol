@@ -1081,8 +1081,8 @@ Simulation Type '{}' not recognized. Choose between:
 
     def ggfd(self, name, cv):
         from PyPol.analysis import GGFD
-        for cv in self._cvp:
-            if cv._name == name:
+        for existing_cv in self._cvp:
+            if existing_cv._name == name:
                 print("Error: CV with label {} already present in this method. Remove it or change CV label"
                       "".format(name))
                 exit()

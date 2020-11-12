@@ -1767,10 +1767,11 @@ project.save()
             nbar = 1
 
             for i in range(len(list_crystals) - 1):
-                di = list_crystals[i]._cvs[self._dist_cv._name]
+                from copy import deepcopy
+                di = deepcopy(list_crystals[i]._cvs[self._dist_cv._name])
                 ci = list_crystals[i]._name
                 for j in range(i + 1, len(crystals)):
-                    dj = list_crystals[j]._cvs[self._dist_cv._name]
+                    dj = deepcopy(list_crystals[j]._cvs[self._dist_cv._name])
                     cj = list_crystals[j]._name
                     bar.update(nbar)
                     nbar += 1
