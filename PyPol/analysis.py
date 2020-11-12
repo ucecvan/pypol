@@ -1740,12 +1740,13 @@ project.save()
                     c += 1
 
             dataset = pd.DataFrame(np.where(dataset > self._group_threshold, 1, 0), index=index,
-                                   columns=[(i[0][1], i[1][1]) for i in its.product(*combinations)])
+                                   columns=[(i[0][1], i[1][1]) for i in its.product(*combinations)] + ["Others"])
 
-            groups = dataset.groupby(dataset.colums.to_list()).groups
+            groups = dataset.groupby(dataset.columns.to_list()).groups
 
             cvg = {}
             for i in groups.keys():
+                groups[i] = groups[i].to_list()
                 cvg[i] = 0
 
             for crystal in list_crystals:
@@ -1811,7 +1812,7 @@ project.save()
         file_hd = open("{}/Groups_{}_{}.dat".format(simulation._path_output, self._name, simulation._name), "w")
         file_hd.write("# Group_name             Crystal_IDs\n")
         for group in groups.keys():
-            file_hd.write("{:<25}: {}\n".format(group, groups[group]))
+            file_hd.write("{:<25}: {}\n".format(str(group), groups[group]))
         file_hd.close()
 
 
