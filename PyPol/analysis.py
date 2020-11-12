@@ -2178,7 +2178,20 @@ class Clustering(object):
                 columns = ["rho", "sigma", "NN", "cluster", "distance"]
                 self._cluster_data[index] = pd.DataFrame([[0, 0, pd.NA, nc, 0]], index=[nc], columns=columns)
                 self._clusters[index] = {nc: [nc]}
-            if self._distance_matrix.at[index, "Number of structures"] > 1:
+            elif self._distance_matrix.at[index, "Number of structures"] == 2:
+                nc1 = self._distance_matrix.at[index, "Structures"][0]._name
+                nc2 = self._distance_matrix.at[index, "Structures"][1]._name
+                columns = ["rho", "sigma", "NN", "cluster", "distance"]
+                d_12 = self._distance_matrix.at[index, "Distance Matrix"][0, 1]
+                if d_12 > self._d_c:
+                    self._cluster_data[index] = pd.DataFrame([[0, 0, nc2, nc1, 0], [0, 0, nc1, nc2, 0]],
+                                                             index=[nc1, nc2], columns=columns)
+                    self._clusters[index] = {nc1: [nc1], nc2: [nc2]}
+                else:
+                    self._cluster_data[index] = pd.DataFrame([[0, 0, nc2, nc1, 0], [0, 0, nc1, nc1, d_12]],
+                                                             index=[nc1, nc2], columns=columns)
+                    self._clusters[index] = {nc1: [nc1, nc2]}
+            elif self._distance_matrix.at[index, "Number of structures"] > 2:
                 if self._algorithm == "fsfdp":
                     self._cluster_data[index], sc = FSFDP(self._distance_matrix.at[index, "Distance Matrix"],
                                                           kernel=self._kernel,
