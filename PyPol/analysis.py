@@ -1727,7 +1727,7 @@ project.save()
                 combinations.append([c for c in self._group_bins.keys() if c[0] == i])
 
             # noinspection PyTypeChecker
-            dataset = np.full((len(list_crystals), len(its.product(*combinations)) + 1), np.nan)
+            dataset = np.full((len(list_crystals), len((list(its.product(*combinations)))) + 1), np.nan)
             index = []
             for cidx in range(len(list_crystals)):
                 crystal = simulation._crystals[cidx]
