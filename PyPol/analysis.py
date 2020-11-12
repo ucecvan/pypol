@@ -1755,6 +1755,7 @@ project.save()
                     if crystal._name in groups[group]:
                         crystal._cvs[self._name][group] += 1
                         break
+            groups = {k: groups[k] for k in sorted(groups.keys(), key=lambda x: np.sum(x))}
 
         elif self._grouping_method == "similarity":
             from scipy.sparse import csr_matrix
@@ -2187,7 +2188,8 @@ class Clustering(object):
                     _save_decision_graph(self._cluster_data[index].loc[:, "rho"].values,
                                          self._cluster_data[index].loc[:, "sigma"].values,
                                          sigma_cutoff=sc,
-                                         path=simulation._path_output + str(self._name) + "_decision_graph.png")
+                                         path=simulation._path_output + str(self._name) + "_decision_graph_" +
+                                              str(index) + ".png")
 
                     with open(simulation._path_output + str(self._name) + "_FSFDP_" + str(index) + ".dat", 'w') as fo:
                         fo.write(self._cluster_data[index].__str__())
