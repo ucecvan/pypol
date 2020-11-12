@@ -1490,7 +1490,7 @@ class GGFD(object):
         self._type = cv._type
         self._clustering_type = "classification"
         self._int_type = "discrete"
-        self._grouping_method = "similarity"  # Alternatively, "group"
+        self._grouping_method = "similarity"  # Alternatively, "groups"
         self._group_threshold = 0.1
         self._group_bins = {}
 
@@ -1609,7 +1609,7 @@ CV: {0._name} ({0._type})
 Clustering Type: {0._clustering_type}
 Grouping Method: {0._grouping_method} 
 Threshold: {0._group_threshold}\n""".format(self)
-        if self._grouping_method == "group" and self._group_bins:
+        if self._grouping_method == "groups" and self._group_bins:
             for k, item in self._group_bins.items():
                 txt += "{}: {}\n".format(k, item)
         return txt
@@ -1721,7 +1721,7 @@ project.save()
         groups = {}
         list_crystals = get_list_crystals(simulation._crystals, crystals)
 
-        if self._grouping_method == "group":
+        if self._grouping_method == "groups":
             combinations: list = []
             for i in range(self._D):
                 combinations.append([c for c in self._group_bins.keys() if c[0] == i])
