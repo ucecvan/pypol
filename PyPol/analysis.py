@@ -2166,7 +2166,7 @@ class Clustering(object):
                 plt.imshow(total, interpolation="nearest", cmap="viridis")
                 plt.colorbar()
                 plt.tight_layout()
-                plt.savefig(simulation._path_output + str(self._name) + "_" + i.replace(" ", "") + ".png")
+                plt.savefig(simulation._path_output + str(self._name) + "_" + i.replace(" ", "") + ".png", dpi=300)
                 plt.close('all')
 
             self._distance_matrix = combinations
@@ -2371,11 +2371,11 @@ def _save_decision_graph(rho, sigma, sigma_cutoff, path):
     for i in range(len(rho)):
         if sigma[i] >= sigma_cutoff:
             if rho[i] < rho.max() / 100.0:
-                plt.scatter(rho[i], sigma[i], s=20, marker='o', c="black", edgecolor='none')
+                plt.scatter(rho[i], sigma[i], s=20, marker='o', c="black", edgecolor='face')
             else:
-                plt.scatter(rho[i], sigma[i], s=20, marker='o', c="C0", edgecolor='none')
+                plt.scatter(rho[i], sigma[i], s=20, marker='o', c="C0", edgecolor='face')
         else:
-            plt.scatter(rho[i], sigma[i], s=20, marker='o', c="C1", edgecolor='none')
+            plt.scatter(rho[i], sigma[i], s=20, marker='o', c="C1", edgecolor='face')
 
     plt.fill_between(np.array([-max(rho), max(rho) + 0.25]), np.array([sigma_cutoff, sigma_cutoff]),
                      color="C1", alpha=0.1)
