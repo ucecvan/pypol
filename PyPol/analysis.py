@@ -1730,7 +1730,7 @@ project.save()
             dataset = np.full((len(list_crystals), len((list(its.product(*combinations)))) + 1), np.nan)
             index = []
             for cidx in range(len(list_crystals)):
-                crystal = simulation._crystals[cidx]
+                crystal = list_crystals[cidx]
 
                 index.append(crystal._name)
                 dist = crystal._cvs[self._dist_cv._name] / np.sum(crystal._cvs[self._dist_cv._name])
@@ -2065,7 +2065,7 @@ class Clustering(object):
                                               pd.Series([[] for _ in range(len(combinations))], name="Structures",
                                                         index=index)), axis=1)
                 combinations.index.name = "Combinations"
-                bar = progressbar.ProgressBar(maxval=len(simulation._crystals)).start()
+                bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
                 nbar = 1
                 for crystal in list_crystals:
                     combinations = self._sort_crystal(crystal, combinations, group_threshold)
