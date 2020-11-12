@@ -2019,16 +2019,21 @@ class Clustering(object):
 
     def run(self,
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+            crystals="all",
             group_threshold: float = 0.8,
             gen_sim_mat: bool = True):
         self._clusters = {}
         self._cluster_data = {}
-
+        list_crystals = get_list_crystals(simulation._crystals, crystals)
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
         pd.set_option('display.expand_frame_repr', False)
         pd.set_option('display.max_colwidth', None)
         pd.set_option('display.max_seq_items', None)
+
+        if not simulation._completed:
+            print("Simulation {} is not completed yet. Run simulation.get_results() to check termination and import "
+                  "results.".format(simulation._name))
 
         if gen_sim_mat:
             self._d_c = []
@@ -2036,11 +2041,10 @@ class Clustering(object):
             group_names = []
             for cv in self._cvp:
                 if cv.clustering_type == "classification":
-                    for crystal in simulation.crystals:
-                        if crystal._state not in ("incomplete", "melted"):
-                            group_options.append(list(crystal._cvs[cv._name].keys()))
-                            group_names.append(cv._name)
-                            break
+                    for crystal in list_crystals:
+                        group_options.append(list(crystal._cvs[cv._name].keys()))
+                        group_names.append(cv._name)
+                        break
             if group_options:
                 if len(group_names) == 1:
                     combinations = group_options[0] + [None]
@@ -2063,9 +2067,8 @@ class Clustering(object):
                 combinations.index.name = "Combinations"
                 bar = progressbar.ProgressBar(maxval=len(simulation._crystals)).start()
                 nbar = 1
-                for crystal in simulation._crystals:
-                    if not crystal._state == "melted":
-                        combinations = self._sort_crystal(crystal, combinations, group_threshold)
+                for crystal in list_crystals:
+                    combinations = self._sort_crystal(crystal, combinations, group_threshold)
                     bar.update(nbar)
                     nbar += 1
                 bar.finish()
@@ -2074,10 +2077,9 @@ class Clustering(object):
                 combinations = pd.DataFrame([[0, []]], columns=["Number of structures", "Structures"],
                                             dtype=None, index=["all"])
                 combinations.index.name = "Combinations"
-                for crystal in simulation._crystals:
-                    if not crystal._state == "melted":
-                        combinations.loc["all", "Structures"].append(crystal)
-                        combinations.loc["all", "Number of structures"] += 1
+                for crystal in list_crystals:
+                    combinations.loc["all", "Structures"].append(crystal)
+                    combinations.loc["all", "Number of structures"] += 1
 
             slist = [np.full((combinations.loc[i, "Number of structures"],
                               combinations.loc[i, "Number of structures"]), 0.0) for i in combinations.index]

@@ -365,7 +365,7 @@ Atoms:
         file_output.write("\nSimulations:\n{:<20} ".format("IDs"))
         for simulation in self._simulations:
             if simulation._completed and not simulation._hide:
-                file_output.write("{:>10} ".format(simulation._name))
+                file_output.write("{:>20} ".format(simulation._name))
         for crystal in self._initial_crystals:
             file_output.write("\n{:20} ".format(crystal._name))
             for simulation in self._simulations:
@@ -373,21 +373,22 @@ Atoms:
                     for scrystal in simulation._crystals:
                         # Completed Simulations
                         if scrystal._name == crystal._name and scrystal._state == "complete":
-                            file_output.write("{:10.2f} "
+                            file_output.write("{:20.2f} "
                                               "".format(scrystal._energy - simulation._global_minima._energy))
                             break
                         # Melted
                         elif scrystal._name == crystal._name and scrystal._state == "melted":
-                            file_output.write("{:>10} ".format(str(scrystal._state)))
+                            file_output.write("{:>20} ".format(str(scrystal._state)))
                             break
                         # Cluster centers
                         elif scrystal._name == crystal._name and scrystal._state == scrystal._name:
-                            file_output.write("{:10.2f} "
+                            file_output.write("{:10.2f} Center "
                                               "".format(scrystal._energy - simulation._global_minima._energy))
                             break
                         # Cluster structures
                         elif scrystal._name == crystal._name and scrystal._state != scrystal._name:
-                            file_output.write("{:10} ".format(scrystal._state))
+                            file_output.write("{:10.2f} {}".format(scrystal._energy - simulation._global_minima._energy,
+                                                                 scrystal._state))
                             break
 
         file_output.write("\n" + "=" * 100 + "\n")
