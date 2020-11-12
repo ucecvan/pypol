@@ -2159,7 +2159,7 @@ class Clustering(object):
                             fo.write(combinations.loc[index, mat].__str__())
 
             for i in combinations.loc[:, "Distance Matrix":].columns:
-                total = pd.concat([m for m in combinations[:, i] if not isinstance(m, np.ndarray)])
+                total = pd.concat([m for m in combinations.loc[:, i] if not isinstance(m, np.ndarray)])
                 total.to_csv(simulation._path_output + str(self._name) + "_" + i.replace(" ", "") + ".dat")
                 # with open(, 'w') as fo:
                 #     fo.write(total.__str__())
@@ -2224,7 +2224,7 @@ class Clustering(object):
                         fo.write(self._cluster_data[index].__str__())
 
                     with open(simulation._path_output + str(self._name) + "_FSFDP.dat", 'a') as fo:
-                        fo.write("# Group {}\n".format(str(index)))
+                        fo.write("\n# Group {}\n".format(str(index)))
                         fo.write(self._cluster_data[index].__str__())
 
                 self._clusters[index] = {

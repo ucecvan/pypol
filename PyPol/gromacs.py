@@ -388,7 +388,7 @@ Atoms:
                         # Cluster structures
                         elif scrystal._name == crystal._name and scrystal._state != scrystal._name:
                             file_output.write("{:10.2f} {}".format(scrystal._energy - simulation._global_minima._energy,
-                                                                 scrystal._state))
+                                                                   scrystal._state))
                             break
 
         file_output.write("\n" + "=" * 100 + "\n")
@@ -1153,7 +1153,7 @@ Simulation Type '{}' not recognized. Choose between:
         if self._clustering_parameters:
             for existing_cm in self._clustering_parameters:
                 if existing_cm._name == clustering_method:
-                    self._cvp.remove(existing_cm)
+                    self._clustering_parameters.remove(existing_cm)
                     return
             print("No CV found with name {}".format(clustering_method))
         pass
