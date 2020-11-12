@@ -1592,16 +1592,16 @@ Error: Grouping selection method not recognized. Choose between:
             bins = [grid_min] + bins
         if abs(grid_max - bins[-1]) > threshold:
             bins = bins[:-1]
-        print(bins[0], bins[1])
-        print([j * bins_space + grid_min for j in range(grid_bins) if j * bins_space + grid_min <= bins[1]])
-        ibins[(step, 0)] = [j for j in range(grid_bins) if j * bins_space + grid_min < bins[1]]
+        # print(bins[0], bins[1])
+        # print([j * bins_space + grid_min for j in range(grid_bins) if j * bins_space + grid_min <= bins[1]])
+        ibins[(step, 0)] = [j for j in range(grid_bins) if j * bins_space + grid_min < bins[0]]
         ibins[(step, len(bins) - 1)] = [j for j in range(grid_bins) if bins[-1] <= j * bins_space + grid_min]
         return ibins, bins
 
     @staticmethod
     def _periodic_dist(step, ibins, bins, grid_bins, grid_min, bins_space):
         bins = [grid_min] + bins
-        ibins[(step, 0)] = [j for j in range(grid_bins) if j * bins_space + grid_min < bins[1]] + \
+        ibins[(step, 0)] = [j for j in range(grid_bins) if j * bins_space + grid_min < bins[0]] + \
                            [j for j in range(grid_bins) if bins[-1] <= j * bins_space + grid_min]
         return ibins, bins
 
