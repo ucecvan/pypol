@@ -1322,7 +1322,7 @@ class _GroSim(_GroDef):
                 s[crystal._name] = 1
 
         data = pd.DataFrame(np.full((len(s.keys()), 2), pd.NA), index=list(s.keys()), columns=["Density", "Energy"])
-
+        c = 1
         for crystal in self.crystals:
             if cluster_centers and crystal._name != crystal._state:
                 continue
@@ -1333,7 +1333,8 @@ class _GroSim(_GroDef):
                             s=s[crystal._name] * 70, c="C0", alpha=0.15, edgecolors=None, label='_no_legend_')
             else:
                 plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
-                            s=s[crystal._name] * 70, c="C0", alpha=0.15, edgecolors=None, label=crystal._label)
+                            s=s[crystal._name] * 70, c="C" + str(c), alpha=0.15, edgecolors=None, label=crystal._label)
+                c += 1
         plt.legend(scatterpoints=1)
         plt.savefig(path, dpi=300)
         plt.close("all")
