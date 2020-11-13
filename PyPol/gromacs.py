@@ -1327,13 +1327,18 @@ class _GroSim(_GroDef):
             if cluster_centers and crystal._name != crystal._state:
                 continue
             data.at[crystal._name, "Density"] = crystal.density
-            data.at[crystal._name, "Energy"] = crystal._energy
-            plt.scatter(crystal.density, crystal._energy, s=s[crystal._name] * 70, c="C0", alpha=0.15, edgecolors=None)
+            data.at[crystal._name, "Energy"] = crystal._energy - self._global_minima._energy
+            if crystal._name == crystal._label:
+                plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
+                            s=s[crystal._name] * 70, c="C0", alpha=0.15, edgecolors=None, label='_no_legend_')
+            else:
+                plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
+                            s=s[crystal._name] * 70, c="C0", alpha=0.15, edgecolors=None, label=crystal._label)
+        plt.legend(scatterpoints=1)
         plt.savefig(path, dpi=300)
         plt.close("all")
         if save_data:
             data.to_csv(path + "_data")
-
 
 
 class EnergyMinimization(_GroSim):
