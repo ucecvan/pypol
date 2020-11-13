@@ -1330,8 +1330,10 @@ class _GroSim(_GroDef):
             data.at[crystal._name, "Energy"] = crystal._energy
             plt.scatter(crystal.density, crystal._energy, s=s[crystal._name] * 70, c="C0", alpha=0.15, edgecolors=None)
         plt.savefig(path, dpi=300)
+        plt.close("all")
         if save_data:
             data.to_csv(path + "_data")
+
 
 
 class EnergyMinimization(_GroSim):

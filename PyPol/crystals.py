@@ -178,8 +178,9 @@ Methods:
         return self._density()
 
     def _density(self):
+        # TODO not suitable for 2 or more molecules
         mw = 0
-        for atom in self.molecules[0]:
+        for atom in self.molecules[0].atoms:
             mw += atom._mass
         return self._Z * 1.6605 * mw / self._volume
 
