@@ -1333,10 +1333,11 @@ class _GroSim(_GroDef):
             else:
                 s[crystal._name] = 1
 
-
         data = pd.DataFrame(np.full((len(s.keys()), 2), pd.NA), index=list(s.keys()), columns=["Density", "Energy"])
         c = 1
         for crystal in self.crystals:
+            if crystal._state == "melted":
+                continue
             if cluster_centers and crystal._name != crystal._state:
 
                 continue
