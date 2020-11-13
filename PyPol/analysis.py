@@ -1678,6 +1678,7 @@ project.save()
 """
 
     def set_group_bins(self, *args: Union[list, tuple], periodic: bool = True):  # , threshold="auto"
+        # TODO Change args to dict with key == names of the variables
         args = list(args)
         if len(args) != self._D:
             print("Error: incorrect number of args, {} instead of {}.".format(len(args), self._D))
@@ -2458,7 +2459,7 @@ def FSFDP(dmat: Union[pd.DataFrame, np.ndarray],
                         axis=1).sort_values(by="rho", ascending=False)
 
     for i in dataset.index:
-        if dataset.loc[i, "sigma"] >= sigma_cutoff:
+        if dataset.loc[i, "sigma"] >= sigma_cutoff or i == dataset.index[0]:
             dataset.at[i, "cluster"] = i
             dataset.at[i, "distance"] = 0.0
 

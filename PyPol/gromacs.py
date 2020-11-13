@@ -4,7 +4,7 @@ import subprocess as sbp
 from shutil import copyfile
 from typing import Union
 import progressbar
-
+import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
 
@@ -1298,6 +1298,40 @@ class _GroSim(_GroDef):
                 return False
         else:
             return False
+
+    def plot_landscape(self, path, cluster_centers=False, save_data=True):
+        import pandas as pd
+        if not self.completed:
+            print("Error: Import results before plotting energy landscape.")
+            exit()
+        s = {}
+        for crystal in self.crystals:
+            if crystal._state == "melted":
+                continue
+
+            if cluster_centers:
+                if crystal._state == "complete":
+                    print("Error: Perform Cluster analysis before plotting energy landscape of cluster centers")
+                    exit()
+                else:
+                    if crystal._state not in s:
+                        s[crystal._state] = 1
+                    else:
+                        s[crystal._state] += 1
+            else:
+                s[crystal._name] = 1
+
+        data = pd.DataFrame(np.full((len(s.keys()), 2), pd.NA), index=list(s.keys()), columns=["Density", "Energy"])
+
+        for crystal in self.crystals:
+            if cluster_centers and crystal._name != crystal._state:
+                continue
+            data.at[crystal._name, "Density"] = crystal.density
+            data.at[crystal._name, "Energy"] = crystal._energy
+            plt.scatter(crystal.density, crystal._energy, s=s[crystal._name] * 70, c="C0", alpha=0.15, edgecolors=None)
+        plt.savefig(path, dpi=300)
+        if save_data:
+            data.to_csv(path + "_data")
 
 
 class EnergyMinimization(_GroSim):

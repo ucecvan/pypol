@@ -173,6 +173,16 @@ Methods:
     def molecules(self):
         return self._load_coordinates()
 
+    @property
+    def density(self):
+        return self._density()
+
+    def _density(self):
+        mw = 0
+        for atom in self.molecules[0]:
+            mw += atom._mass
+        return self._Z * 1.6605 * mw / self._volume
+
     def _save_coordinates(self, molecules):
         """
         Save molecules in the crystal folder. This is done to limit the memory use.
