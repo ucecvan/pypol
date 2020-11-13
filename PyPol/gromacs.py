@@ -1345,12 +1345,14 @@ class _GroSim(_GroDef):
             data.at[crystal._name, "Energy"] = crystal._energy - self._global_minima._energy
             if crystal._name == crystal._label:
                 plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
-                            s=s[crystal._name] * 70, c="C0", alpha=0.15, edgecolors=None, label='_no_legend_')
+                            s=s[crystal._name] * 70, c="C0", alpha=0.2, edgecolors=None, label='_no_legend_')
             else:
                 plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
-                            s=s[crystal._name] * 70, c="C" + str(c), alpha=0.15, edgecolors=None, label=crystal._label)
+                            s=s[crystal._name] * 70, c="C" + str(c), alpha=0.8, edgecolors=None, label=crystal._label)
                 c += 1
         plt.legend(scatterpoints=1)
+        plt.ylabel("$\Delta$E / kJ mol$^{-1}$")
+        plt.xlabel("$\rho$ / Kg m$^{-3}$")
         plt.savefig(path, dpi=300)
         plt.close("all")
         if save_data:
