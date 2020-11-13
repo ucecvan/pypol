@@ -1305,26 +1305,40 @@ class _GroSim(_GroDef):
             print("Error: Import results before plotting energy landscape.")
             exit()
         s = {}
+        labels = {}
         for crystal in self.crystals:
             if crystal._state == "melted":
                 continue
-
+            if crystal._name not in labels:
+                if crystal._name != crystal._label:
+                    labels[crystal._name] = crystal._label
+                else:
+                    labels[crystal._name] = False
             if cluster_centers:
                 if crystal._state == "complete":
                     print("Error: Perform Cluster analysis before plotting energy landscape of cluster centers")
                     exit()
                 else:
+                    if labels[crystal._name]:
+                        if crystal._state not in labels:
+                            labels[crystal._state] = crystal._label
+                        elif not labels[crystal._state]:
+                            labels[crystal._state] = crystal._label
+
                     if crystal._state not in s:
                         s[crystal._state] = 1
+
                     else:
                         s[crystal._state] += 1
             else:
                 s[crystal._name] = 1
 
+
         data = pd.DataFrame(np.full((len(s.keys()), 2), pd.NA), index=list(s.keys()), columns=["Density", "Energy"])
         c = 1
         for crystal in self.crystals:
             if cluster_centers and crystal._name != crystal._state:
+
                 continue
             data.at[crystal._name, "Density"] = crystal.density
             data.at[crystal._name, "Energy"] = crystal._energy - self._global_minima._energy
@@ -2370,7 +2384,6 @@ project.save()                                                # Save project to 
                             self._global_minima = crystal
                         rank += 1
             self._completed = "complete"
-
 
 
 class Metadynamics(_GroSim):
