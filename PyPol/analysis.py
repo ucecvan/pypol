@@ -1920,7 +1920,8 @@ class GGFA(_GG):
     def __str__(self):
         return """
 CV: {0._name} ({0._type})
-Clustering Type: {0._clustering_type}"""
+Clustering Type: {0._clustering_type}
+""".format(self)
 
     def _write_output(self, path_output):
         file_output = open(path_output, "a")
