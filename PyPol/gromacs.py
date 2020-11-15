@@ -1334,20 +1334,21 @@ class _GroSim(_GroDef):
                 if crystal._state == "complete":
                     print("Error: Perform Cluster analysis before plotting energy landscape of cluster centers")
                     exit()
-                else:
-                    if labels[crystal._name]:
-                        if crystal._state not in labels and crystal._state != crystal._name:
-                            print("Changing label of crystal {} to {}".format(crystal._state, crystal._label))
-                            labels[crystal._state] = crystal._label
-                            labels[crystal._name] = False
-                        elif not labels[crystal._state] and crystal._state != crystal._name:
-                            labels[crystal._state] = crystal._label
-                            labels[crystal._name] = False
 
-                    if crystal._state not in s:
-                        s[crystal._state] = 1
-                    else:
-                        s[crystal._state] += 1
+                if labels[crystal._name]:
+                    if crystal._state not in labels and crystal._state != crystal._name:
+                        print("Changing label of crystal {} to {}".format(crystal._state, crystal._label))
+                        labels[crystal._state] = crystal._label
+                        labels[crystal._name] = False
+                    elif not labels[crystal._state] and crystal._state != crystal._name:
+                        print("Changing label of crystal {} to {}".format(crystal._state, crystal._label))
+                        labels[crystal._state] = crystal._label
+                        labels[crystal._name] = False
+
+                if crystal._state not in s:
+                    s[crystal._state] = 1
+                else:
+                    s[crystal._state] += 1
             else:
                 s[crystal._name] = 1
 
@@ -1361,12 +1362,13 @@ class _GroSim(_GroDef):
                 continue
             data.at[crystal._name, "Density"] = crystal.density
             data.at[crystal._name, "Energy"] = crystal._energy - self._global_minima._energy
-            if crystal._name == crystal._label:
+            if labels[crystal._name]:
                 plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
-                            s=s[crystal._name] * 50, c="C0", alpha=0.2, edgecolors=None, label='_no_legend_')
+                            s=s[crystal._name] * 50, c="C" + str(c), alpha=0.8, edgecolors=None,
+                            label=labels[crystal._name])
             else:
                 plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
-                            s=s[crystal._name] * 50, c="C" + str(c), alpha=0.8, edgecolors=None, label=crystal._label)
+                            s=s[crystal._name] * 50, c="C0", alpha=0.2, edgecolors=None, label='_no_legend_')
                 c += 1
         plt.legend(scatterpoints=1)
         plt.ylabel(r"$\Delta$E / kJ mol$^{-1}$")
