@@ -236,6 +236,8 @@ Atoms:
                 new_molecule._atoms.append(new_atom)
             new_molecule._atoms.sort(key=lambda a: a._index)
             new_molecule._natoms = len(new_molecule._atoms)
+            if molecule._attributes:
+                new_molecule._attributes = molecule._attributes
             return new_molecule
         else:
             print("An error occurred during the index assignation:\n{}\n{}".format(new_molecule, molecule))
