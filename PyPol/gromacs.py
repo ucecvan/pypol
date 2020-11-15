@@ -1317,28 +1317,31 @@ class _GroSim(_GroDef):
             exit()
         s = {}
         labels = {}
-        for crystal in self.crystals:
+        for crystal in self._crystals:
             if crystal._state == "melted":
                 continue
+
             if crystal._name not in labels:
                 if crystal._name != crystal._label:
                     labels[crystal._name] = crystal._label
                 else:
                     labels[crystal._name] = False
+
             if cluster_centers:
                 if crystal._state == "complete":
                     print("Error: Perform Cluster analysis before plotting energy landscape of cluster centers")
                     exit()
                 else:
                     if labels[crystal._name]:
-                        if crystal._state not in labels:
+                        if crystal._state not in labels and crystal._state != crystal._name:
                             labels[crystal._state] = crystal._label
-                        elif not labels[crystal._state]:
+                            labels[crystal._name] = False
+                        elif not labels[crystal._state] and crystal._state != crystal._name:
                             labels[crystal._state] = crystal._label
+                            labels[crystal._name] = False
 
                     if crystal._state not in s:
                         s[crystal._state] = 1
-
                     else:
                         s[crystal._state] += 1
             else:
