@@ -1125,7 +1125,6 @@ Simulation Type '{}' not recognized. Choose between:
             print("No CV found with name {}".format(cv_name))
 
     def new_clustering_parameters(self, name: str, cvs: Union[list, tuple]):
-        from PyPol.analysis import Torsions, MolecularOrientation, Combine, RDF, Density, PotentialEnergy, GGFD
         from PyPol.analysis import Clustering
         cvp = list()
         if isinstance(cvs[0], str):
@@ -1136,8 +1135,7 @@ Simulation Type '{}' not recognized. Choose between:
                 print("Error: Not all CVs present in this method. CVs available:")
                 for cv in self._cvp:
                     print(cv._name)
-
-        elif isinstance(cvs[0], (Torsions, MolecularOrientation, Combine, RDF, Density, PotentialEnergy, GGFD)):
+        else:
             for cv in self._cvp:
                 if cv in cvs:
                     cvp.append(cv)
@@ -1145,6 +1143,7 @@ Simulation Type '{}' not recognized. Choose between:
                 print("Error: Not all CVs present in this method. CVs available:")
                 for cv in self._cvp:
                     print(cv._name)
+
 
         clustering_method = Clustering(name, tuple(cvp))
         self._clustering_parameters.append(clustering_method)

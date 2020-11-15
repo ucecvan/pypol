@@ -1741,6 +1741,7 @@ project.save()
             print("Error: incorrect number of args, {} instead of {}.".format(len(args), self._D))
             exit()
 
+        self._group_bins = {}
         for i in range(self._D):
             bins = list(args[i])
             bins_space = (self._grid_max[i] - self._grid_min[i]) / self._grid_bins[i]
