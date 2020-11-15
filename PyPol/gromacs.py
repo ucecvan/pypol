@@ -1144,7 +1144,6 @@ Simulation Type '{}' not recognized. Choose between:
                 for cv in self._cvp:
                     print(cv._name)
 
-
         clustering_method = Clustering(name, tuple(cvp))
         self._clustering_parameters.append(clustering_method)
         return clustering_method
