@@ -1312,6 +1312,8 @@ class _GroSim(_GroDef):
 
     def plot_landscape(self, path, cluster_centers=False, save_data=True):
         import pandas as pd
+        print("=" * 50)
+        print("Generating crystal energy landscape:")
         if not self.completed:
             print("Error: Import results before plotting energy landscape.")
             exit()
@@ -1323,6 +1325,7 @@ class _GroSim(_GroDef):
 
             if crystal._name not in labels:
                 if crystal._name != crystal._label:
+                    print("Include label {} for crystal {}".format(crystal._label, crystal._name))
                     labels[crystal._name] = crystal._label
                 else:
                     labels[crystal._name] = False
@@ -1334,6 +1337,7 @@ class _GroSim(_GroDef):
                 else:
                     if labels[crystal._name]:
                         if crystal._state not in labels and crystal._state != crystal._name:
+                            print("Changing label of crystal {} to {}".format(crystal._state, crystal._label))
                             labels[crystal._state] = crystal._label
                             labels[crystal._name] = False
                         elif not labels[crystal._state] and crystal._state != crystal._name:
@@ -1359,10 +1363,10 @@ class _GroSim(_GroDef):
             data.at[crystal._name, "Energy"] = crystal._energy - self._global_minima._energy
             if crystal._name == crystal._label:
                 plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
-                            s=s[crystal._name] * 70, c="C0", alpha=0.2, edgecolors=None, label='_no_legend_')
+                            s=s[crystal._name] * 50, c="C0", alpha=0.2, edgecolors=None, label='_no_legend_')
             else:
                 plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
-                            s=s[crystal._name] * 70, c="C" + str(c), alpha=0.8, edgecolors=None, label=crystal._label)
+                            s=s[crystal._name] * 50, c="C" + str(c), alpha=0.8, edgecolors=None, label=crystal._label)
                 c += 1
         plt.legend(scatterpoints=1)
         plt.ylabel(r"$\Delta$E / kJ mol$^{-1}$")
@@ -1371,6 +1375,8 @@ class _GroSim(_GroDef):
         plt.close("all")
         if save_data:
             data.to_csv(path + "_data")
+        print("Plot '{}' saved".format(path))
+        print("=" * 50)
 
 
 class EnergyMinimization(_GroSim):
