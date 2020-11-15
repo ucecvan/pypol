@@ -1908,6 +1908,15 @@ class GGFA(_GG):
 
         self._run(simulation, groups, crystals)
 
+    def __str__(self):
+        return """
+CV: {0._name} ({0._type})
+Clustering Type: {0._clustering_type}"""
+
+    def _write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write(self.__str__())
+        file_output.close()
 
 #
 # Utilities
