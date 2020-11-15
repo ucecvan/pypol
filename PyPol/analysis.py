@@ -329,7 +329,7 @@ project.save()                                                # Save project"""
         print("=" * 100)
         print(self.__str__())
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
 
         for crystal in list_crystals:
             print(crystal._name)
@@ -392,8 +392,8 @@ project.save()                                                # Save project"""
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                     crystals: Union[str, list, tuple] = "all",
-                    plot: bool = True):
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+                    plot: bool = True, attributes=None):
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
@@ -620,7 +620,7 @@ project.save()                                                # Save project"""
         print("=" * 100)
         print(self.__str__())
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
 
         for crystal in list_crystals:
             print(crystal._name)
@@ -692,8 +692,8 @@ project.save()                                                # Save project"""
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                     crystals: Union[str, list, tuple] = "all",
-                    plot: bool = True):
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+                    plot: bool = True, attributes=None):
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
@@ -736,12 +736,12 @@ project.save()                                                # Save project"""
     def identify_orientational_disorder(self,
                                         simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                                         crystals: Union[str, list, tuple] = "all",
-                                        cutoff: float = 0.1):
+                                        cutoff: float = 0.1, attributes=None):
         if self._grid_min != 0. and self._grid_max != np.pi:
             print("Error: A range between 0 and pi must be used to identify melted structures.")
             exit()
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
 
         file_hd = open("{}/HD_{}.dat".format(simulation._path_output, simulation._name), "w")
         file_hd.write("# Tolerance = {}\n#\n# Structures HD\n".format(round(cutoff, 5)))
@@ -921,7 +921,7 @@ project.save()                                                # Save project"""
         :return:
         """
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
 
         idx_cv = 0
         list_bins = list()
@@ -1048,8 +1048,9 @@ project.save()                                                # Save project"""
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                     crystals: Union[str, list, tuple] = "all",
-                    plot: bool = True):
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+                    plot: bool = True,
+                    attributes=None):
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
@@ -1311,7 +1312,7 @@ project.save()                                                # Save project
             print("Error: no atoms found. Select atoms with the set_atoms module.")
             exit()
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
 
         print("=" * 100)
         print("Generate plumed input files")
@@ -1406,8 +1407,8 @@ project.save()                                                # Save project
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                     crystals: Union[str, list, tuple] = "all",
-                    plot: bool = True):
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+                    plot: bool = True, attributes=None):
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
@@ -1487,7 +1488,7 @@ class _GG(object):
     def clustering_type(self):
         return self._clustering_type
 
-    def _run(self, simulation, groups, crystals="all"):
+    def _run(self, simulation, groups, crystals="all", attributes=None):
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -1495,7 +1496,7 @@ class _GG(object):
         pd.set_option('display.max_colwidth', None)
         pd.set_option('display.max_seq_items', None)
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
 
         cvg = {}
         for i in groups.keys():
@@ -1760,7 +1761,7 @@ project.save()
 
     def run(self,
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-            crystals="all"):
+            crystals="all", attributes=None):
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -1769,7 +1770,7 @@ project.save()
         pd.set_option('display.max_seq_items', None)
 
         groups = {}
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
 
         if self._grouping_method == "groups":
             combinations: list = []
@@ -1884,7 +1885,7 @@ class GGFA(_GG):
 
     def run(self,
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-            crystals="all"):
+            crystals="all", attributes=None):
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -1893,7 +1894,7 @@ class GGFA(_GG):
         pd.set_option('display.max_seq_items', None)
 
         groups = {}
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
 
         if not all(self._attribute in crystal._attributes for crystal in list_crystals):
             print(f"Error: some of the Crystals do not have attribute '{self._attribute}'")
@@ -1979,7 +1980,7 @@ def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, in
     if attributes:
         mols = []
         for mol in crystal._load_coordinates():
-            if attributes.items() <= mol._attributes:
+            if attributes.items() <= mol._attributes.items():
                 mols.append(mol)
     else:
         mols = crystal._load_coordinates()
@@ -2138,10 +2139,10 @@ class Clustering(object):
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
             crystals="all",
             group_threshold: float = 0.8,
-            gen_sim_mat: bool = True):
+            gen_sim_mat: bool = True, attributes=None):
         self._clusters = {}
         self._cluster_data = {}
-        list_crystals = get_list_crystals(simulation._crystals, crystals)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
         pd.set_option('display.expand_frame_repr', False)

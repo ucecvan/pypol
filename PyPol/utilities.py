@@ -86,8 +86,19 @@ def get_list(elements):
         return [elements]
 
 
-def get_list_crystals(scrystals, crystals, _include_melted=False):
+def check_attributes(list_crystals: list, attributes: dict):
+    new_list = []
+    for crystal in list_crystals:
+        if attributes.items() <= crystal._attributes.items():
+            new_list.append(crystal)
+    return new_list
+
+
+def get_list_crystals(scrystals, crystals, attributes=None, _include_melted=False):
+    if attributes is None:
+        attributes = {}
     from PyPol.crystals import Crystal
+
     list_crystals = list()
     if crystals == "incomplete":
         for sc in scrystals:
@@ -117,6 +128,8 @@ def get_list_crystals(scrystals, crystals, _include_melted=False):
         else:
             print("Something went wrong in crystal selection, please check that simulation is completed")
             exit()
+    if attributes:
+        list_crystals = check_attributes(list_crystals, attributes)
     return list_crystals
 
 
