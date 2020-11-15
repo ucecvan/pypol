@@ -312,14 +312,16 @@ project.save()                                                # Save project"""
                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                        bash_script=True,
                        crystals="all",
-                       attributes=None):
+                       catt=None,
+                       matt=None):
         """
         Generate the plumed input files
 
+        :param matt:
+        :param catt:
         :param simulation: Simulation object
         :param bash_script: If True, generate a bash script to run simulations
         :param crystals:
-        :param attributes:
         :return:
         """
 
@@ -329,12 +331,12 @@ project.save()                                                # Save project"""
         print("=" * 100)
         print(self.__str__())
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
 
         for crystal in list_crystals:
             print(crystal._name)
             lines_atoms = generate_atom_list(self._atoms, self._molecule, crystal, keyword="ATOMS", lines=[],
-                                             attributes=attributes)
+                                             attributes=matt)
             file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
             file_plumed.write("TORSIONS ...\n")
             for line in lines_atoms:
@@ -392,8 +394,8 @@ project.save()                                                # Save project"""
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                     crystals: Union[str, list, tuple] = "all",
-                    plot: bool = True, attributes=None):
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+                    plot: bool = True, catt=None):
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
@@ -605,13 +607,14 @@ project.save()                                                # Save project"""
         file_output.close()
 
     def generate_input(self, simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-                       bash_script=True, crystals="all", attributes=None):
+                       bash_script=True, crystals="all", catt=None, matt=None):
         """
 
+        :param matt:
+        :param catt:
         :param simulation:
         :param bash_script:
         :param crystals:
-        :param attributes:
         :return:
         """
         if not self._atoms:
@@ -620,7 +623,7 @@ project.save()                                                # Save project"""
         print("=" * 100)
         print(self.__str__())
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
 
         for crystal in list_crystals:
             print(crystal._name)
@@ -628,7 +631,7 @@ project.save()                                                # Save project"""
             lines_atoms = []
             for idx_mol in range(len(self._molecules)):
                 lines_atoms = generate_atom_list(self._atoms[idx_mol], self._molecules[idx_mol], crystal,
-                                                 keyword="ATOMS", lines=lines_atoms, attributes=attributes)
+                                                 keyword="ATOMS", lines=lines_atoms, attributes=matt)
             file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
 
             file_plumed.write("DISTANCE ...\n")
@@ -692,8 +695,8 @@ project.save()                                                # Save project"""
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                     crystals: Union[str, list, tuple] = "all",
-                    plot: bool = True, attributes=None):
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+                    plot: bool = True, catt=None):
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
@@ -736,12 +739,12 @@ project.save()                                                # Save project"""
     def identify_orientational_disorder(self,
                                         simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                                         crystals: Union[str, list, tuple] = "all",
-                                        cutoff: float = 0.1, attributes=None):
+                                        cutoff: float = 0.1, catt=None):
         if self._grid_min != 0. and self._grid_max != np.pi:
             print("Error: A range between 0 and pi must be used to identify melted structures.")
             exit()
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
 
         file_hd = open("{}/HD_{}.dat".format(simulation._path_output, simulation._name), "w")
         file_hd.write("# Tolerance = {}\n#\n# Structures HD\n".format(round(cutoff, 5)))
@@ -910,18 +913,20 @@ project.save()                                                # Save project"""
                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                        bash_script: bool = True,
                        crystals="all",
-                       attributes=None):
+                       catt=None, matt=None):
         """
         TODO output format, only one cv is printed!
 
+        :param matt:
+        :param catt:
         :param simulation:
         :param bash_script:
         :param crystals:
-        :param attributes:
+
         :return:
         """
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
 
         idx_cv = 0
         list_bins = list()
@@ -961,7 +966,7 @@ project.save()                                                # Save project"""
                     lines_atoms = []
                     for idx_mol in range(len(cv._molecules)):
                         lines_atoms = generate_atom_list(cv._atoms[idx_mol], cv._molecules[idx_mol], crystal,
-                                                         keyword="ATOMS", lines=lines_atoms, attributes=attributes)
+                                                         keyword="ATOMS", lines=lines_atoms, attributes=matt)
 
                     file_plumed.write("DISTANCE ...\n")
                     for line in lines_atoms:
@@ -988,7 +993,7 @@ project.save()                                                # Save project"""
                 for cv in self._cvs:
                     # Select atoms and molecules
                     lines_atoms = generate_atom_list(cv._atoms, cv.molecule, crystal, keyword="ATOMS", lines=[],
-                                                     attributes=attributes)
+                                                     attributes=matt)
 
                     file_plumed.write("TORSIONS ...\n")
                     for line in lines_atoms:
@@ -1049,8 +1054,8 @@ project.save()                                                # Save project"""
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True,
-                    attributes=None):
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+                    catt=None):
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
@@ -1297,14 +1302,16 @@ project.save()                                                # Save project
                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                        bash_script: bool = True,
                        crystals="all",
-                       attributes=None):
+                       catt=None,
+                       matt=None):
         """
 
 
+        :param matt:
+        :param catt:
         :param bash_script:
         :param simulation:
         :param crystals:
-        :param attributes:
         :return:
         """
 
@@ -1312,7 +1319,7 @@ project.save()                                                # Save project
             print("Error: no atoms found. Select atoms with the set_atoms module.")
             exit()
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
 
         print("=" * 100)
         print("Generate plumed input files")
@@ -1337,7 +1344,7 @@ project.save()                                                # Save project
             for idx_mol in range(len(self._molecules)):
                 lines_atoms = generate_atom_list(self._atoms[idx_mol], self._molecules[idx_mol], crystal,
                                                  keyword="ATOMS", lines=lines_atoms, index_lines=False,
-                                                 attributes=attributes)
+                                                 attributes=matt)
 
             file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
             idx_com = 1
@@ -1407,8 +1414,8 @@ project.save()                                                # Save project
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                     crystals: Union[str, list, tuple] = "all",
-                    plot: bool = True, attributes=None):
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+                    plot: bool = True, catt=None):
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
         nbar = 1
@@ -1488,7 +1495,7 @@ class _GG(object):
     def clustering_type(self):
         return self._clustering_type
 
-    def _run(self, simulation, groups, crystals="all", attributes=None):
+    def _run(self, simulation, groups, crystals="all", catt=None):
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -1496,7 +1503,7 @@ class _GG(object):
         pd.set_option('display.max_colwidth', None)
         pd.set_option('display.max_seq_items', None)
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
 
         cvg = {}
         for i in groups.keys():
@@ -1761,7 +1768,7 @@ project.save()
 
     def run(self,
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-            crystals="all", attributes=None):
+            crystals="all", catt=None):
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -1770,7 +1777,7 @@ project.save()
         pd.set_option('display.max_seq_items', None)
 
         groups = {}
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
 
         if self._grouping_method == "groups":
             combinations: list = []
@@ -1885,7 +1892,7 @@ class GGFA(_GG):
 
     def run(self,
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-            crystals="all", attributes=None):
+            crystals="all", catt=None):
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -1894,7 +1901,7 @@ class GGFA(_GG):
         pd.set_option('display.max_seq_items', None)
 
         groups = {}
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
 
         if not all(self._attribute in crystal._attributes for crystal in list_crystals):
             print(f"Error: some of the Crystals do not have attribute '{self._attribute}'")
@@ -2139,10 +2146,10 @@ class Clustering(object):
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
             crystals="all",
             group_threshold: float = 0.8,
-            gen_sim_mat: bool = True, attributes=None):
+            gen_sim_mat: bool = True, catt=None):
         self._clusters = {}
         self._cluster_data = {}
-        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
         pd.set_option('display.expand_frame_repr', False)
