@@ -182,10 +182,10 @@ Molecules:""".format(self._name, self._package, self._gromacs, len(self._molecul
 Molecule: {0._residue}
 Molecule .itp file: {0._forcefield}
 Atoms:
-  {1:8} {2:8} {3:8}{4:>6}  {5:>8}   {6:8}""".format(molecule, "Index", "Label", "Type", "Charge", "Mass", "Bonds")
+{1:8} {2:8} {3:8}{4:>6}  {5:>8}   {6:8}""".format(molecule, "Index", "Label", "Type", "Charge", "Mass", "Bonds")
             for atom in molecule._atoms:
                 txt += """
-  {0._index:<8} {0._label:<8} {0._type:<8}{0._charge:>6.3f}  {0._mass:>8.3f}   {1:<8}""".format(
+{0._index:<8} {0._label:<8} {0._type:<8}{0._charge:>6.3f}  {0._mass:>8.3f}   {1:<8}""".format(
                     atom, " ".join(str(bond) for bond in atom._bonds))
             txt += "\n"
         return txt
@@ -1091,6 +1091,17 @@ Simulation Type '{}' not recognized. Choose between:
         self._cvp.append(cv)
         return cv
 
+    def ggfa(self, name, attribute):
+        from PyPol.analysis import GGFA
+        for existing_cv in self._cvp:
+            if existing_cv._name == name:
+                print("Error: CV with label {} already present in this method. Remove it or change CV label"
+                      "".format(name))
+                exit()
+        cv = GGFA(name, attribute)
+        self._cvp.append(cv)
+        return cv
+
     def get_cv(self, cv_name: str):
         """
         Find an existing CV by its name.
@@ -1351,8 +1362,8 @@ class _GroSim(_GroDef):
                             s=s[crystal._name] * 70, c="C" + str(c), alpha=0.8, edgecolors=None, label=crystal._label)
                 c += 1
         plt.legend(scatterpoints=1)
-        plt.ylabel("$\Delta$E / kJ mol$^{-1}$")
-        plt.xlabel("$\rho$ / Kg m$^{-3}$")
+        plt.ylabel(r"$\Delta$E / kJ mol$^{-1}$")
+        plt.xlabel(r"$\rho$ / Kg m$^{-3}$")
         plt.savefig(path, dpi=300)
         plt.close("all")
         if save_data:

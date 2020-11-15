@@ -51,6 +51,7 @@ class Crystal(object):
         self._rank = 0
 
         self._cvs = dict()
+        self._attributes = dict()
 
     def __str__(self):
         return """
@@ -183,6 +184,23 @@ Methods:
         for atom in self.molecules[0].atoms:
             mw += atom._mass
         return self._Z * 1.6605 * mw / self._volume
+
+    @property
+    def attributes(self):
+        txt = ""
+        if self._attributes:
+            for k in self._attributes.keys():
+                txt += f"{k} = {self._attributes[k]}\n"
+        return txt
+
+    def set_attribute(self, att, val):
+        self._attributes[att] = val
+
+    def get_attribute(self, att):
+        return self._attributes[att]
+
+    def update_molecules(self, molecules):
+        self._save_coordinates(molecules)
 
     def _save_coordinates(self, molecules):
         """
@@ -553,11 +571,15 @@ class Molecule(object):
         self._forcefield = None
         self._potential_energy = 0.0
         self._contact_matrix = None
+        self._attributes = {}
 
     def __str__(self):
-        return """
-Molecule {0._index}: ResidueName = {0._residue}, NumberOfAtoms = {0._natoms} 
-        """.format(self)
+        txt = "Molecule {0.index}: ResidueName = {0.residue}, NumberOfAtoms = {0.natoms}".format(self)
+        if self._attributes:
+            for k in self._attributes.keys():
+                txt += f"{k} = {self._attributes[k]}, "
+
+        return txt[:-2]
 
     @staticmethod
     def help():
@@ -596,6 +618,8 @@ for molecule in crystal.molecules:
 
     @property
     def natoms(self):
+        if not self._natoms:
+            self._natoms = len(self._atoms)
         return self._natoms
 
     @property
@@ -614,19 +638,19 @@ for molecule in crystal.molecules:
         else:
             return self._contact_matrix
 
-    # TODO remove after test
-    # @staticmethod
-    # def _empty(index, name):
-    #     """
-    #     TODO useless, change __init__()
-    #     Return a new Molecule object with the specified index and name
-    #     :param index:
-    #     :param name:
-    #     :return: Molecule
-    #     """
-    #     new_molecule = Molecule(name)
-    #     new_molecule._index = index
-    #     return new_molecule
+    @property
+    def attributes(self):
+        txt = ""
+        if self._attributes:
+            for k in self._attributes.keys():
+                txt += f"{k} = {self._attributes[k]}\n"
+        return txt
+
+    def set_attribute(self, att, val):
+        self._attributes[att] = val
+
+    def get_attribute(self, att):
+        return self._attributes[att]
 
     def _calculate_centroid(self):
         """

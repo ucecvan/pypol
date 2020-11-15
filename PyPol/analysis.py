@@ -311,13 +311,15 @@ project.save()                                                # Save project"""
     def generate_input(self,
                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                        bash_script=True,
-                       crystals="all"):
+                       crystals="all",
+                       attributes=None):
         """
         Generate the plumed input files
 
         :param simulation: Simulation object
         :param bash_script: If True, generate a bash script to run simulations
         :param crystals:
+        :param attributes:
         :return:
         """
 
@@ -331,7 +333,8 @@ project.save()                                                # Save project"""
 
         for crystal in list_crystals:
             print(crystal._name)
-            lines_atoms = generate_atom_list(self._atoms, self._molecule, crystal, keyword="ATOMS", lines=[])
+            lines_atoms = generate_atom_list(self._atoms, self._molecule, crystal, keyword="ATOMS", lines=[],
+                                             attributes=attributes)
             file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
             file_plumed.write("TORSIONS ...\n")
             for line in lines_atoms:
@@ -602,12 +605,13 @@ project.save()                                                # Save project"""
         file_output.close()
 
     def generate_input(self, simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
-                       bash_script=True, crystals="all"):
+                       bash_script=True, crystals="all", attributes=None):
         """
 
         :param simulation:
         :param bash_script:
         :param crystals:
+        :param attributes:
         :return:
         """
         if not self._atoms:
@@ -624,7 +628,7 @@ project.save()                                                # Save project"""
             lines_atoms = []
             for idx_mol in range(len(self._molecules)):
                 lines_atoms = generate_atom_list(self._atoms[idx_mol], self._molecules[idx_mol], crystal,
-                                                 keyword="ATOMS", lines=lines_atoms)
+                                                 keyword="ATOMS", lines=lines_atoms, attributes=attributes)
             file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
 
             file_plumed.write("DISTANCE ...\n")
@@ -905,13 +909,15 @@ project.save()                                                # Save project"""
     def generate_input(self,
                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                        bash_script: bool = True,
-                       crystals="all"):
+                       crystals="all",
+                       attributes=None):
         """
         TODO output format, only one cv is printed!
 
         :param simulation:
         :param bash_script:
         :param crystals:
+        :param attributes:
         :return:
         """
 
@@ -955,7 +961,7 @@ project.save()                                                # Save project"""
                     lines_atoms = []
                     for idx_mol in range(len(cv._molecules)):
                         lines_atoms = generate_atom_list(cv._atoms[idx_mol], cv._molecules[idx_mol], crystal,
-                                                         keyword="ATOMS", lines=lines_atoms)
+                                                         keyword="ATOMS", lines=lines_atoms, attributes=attributes)
 
                     file_plumed.write("DISTANCE ...\n")
                     for line in lines_atoms:
@@ -981,7 +987,8 @@ project.save()                                                # Save project"""
                 file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
                 for cv in self._cvs:
                     # Select atoms and molecules
-                    lines_atoms = generate_atom_list(cv._atoms, cv.molecule, crystal, keyword="ATOMS", lines=[])
+                    lines_atoms = generate_atom_list(cv._atoms, cv.molecule, crystal, keyword="ATOMS", lines=[],
+                                                     attributes=attributes)
 
                     file_plumed.write("TORSIONS ...\n")
                     for line in lines_atoms:
@@ -1288,13 +1295,15 @@ project.save()                                                # Save project
     def generate_input(self,
                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
                        bash_script: bool = True,
-                       crystals="all"):
+                       crystals="all",
+                       attributes=None):
         """
 
 
         :param bash_script:
         :param simulation:
         :param crystals:
+        :param attributes:
         :return:
         """
 
@@ -1326,7 +1335,8 @@ project.save()                                                # Save project
             lines_atoms = []
             for idx_mol in range(len(self._molecules)):
                 lines_atoms = generate_atom_list(self._atoms[idx_mol], self._molecules[idx_mol], crystal,
-                                                 keyword="ATOMS", lines=lines_atoms, index_lines=False)
+                                                 keyword="ATOMS", lines=lines_atoms, index_lines=False,
+                                                 attributes=attributes)
 
             file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
             idx_com = 1
@@ -1451,7 +1461,61 @@ class PotentialEnergy(_CollectiveVariable):
     pass
 
 
-class GGFD(object):
+class _GG(object):
+
+    def __init__(self, name: str, gtype: str):
+        """
+        Generate Groups From Distribution
+        :param name:
+        :param gtype:
+        """
+
+        # Grouping Properties
+        self._name = name
+        self._type = gtype
+        self._clustering_type = "classification"
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def clustering_type(self):
+        return self._clustering_type
+
+    def _run(self, simulation, groups, crystals="all"):
+
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.max_rows', None)
+        pd.set_option('display.expand_frame_repr', False)
+        pd.set_option('display.max_colwidth', None)
+        pd.set_option('display.max_seq_items', None)
+
+        list_crystals = get_list_crystals(simulation._crystals, crystals)
+
+        cvg = {}
+        for i in groups.keys():
+            cvg[i] = 0
+
+        for crystal in list_crystals:
+            crystal._cvs[self._name] = copy.deepcopy(cvg)
+            for group in groups.keys():
+                if crystal._name in groups[group]:
+                    crystal._cvs[self._name][group] += 1
+                    break
+
+        file_hd = open("{}/Groups_{}_{}.dat".format(simulation._path_output, self._name, simulation._name), "w")
+        file_hd.write("# Group_name             Crystal_IDs\n")
+        for group in groups.keys():
+            file_hd.write("{:<25}: {}\n".format(str(group), groups[group]))
+        file_hd.close()
+
+
+class GGFD(_GG):
     """
     Classify structeres based on their structural fingerprint .
     Attributes:\n
@@ -1484,11 +1548,8 @@ class GGFD(object):
         if not cv._type.startswith(("Torsional Angle", "Molecular Orientation", "Density", "Potential Energy")):
             print("CV not suitable for creating groups.")
             exit()
-
+        super(GGFD, self).__init__(name, cv._type)
         # Grouping Method Properties
-        self._name = name
-        self._type = cv._type
-        self._clustering_type = "classification"
         self._int_type = "discrete"
         self._grouping_method = "similarity"  # Alternatively, "groups"
         self._group_threshold = 0.1
@@ -1534,18 +1595,6 @@ class GGFD(object):
     @property
     def cv_grid_bins(self):
         return self._grid_bins
-
-    @property
-    def type(self):
-        return self._type
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def clustering_type(self):
-        return self._clustering_type
 
     @property
     def grouping_method(self):
@@ -1744,19 +1793,7 @@ project.save()
                                    columns=[(i[0][1], i[1][1]) for i in its.product(*combinations)] + ["Others"])
 
             groups = dataset.groupby(dataset.columns.to_list()).groups
-
-            cvg = {}
-            for i in groups.keys():
-                groups[i] = groups[i].to_list()
-                cvg[i] = 0
-
-            for crystal in list_crystals:
-                crystal._cvs[self._name] = copy.deepcopy(cvg)
-                for group in groups.keys():
-                    if crystal._name in groups[group]:
-                        crystal._cvs[self._name][group] += 1
-                        break
-            groups = {k: groups[k] for k in sorted(groups.keys(), key=lambda x: np.sum(x))}
+            groups = {k: groups[k].to_list() for k in sorted(groups.keys(), key=lambda x: np.sum(x))}
 
         elif self._grouping_method == "similarity":
             from scipy.sparse import csr_matrix
@@ -1800,22 +1837,76 @@ project.save()
                 removed = removed + group_index
                 groups[group_index[0]] = group_index
 
-            cvg = {}
-            for i in groups.keys():
-                cvg[i] = 0
+        self._run(simulation, groups, crystals)
+        # TODO REMOVE AFTER TEST
+        # cvg = {}
+        # for i in groups.keys():
+        #     groups[i] = groups[i].to_list()
+        #     cvg[i] = 0
+        #
+        # for crystal in list_crystals:
+        #     crystal._cvs[self._name] = copy.deepcopy(cvg)
+        #     for group in groups.keys():
+        #         if crystal._name in groups[group]:
+        #             crystal._cvs[self._name][group] += 1
+        #             break
+        #     cvg = {}
+        #     for i in groups.keys():
+        #         cvg[i] = 0
+        #
+        #     for crystal in list_crystals:
+        #         crystal._cvs[self._name] = copy.deepcopy(cvg)
+        #         for group in groups.keys():
+        #             if crystal._name in groups[group]:
+        #                 crystal._cvs[self._name][group] += 1
+        #                 break
+        #
+        # file_hd = open("{}/Groups_{}_{}.dat".format(simulation._path_output, self._name, simulation._name), "w")
+        # file_hd.write("# Group_name             Crystal_IDs\n")
+        # for group in groups.keys():
+        #     file_hd.write("{:<25}: {}\n".format(str(group), groups[group]))
+        # file_hd.close()
 
-            for crystal in list_crystals:
-                crystal._cvs[self._name] = copy.deepcopy(cvg)
-                for group in groups.keys():
-                    if crystal._name in groups[group]:
-                        crystal._cvs[self._name][group] += 1
-                        break
 
-        file_hd = open("{}/Groups_{}_{}.dat".format(simulation._path_output, self._name, simulation._name), "w")
-        file_hd.write("# Group_name             Crystal_IDs\n")
-        for group in groups.keys():
-            file_hd.write("{:<25}: {}\n".format(str(group), groups[group]))
-        file_hd.close()
+class GGFA(_GG):
+
+    def __init__(self, name: str, attribute: str):
+        """
+        Generate Groups From Distribution
+        :param name:
+        :param attribute:
+        """
+
+        # Grouping Properties
+        super().__init__(name, "Attribute")
+
+        self._attribute = attribute
+
+    def run(self,
+            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+            crystals="all"):
+
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.max_rows', None)
+        pd.set_option('display.expand_frame_repr', False)
+        pd.set_option('display.max_colwidth', None)
+        pd.set_option('display.max_seq_items', None)
+
+        groups = {}
+        list_crystals = get_list_crystals(simulation._crystals, crystals)
+
+        if not all(self._attribute in crystal._attributes for crystal in list_crystals):
+            print(f"Error: some of the Crystals do not have attribute '{self._attribute}'")
+            exit()
+
+        for crystal in list_crystals:
+            gatt = crystal._attributes[self._attribute]
+            if gatt in groups:
+                groups[gatt].append(crystal._name)
+            else:
+                groups[gatt] = [crystal._name]
+
+        self._run(simulation, groups, crystals)
 
 
 #
@@ -1856,8 +1947,9 @@ project.save()
 #     return new_groups
 
 
-def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, index_lines=True):
+def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, index_lines=True, attributes=None):
     """
+
 
     :param index_lines:
     :param atoms:
@@ -1865,12 +1957,25 @@ def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, in
     :param crystal:
     :param keyword:
     :param lines:
+    :param attributes:
     :return:
     """
+    if attributes is None:
+        attributes = {}
     if lines is None:
         lines = []
+
     idx_mol = len(lines) + 1
-    for mol in crystal._load_coordinates():
+
+    if attributes:
+        mols = []
+        for mol in crystal._load_coordinates():
+            if attributes.items() <= mol._attributes:
+                mols.append(mol)
+    else:
+        mols = crystal._load_coordinates()
+
+    for mol in mols:
         if molecule._residue == mol._residue:
             if index_lines:
                 line = "{}{}=".format(keyword, idx_mol)

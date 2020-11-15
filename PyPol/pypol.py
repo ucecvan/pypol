@@ -71,6 +71,10 @@ class Project(object):
         return txt
 
     @property
+    def crystals(self):
+        return self._initial_crystals
+
+    @property
     def methods(self):
         txt = ""
         if self._methods:
