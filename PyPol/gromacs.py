@@ -1366,10 +1366,11 @@ class _GroSim(_GroDef):
                 plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
                             s=s[crystal._name] * 50, c="C" + str(c), alpha=0.8, edgecolors=None,
                             label=labels[crystal._name])
+                c += 1
             else:
                 plt.scatter(crystal.density, crystal._energy - self._global_minima._energy,
                             s=s[crystal._name] * 50, c="C0", alpha=0.2, edgecolors=None, label='_no_legend_')
-                c += 1
+
         plt.legend(scatterpoints=1)
         plt.ylabel(r"$\Delta$E / kJ mol$^{-1}$")
         plt.xlabel(r"$\rho$ / Kg m$^{-3}$")
