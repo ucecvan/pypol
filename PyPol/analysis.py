@@ -2394,7 +2394,8 @@ class Clustering(object):
             if changes_string:
                 fo.write("Cluster centers changed according to potential energy:\n")
                 fo.write(changes_string)
-            total = pd.concat([m for m in self._name.loc[:, "Distance Matrix"] if not isinstance(m, np.ndarray)])
+            total = pd.concat([m for m in self._distance_matrix.loc[:, "Distance Matrix"]
+                               if not isinstance(m, np.ndarray)])
             index = []
             centers = []
             distances = []
