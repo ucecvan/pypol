@@ -1310,19 +1310,18 @@ class _GroSim(_GroDef):
         else:
             return False
 
-    def plot_landscape(self, path, cluster_centers=False, save_data=True):
+    def plot_landscape(self, path, cluster_centers=False, save_data=True, crystals="all", catt=None):
         import pandas as pd
         print("=" * 50)
         print("Generating crystal energy landscape:")
         if not self.completed:
             print("Error: Import results before plotting energy landscape.")
             exit()
+        list_crystals = get_list_crystals(self._crystals, crystals, catt)
+
         s = {}
         labels = {}
-        for crystal in self._crystals:
-            if crystal._state == "melted":
-                continue
-
+        for crystal in list_crystals:
             if crystal._name not in labels:
                 if crystal._name != crystal._label:
                     print("Include label {} for crystal {}".format(crystal._label, crystal._name))
@@ -1354,9 +1353,7 @@ class _GroSim(_GroDef):
 
         data = pd.DataFrame(np.full((len(s.keys()), 2), pd.NA), index=list(s.keys()), columns=["Density", "Energy"])
         c = 1
-        for crystal in self.crystals:
-            if crystal._state == "melted":
-                continue
+        for crystal in list_crystals:
             if cluster_centers and crystal._name != crystal._state:
 
                 continue

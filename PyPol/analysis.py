@@ -2365,7 +2365,7 @@ class Clustering(object):
                         for crystal in self._clusters[index][center]:
                             if energies[crystal] < emin:
                                 changes[1] = crystal
-                                emin = crystal._energy
+                                emin = energies[crystal]
                         if changes[1]:
                             new_clusters[changes[1]] = new_clusters.pop(changes[0])
                             changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
@@ -2405,7 +2405,7 @@ class Clustering(object):
                 index.append(crystal._name)
                 centers.append(crystal._state)
                 distances.append(total.at[crystal._name, crystal._state])
-            dfc = pd.DataFrame({"Center": centers, "Distance": distances}, index=index)
+            dfc = pd.DataFrame({"Center": centers, "Distance": distances}, index=index).sort_values(by="Distance")
             fo.write(dfc.__str__())
         print("done")
 
