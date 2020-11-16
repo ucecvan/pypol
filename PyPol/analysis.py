@@ -2361,9 +2361,11 @@ class Clustering(object):
                     energies = {k._name: k._energy for k in self._distance_matrix.at[index, "Structures"]}
                     for center in self._clusters[index].keys():
                         changes = [center, None]
+                        emin = energies[center]
                         for crystal in self._clusters[index][center]:
-                            if energies[crystal] < energies[center]:
+                            if energies[crystal] < emin:
                                 changes[1] = crystal
+                                emin = crystal._energy
                         if changes[1]:
                             new_clusters[changes[1]] = new_clusters.pop(changes[0])
                             changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
@@ -2399,7 +2401,7 @@ class Clustering(object):
             index = []
             centers = []
             distances = []
-            for crystal in list_crystals:
+            for crystal in get_list_crystals(simulation._crystals, crystals=total.index.to_list()):
                 index.append(crystal._name)
                 centers.append(crystal._state)
                 distances.append(total.at[crystal._name, crystal._state])

@@ -121,7 +121,7 @@ def get_list_crystals(scrystals, crystals, attributes=None, _include_melted=Fals
             for sc in scrystals:
                 if sc._name in crystals:
                     list_crystals.append(sc)
-        if isinstance(crystals[0], Crystal):
+        elif isinstance(crystals[0], Crystal):
             for sc in scrystals:
                 if sc in crystals:
                     list_crystals.append(sc)
