@@ -2390,6 +2390,20 @@ class Clustering(object):
                 fo.write(changes_string)
             fo.write(self._clusters.__str__())
 
+        with open(simulation._path_output + str(self._name) + "_DFC.dat", 'w') as fo:
+            if changes_string:
+                fo.write("Cluster centers changed according to potential energy:\n")
+                fo.write(changes_string)
+            total = pd.concat([m for m in self._name.loc[:, "Distance Matrix"] if not isinstance(m, np.ndarray)])
+            index = []
+            centers = []
+            distances = []
+            for crystal in list_crystals:
+                index.append(crystal._name)
+                centers.append(crystal._state)
+                distances.append(total.at[crystal._name, crystal._state])
+            dfc = pd.DataFrame({"Center": centers, "Distance": distances}, index=index)
+            fo.write(dfc.__str__())
         print("done")
 
 
