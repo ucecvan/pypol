@@ -743,8 +743,11 @@ project.save()                                                # Save project"""
         if self._grid_min != 0. and self._grid_max != np.pi:
             print("Error: A range between 0 and pi must be used to identify melted structures.")
             exit()
+        include_melted = False
+        if crystals == "all":
+            include_melted = True
 
-        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt, _include_melted=include_melted)
 
         file_hd = open("{}/HD_{}.dat".format(simulation._path_output, simulation._name), "w")
         file_hd.write("# Tolerance = {}\n#\n# Structures HD\n".format(round(cutoff, 5)))
@@ -1461,8 +1464,25 @@ project.save()                                                # Save project
         bar.finish()
 
 
-class Density(_CollectiveVariable):
-    pass
+class AvoidScrewedBox(object):
+    """
+
+    """
+    def __init__(self, name, plumed):
+        """
+
+        :param name:
+        :param plumed:
+        """
+        self.name = name
+
+
+
+
+class Density(object):
+    
+    def __init__(self):
+        super(Density, self).__init__()
 
 
 class PotentialEnergy(_CollectiveVariable):

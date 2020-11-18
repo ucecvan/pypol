@@ -816,7 +816,8 @@ project.save()
             print("-" * 100)
         self._initial_crystals = new_crystal_list
 
-    def new_simulation(self, name, simtype, path_mdp=None, path_lmp_in=None, path_lmp_ff=None, crystals="all"):
+    def new_simulation(self, name, simtype, path_mdp=None, path_lmp_in=None, path_lmp_ff=None,
+                       crystals="all", catt=None):
         if simtype.lower() in ("energy minimisation", "em", "cell relaxation", "cr"):
             if simtype.lower() in ("energy minimisation", "em"):
 
@@ -879,7 +880,7 @@ project.save()
                         exit()
                 simulation._previous_sim = self._simulations[-1]._name
                 simulation._sim_index = len(self._simulations)
-                list_crystals = get_list_crystals(self._simulations[-1]._crystals, crystals)
+                list_crystals = get_list_crystals(self._simulations[-1]._crystals, crystals, catt)
                 for crystal in list_crystals:
                     simulation_crystal = Crystal._copy_properties(crystal)
                     simulation_crystal._cvs = dict()
@@ -968,7 +969,7 @@ project.save()
                 simulation._previous_sim = self._simulations[-1]._name
                 simulation._sim_index = len(self._simulations)
 
-                list_crystals = get_list_crystals(self._simulations[-1]._crystals, crystals)
+                list_crystals = get_list_crystals(self._simulations[-1]._crystals, crystals, catt)
                 for crystal in list_crystals:
                     simulation_crystal = Crystal._copy_properties(crystal)
                     simulation_crystal._cvs = dict()
@@ -1355,7 +1356,6 @@ class _GroSim(_GroDef):
         c = 1
         for crystal in list_crystals:
             if cluster_centers and crystal._name != crystal._state:
-
                 continue
             data.at[crystal._name, "Density"] = crystal.density
             data.at[crystal._name, "Energy"] = crystal._energy - self._global_minima._energy
@@ -2409,5 +2409,42 @@ project.save()                                                # Save project to 
             self._completed = "complete"
 
 
-class Metadynamics(_GroSim):
-    pass
+class Metadynamics(MolecularDynamics):
+
+    def __init__(self, name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
+                 path_input, intermol, lammps, crystals, path_mdp, molecules, index, previous_sim, hide,
+                 replicas=1, biasfactor=200, pace=1000, height=2.0, temp=300):
+        """
+        Perform Energy Minimization simulations using Gromacs.
+        :param name: Name used to specify the object and print outputs
+        :param gromacs: Gromacs command line
+        :param mdrun_options: Options to be added to Gromacs mdrun command.
+        :param atomtype: 'atomtype' command line
+        :param pypol_directory: PyPol directory with defaults inputs
+        :param path_data: data folder in which simulations are performed
+        :param path_output: Output folder in which results are written
+        :param path_input: Input folder to store inputs
+        :param intermol: Path of the 'convert.py' InterMol program
+        :param lammps: LAMMPS command line
+        :param crystals: List of crystals on which simulation will be performed
+        :param hide: show or not the the relative potential energy file in the output file
+        """
+
+        super().__init__(name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
+                         path_input, intermol, lammps, crystals, path_mdp, molecules, index,
+                         previous_sim, hide)
+
+        # MetaD Parameters
+        self._type = "WTMD"
+        self._replicas = replicas
+        self._biasfactor = biasfactor
+        self._pace = pace
+        self._height = height
+        self._temp = temp
+
+        # RMSD
+        self._rmsd = False
+        self._rmsd_toll = 0.5
+
+        # Collective Variables
+        self._cvp = list()
