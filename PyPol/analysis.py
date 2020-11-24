@@ -1586,11 +1586,11 @@ class Wall(object):
     def _metad(self, print_output=True):
         txt = self._collective_variable_line
         args = ",".join(self._arg)
-        at = ",".join(self._at)
-        kappa = ",".join(self._kappa)
-        exp = ",".join(self._exp)
-        eps = ",".join(self._eps)
-        offset = ",".join(self._offset)
+        at = ",".join([str(a) for a in self._at])
+        kappa = ",".join([str(a) for a in self._kappa])
+        exp = ",".join([str(a) for a in self._exp])
+        eps = ",".join([str(a) for a in self._eps])
+        offset = ",".join([str(a) for a in self._offset])
         txt += f"""
 {self._position}_WALLS ...
 ARG={args}
