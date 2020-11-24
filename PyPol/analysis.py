@@ -1780,7 +1780,7 @@ Alternatively, you can change the bin space or the number of bins.""".format(sel
 
         txt = """
 CV: {0._name} ({0._type})
-SIGMA={0._sigma:.3f} GRID_BIN={0._grid_bins} GRID_MAX={0._grid_max:.3f} FRID_MIN={0._grid_min:.3f}""".format(self)
+SIGMA={0._sigma:.3f} GRID_BIN={0._grid_bins} GRID_MAX={0._grid_max:.3f} GRID_MIN={0._grid_min:.3f}""".format(self)
         return txt
 
     def _write_output(self, path_output):

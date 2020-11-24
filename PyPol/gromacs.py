@@ -1167,10 +1167,17 @@ Simulation Type '{}' not recognized. Choose between:
             self._cvp.append(cv)
             return cv
         elif cv_type.lower() == "density":
-            pass
+            cv = als.Density(name)
+            self._cvp.append(cv)
+            return cv
         elif cv_type.lower() == "energy":
-            pass
-
+            cv = als.PotentialEnergy(name)
+            self._cvp.append(cv)
+            return cv
+        elif cv_type.lower() == "asb":
+            cv = als.AvoidScrewedBox(name)
+            self._cvp.append(cv)
+            return cv
         else:
             print("Collective Variable Type '{}' not available.".format(cv_type))
             exit()
