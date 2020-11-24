@@ -1037,47 +1037,78 @@ project.save()
             default_cvs = False
             while default_cvs not in ("y", "n"):
                 default_cvs = input("Do you want to use the default Collective Variables "
-                                    "(Potential Energy and Density)?\n "
-                                    "NB: CV called 'density', 'energy' and 'asb' will be overwritten.\n"
-                                    "[y/n]: ")
+                                    "(Potential Energy and Density)? [y/n] ")
             if default_cvs == "y":
-                for cv in self._cvp:
-                    if cv._name in ('density', 'energy', 'asb'):
-                        self.del_cv(cv._name)
-                rho_min = list_crystals[0].density
-                rho_max = list_crystals[0].density
-                for crystal in list_crystals:
-                    rho_cry = crystal.density
-                    if rho_max < rho_cry:
-                        rho_max = rho_cry
-                    if rho_min > rho_cry:
-                        rho_min = rho_cry
-                rho_min -= 50.
-                rho_max += 50.
-                rho_bin = int(rho_max - rho_min)
-                rho = self.new_cv("density", "density")
-                rho._grid_min = rho_min
-                rho._grid_max = rho_max
-                rho._grid_bins = rho_bin
-                rho.use_walls = True
+                def gen_rho():
+                    rho_min = list_crystals[0].density
+                    rho_max = list_crystals[0].density
+                    for ecrystal in list_crystals:
+                        rho_cry = ecrystal.density
+                        if rho_max < rho_cry:
+                            rho_max = rho_cry
+                        if rho_min > rho_cry:
+                            rho_min = rho_cry
+                    rho_min -= 50.
+                    rho_max += 50.
+                    rho_bin = int(rho_max - rho_min)
+                    orho = self.new_cv("density", "density")
+                    orho._grid_min = rho_min
+                    orho._grid_max = rho_max
+                    orho._grid_bins = rho_bin
+                    orho.use_walls = True
+                    return orho
+                
+                def gen_energy():
+                    energy_min = list_crystals[0]._energy
+                    energy_max = list_crystals[0]._energy
+                    for ecrystal in list_crystals:
+                        energy_cry = ecrystal._energy
+                        if energy_max < energy_cry:
+                            energy_max = energy_cry
+                        if energy_min > energy_cry:
+                            energy_min = energy_cry
+                    energy_min -= 25.
+                    energy_max += 500.
+                    energy_bin = int(energy_max - energy_min) * 10
+                    oenergy = self.new_cv("energy", "energy")
+                    oenergy._grid_min = energy_min
+                    oenergy._grid_max = energy_max
+                    oenergy._grid_bins = energy_bin
+                    return oenergy
 
-                energy_min = list_crystals[0]._energy
-                energy_max = list_crystals[0]._energy
-                for crystal in list_crystals:
-                    energy_cry = crystal._energy
-                    if energy_max < energy_cry:
-                        energy_max = energy_cry
-                    if energy_min > energy_cry:
-                        energy_min = energy_cry
-                energy_min -= 25.
-                energy_max += 500.
-                energy_bin = int(energy_max - energy_min) * 10
-                energy = self.new_cv("energy", "energy")
-                energy._grid_min = energy_min
-                energy._grid_max = energy_max
-                energy._grid_bins = energy_bin
+                list_cv = [ecv._name for ecv in self._cvp]
+                if "density" in list_cv:
+                    dcv = input("CV called 'density' already present in the CVs set.\n"
+                                "Do you want to use it (if not, it will be overwritten with a new one)? [y/n] ")
+                    if dcv == "n":
+                        self.del_cv("density")
+                        rho = gen_rho()
+                    else:
+                        rho = self.get_cv("density")
+                else:
+                    rho = gen_rho()
+                    
+                if "energy" in list_cv:
+                    dcv = input("CV called 'energy' already present in the CVs set.\n"
+                                "Do you want to use it (if not, it will be overwritten with a new one)? [y/n] ")
+                    if dcv == "n":
+                        self.del_cv("energy")
+                        energy = gen_energy()
+                    else:
+                        energy = self.get_cv("energy")
+                else:
+                    energy = gen_energy()
 
-                asb = self.new_cv("ASB", "asb")
+                if "ASB" in list_cv:
+                    dcv = input("CV called 'asb' already present in the CVs set.\n"
+                                "Do you want to use it (if not, it will be overwritten with a new one)? [y/n] ")
+                    if dcv == "n":
+                        self.del_cv("ASB")
+                        asb = self.new_cv("ASB", "asb")
+                    else:
+                        asb = self.get_cv("ASB")
+                else:
+                    asb = self.new_cv("ASB", "asb")
 
                 simulation.set_cvs(asb, rho, energy)
             else:
