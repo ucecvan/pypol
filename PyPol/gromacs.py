@@ -2716,11 +2716,11 @@ class Metadynamics(MolecularDynamics):
                 sigma.append(str(cv._sigma))
                 grid_min.append(str(cv._grid_min))
                 grid_max.append(str(cv._grid_max))
-                grid_bin.append(str(cv._grid_bin))
+                grid_bin.append(str(cv._grid_bins))
 
-            if cv is AvoidScrewedBox:
+            if type(cv) is AvoidScrewedBox:
                 walls.append(cv)
-            elif cv is Density:
+            elif type(cv) is Density:
                 if cv.use_walls:
                     walls.append(cv.lwall)
                     walls.append(cv.uwall)
@@ -2739,13 +2739,13 @@ class Metadynamics(MolecularDynamics):
             file_plumed = open(crystal._path + f"plumed_{self._name}.dat", "w")
             file_plumed.write("RESTART\n\n")
             for cv in self._cvp:
-                if cv is AvoidScrewedBox:
+                if type(cv) is AvoidScrewedBox:
                     print(cv._metad(False))
                     file_plumed.write(cv._metad(False))
-                elif cv is Density:
+                elif type(cv) is Density:
                     cf = mw * crystal._Z * 1.66054
                     file_plumed.write(cv._metad(cf, False))
-                elif cv is PotentialEnergy:
+                elif type(cv) is PotentialEnergy:
                     file_plumed.write(cv._metad(crystal._Z, imp, walls))
 
             file_plumed.write(f"METAD ...\n"
