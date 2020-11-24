@@ -2740,7 +2740,6 @@ class Metadynamics(MolecularDynamics):
             file_plumed.write("RESTART\n\n")
             for cv in self._cvp:
                 if type(cv) is AvoidScrewedBox:
-                    print(cv._metad(False))
                     file_plumed.write(cv._metad(False))
                 elif type(cv) is Density:
                     cf = mw * crystal._Z * 1.66054
