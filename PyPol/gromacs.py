@@ -1050,7 +1050,7 @@ project.save()
                 rho_min -= 50.
                 rho_max += 50.
                 rho_bin = int(rho_max - rho_min)
-                rho = self.new_cv("Density", "density")
+                rho = self.new_cv("density", "density")
                 rho._grid_min = rho_min
                 rho._grid_max = rho_max
                 rho._grid_bins = rho_bin
@@ -1067,7 +1067,7 @@ project.save()
                 energy_min -= 25.
                 energy_max += 500.
                 energy_bin = int(energy_max - energy_min) * 10
-                energy = self.new_cv("Potential Energy", "energy")
+                energy = self.new_cv("energy", "energy")
                 energy._grid_min = energy_min
                 energy._grid_max = energy_max
                 energy._grid_bins = energy_bin
@@ -2691,14 +2691,14 @@ class Metadynamics(MolecularDynamics):
         grid_min = ",".join(grid_min)
         grid_max = ",".join(grid_max)
         grid_bin = ",".join(grid_bin)
-        arg_output = arg + f"{self._name}.bias,{self._name}.rbias,{self._name}.rct"
+        arg_output = arg + f",{self._name}.bias,{self._name}.rbias,{self._name}.rct"
         if walls:
             for wall in walls:
                 arg_output += f",{wall._name}.bias"
 
         for crystal in list_crystals:
             file_plumed = open(crystal._path + f"plumed_{self._name}.dat", "w")
-            file_plumed.write("RESTART")
+            file_plumed.write("RESTART\n\n")
             for cv in self._cvp:
                 if cv is AvoidScrewedBox:
                     file_plumed.write(cv._metad(False))

@@ -1777,7 +1777,7 @@ Alternatively, you can change the bin space or the number of bins.""".format(sel
         return self._name
 
     def __str__(self):
-
+        print(self._name, self._type, self._sigma, self._grid_max, self._grid_bin, self._grid_min)
         txt = """
 CV: {0._name} ({0._type})
 SIGMA={0._sigma:.3f} GRID_BIN={0._grid_bins} GRID_MAX={0._grid_max:.3f} GRID_MIN={0._grid_min:.3f}""".format(self)
@@ -1792,8 +1792,7 @@ SIGMA={0._sigma:.3f} GRID_BIN={0._grid_bins} GRID_MAX={0._grid_max:.3f} GRID_MIN
 class Density(_MetaCV):
 
     def __init__(self, name):
-        super().__init__(name, "Density")
-        self._sigma = 10.
+        super().__init__(name, "Density", sigma=10.)
         self._use_walls = False
         self._walls = []
 
@@ -1847,7 +1846,7 @@ density: MATHEVAL ARG=vol FUNC={value:.3f}/x PERIODIC=NO # FUNC = NMOLS*MW*CONVE
 class PotentialEnergy(_MetaCV):
 
     def __init__(self, name):
-        super(PotentialEnergy, self).__init__(name, "Potential Energy")
+        super(PotentialEnergy, self).__init__(name, "Potential Energy", sigma=2.)
 
     def _metad(self, nmols, imp, remove_bias: list = None, print_output=True):
         if not remove_bias:
