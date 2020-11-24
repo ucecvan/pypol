@@ -1120,9 +1120,9 @@ Simulation Type '{}' not recognized. Choose between:
                                 "xtc", "ene", "edr", "log", "out", "edi", "edo", "mdp")
         if self._simulations:
             for existing_simulation in self._simulations:
-                if existing_simulation._name == simulation_name and existing_simulation != self._simulations[-1]:
+                if existing_simulation._name == simulation_name and simulation_name != self._simulations[-1]._name:
                     rm = input("Simulation {} to be deleted from project. "
-                               "Do you want to remove all associated files? [y/n]")
+                               "Do you want to remove all associated files? [y/n]".format(existing_simulation._name))
                     if rm == "y":
                         for crystal in existing_simulation:
                             for ext in gromacs_file_formats:
@@ -1132,7 +1132,7 @@ Simulation Type '{}' not recognized. Choose between:
                 elif existing_simulation._name == simulation_name:
                     rm_sim = input("Simulation {} is not the last one in the project. "
                                    "Deleting it could cause problems in the following simulations."
-                                   "Are you sure? [y/n] ")
+                                   "Are you sure? [y/n] ".format(existing_simulation._name))
                     if rm_sim:
                         rm = input("Simulation {} to be deleted from project. "
                                    "Do you want to remove all associated files? [y/n]")
