@@ -1859,8 +1859,9 @@ class PotentialEnergy(_MetaCV):
             arg = ",".join([i._name + ".bias" for i in remove_bias])
             var = ",".join([list_var[i] for i in range(len(remove_bias))])
             func = "-".join([list_var[i] for i in range(len(remove_bias))])
-            txt = f"""ene_pot: ENERGY
-elatt: MATHEVAL ARG={self._name},{arg} VAR=a,{var} FUNC=(a-{func})/{nmols}+{imp} PERIODIC=NO"""
+            txt = f"""
+{self._name}_pot: ENERGY
+{self._name}: MATHEVAL ARG={self._name}_pot,{arg} VAR=a,{var} FUNC=(a-{func})/{nmols}+{imp} PERIODIC=NO"""
 
         if print_output:
             txt += f"PRINT ARG={self._name} FILE={self._name}_COLVAR STRIDE={self._stride}"
