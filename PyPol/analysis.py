@@ -1584,7 +1584,7 @@ class Wall(object):
         file_output.close()
 
     def _metad(self, print_output=True):
-        txt = self._collective_variable_line
+        txt = "\n" + self._collective_variable_line + "\n"
         args = ",".join(self._arg)
         at = ",".join([str(a) for a in self._at])
         kappa = ",".join([str(a) for a in self._kappa])
@@ -1600,7 +1600,8 @@ EXP={exp}
 EPS={eps}
 OFFSET={offset}
 LABEL={self._name}
-... {self._position}_WALLS"""
+... {self._position}_WALLS
+"""
 
         if print_output:
             txt += f"\nPRINT ARG={args},{self._name}.bias FILE={self._name}_COLVAR STRIDE={self._stride}\n"
@@ -1826,8 +1827,9 @@ class Density(_MetaCV):
             return self._walls[1]
 
     def _metad(self, value, print_output=True):
-        txt = f"""vol: VOLUME
-density: MATHEVAL ARG=vol FUNC={value:.3f}/x PERIODIC=NO # FUNC = NMOLS*MW*CONVERSIONFACTOR/VOLUME
+        txt = f"""
+{self._name}_vol: VOLUME
+{self._name}: MATHEVAL ARG={self._name}_vol FUNC={value:.3f}/x PERIODIC=NO # FUNC = NMOLS*MW*CONVERSIONFACTOR/VOLUME
 """
         if self._use_walls:
             for wall in self._walls:
@@ -1849,8 +1851,9 @@ class PotentialEnergy(_MetaCV):
 
     def _metad(self, nmols, imp, remove_bias: list = None, print_output=True):
         if not remove_bias:
-            txt = f"""{self._name}: ENERGY
-elatt: MATHEVAL ARG={self._name} VAR=a FUNC=a/{nmols}+{imp} PERIODIC=NO"""
+            txt = f"""
+{self._name}_pot: ENERGY
+{self._name}: MATHEVAL ARG={self._name}_pot VAR=a FUNC=a/{nmols}+{imp} PERIODIC=NO"""
         else:
             list_var = list("bcdefghijklmnopqrstuvwxyz")
             arg = ",".join([i._name + ".bias" for i in remove_bias])
