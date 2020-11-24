@@ -1100,7 +1100,7 @@ project.save()
                     energy = gen_energy()
 
                 if "ASB" in list_cv:
-                    dcv = input("CV called 'asb' already present in the CVs set.\n"
+                    dcv = input("CV called 'ASB' already present in the CVs set.\n"
                                 "Do you want to use it (if not, it will be overwritten with a new one)? [y/n] ")
                     if dcv == "n":
                         self.del_cv("ASB")
@@ -2740,6 +2740,7 @@ class Metadynamics(MolecularDynamics):
             file_plumed.write("RESTART\n\n")
             for cv in self._cvp:
                 if cv is AvoidScrewedBox:
+                    print(cv._metad(False))
                     file_plumed.write(cv._metad(False))
                 elif cv is Density:
                     cf = mw * crystal._Z * 1.66054
