@@ -1490,7 +1490,7 @@ class Wall(object):
         self._eps = list()
         self._at = list()
         self._stride = 100
-        self._collective_variable_line = None
+        self._collective_variable_line = ""
 
     @property
     def kappa(self):
