@@ -1037,8 +1037,13 @@ project.save()
             default_cvs = False
             while default_cvs not in ("y", "n"):
                 default_cvs = input("Do you want to use the default Collective Variables "
-                                    "(Potential Energy and Density)?[y/n]")
+                                    "(Potential Energy and Density)?\n "
+                                    "NB: CV called 'density', 'energy' and 'asb' will be overwritten.\n"
+                                    "[y/n]: ")
             if default_cvs == "y":
+                for cv in self._cvp:
+                    if cv._name in ('density', 'energy', 'asb'):
+                        self.del_cv(cv._name)
                 rho_min = list_crystals[0].density
                 rho_max = list_crystals[0].density
                 for crystal in list_crystals:
@@ -1124,7 +1129,7 @@ Simulation Type '{}' not recognized. Choose between:
                     rm = input("Simulation {} to be deleted from project. "
                                "Do you want to remove all associated files? [y/n]".format(existing_simulation._name))
                     if rm == "y":
-                        for crystal in existing_simulation:
+                        for crystal in existing_simulation._crystals:
                             for ext in gromacs_file_formats:
                                 if os.path.exists(crystal._path + existing_simulation._name + "." + ext):
                                     os.remove(crystal._path + existing_simulation._name + "." + ext)
@@ -1136,9 +1141,10 @@ Simulation Type '{}' not recognized. Choose between:
                                    "Are you sure? [y/n] ".format(existing_simulation._name))
                     if rm_sim == "y":
                         rm = input("Simulation {} to be deleted from project. "
-                                   "Do you want to remove all associated files? [y/n]".format(existing_simulation._name))
+                                   "Do you want to remove all associated files? [y/n]"
+                                   "".format(existing_simulation._name))
                         if rm == "y":
-                            for crystal in existing_simulation:
+                            for crystal in existing_simulation._crystals:
                                 for ext in gromacs_file_formats:
                                     if os.path.exists(crystal._path + existing_simulation._name + "." + ext):
                                         os.remove(crystal._path + existing_simulation._name + "." + ext)
