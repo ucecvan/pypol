@@ -1120,7 +1120,7 @@ Simulation Type '{}' not recognized. Choose between:
                                 "xtc", "ene", "edr", "log", "out", "edi", "edo", "mdp")
         if self._simulations:
             for existing_simulation in self._simulations:
-                if existing_simulation._name == simulation_name and simulation_name != self._simulations[-1]._name:
+                if existing_simulation._name == simulation_name and simulation_name == self._simulations[-1]._name:
                     rm = input("Simulation {} to be deleted from project. "
                                "Do you want to remove all associated files? [y/n]".format(existing_simulation._name))
                     if rm == "y":
@@ -1129,13 +1129,14 @@ Simulation Type '{}' not recognized. Choose between:
                                 if os.path.exists(crystal._path + existing_simulation._name + "." + ext):
                                     os.remove(crystal._path + existing_simulation._name + "." + ext)
                     self._simulations.remove(existing_simulation)
+                    return
                 elif existing_simulation._name == simulation_name:
                     rm_sim = input("Simulation {} is not the last one in the project. "
                                    "Deleting it could cause problems in the following simulations."
                                    "Are you sure? [y/n] ".format(existing_simulation._name))
-                    if rm_sim:
+                    if rm_sim == "y":
                         rm = input("Simulation {} to be deleted from project. "
-                                   "Do you want to remove all associated files? [y/n]")
+                                   "Do you want to remove all associated files? [y/n]".format(existing_simulation._name))
                         if rm == "y":
                             for crystal in existing_simulation:
                                 for ext in gromacs_file_formats:
@@ -1143,6 +1144,7 @@ Simulation Type '{}' not recognized. Choose between:
                                         os.remove(crystal._path + existing_simulation._name + "." + ext)
                         self._simulations.remove(existing_simulation)
                         self._reindex_simulations_after_del()
+                    return
         print("No method found with name {}".format(simulation_name))
 
     def new_cv(self, name, cv_type):
