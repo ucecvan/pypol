@@ -250,6 +250,8 @@ Methods:
         new_crystal._cell_parameters = copy.deepcopy(crystal._cell_parameters)
         new_crystal._box = copy.deepcopy(crystal._box)
         new_crystal._state = "incomplete"
+        new_crystal._cvs = dict()
+        new_crystal._attributes = crystal._attributes
         return new_crystal
 
     # @staticmethod

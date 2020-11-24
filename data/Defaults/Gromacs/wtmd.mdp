@@ -1,0 +1,55 @@
+; NPT with Parrinello-Rahman barostat
+integrator                      = md-vv
+nsteps                          = -1
+dt                              = 0.001
+
+; Output
+nstxout-compressed              = 10000
+nstenergy                       = 10000
+nstlog                          = 10000
+
+; Neighborsearching
+cutoff-scheme                   = Verlet
+ns_type                         = grid
+nstlist                         = 10
+rlist                           = 1.0
+
+; Electrostatics
+coulombtype                     = PME
+pme_order                       = 4
+fourierspacing                  = 0.16
+rcoulomb                        = 1.0
+
+; Lennard-Jones PME
+vdwtype                         = PME
+vdw-modifier                    = Potential-shift
+rvdw                            = 1.0
+lj-pme-comb-rule                = Lorentz-Berthelot
+
+; Dispersion correction
+; DispCorr                        = EnerPres
+
+; Temperature coupling is on
+tcoupl                          = V-rescale
+tc-grps                         = System
+tau_t                           = 0.1
+ref_t                           = 300
+
+; Pressure coupling is off
+pcoupl                          = Parrinello-Rahman
+pcoupltype                      = anisotropic
+tau_p                           = 10.0
+ref_p                           = 1.0 1.0 1.0 0.0 0.0 0.0
+compressibility                 = 1.0e-5 1.0e-5 1.0e-5 1.0e-5 1.0e-5 1.0e-5
+
+; Periodic boundary conditions
+pbc                             = xyz
+
+; Velocity generation
+gen_vel                         = no
+
+; Constrain
+constraint_algorithm            = lincs
+constraints                     = h-bonds
+lincs_iter                      = 1
+lincs_order                     = 4

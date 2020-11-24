@@ -904,7 +904,7 @@ project.save()
             self._simulations.append(simulation)
             return simulation
 
-        elif simtype in ("Molecular Dynamics", "md"):
+        elif simtype.lower() in ("molecular dynamics", "md"):
             if path_mdp is None:
                 path_gromacs_data = os.path.dirname(self._pypol_directory[:-1]) + "/data/Defaults/Gromacs/"
                 if name == "nvt" and not path_mdp:
@@ -919,10 +919,14 @@ project.save()
                     print("Default file {} will be used".format(path_gromacs_data + "parrinello.mdp"))
                     copyfile(path_gromacs_data + "parrinello.mdp", self._path_input + "parrinello.mdp")
                     path_mdp = self._path_input + "parrinello.mdp"
+                elif name == "md" and not path_mdp:
+                    print("Default file {} will be used".format(path_gromacs_data + "md.mdp"))
+                    copyfile(path_gromacs_data + "md.mdp", self._path_input + "md.mdp")
+                    path_mdp = self._path_input + "md.mdp"
                 else:
                     print("Error: No mdp file has been found.\n"
                           "You can use the defaults mdp parameters by using the names "
-                          "'nvt', 'berendsen' or 'parrinello'\n"
+                          "'nvt', 'berendsen', 'parrinello', 'md'\n"
                           "You can check the relative mdp files in folder: {}"
                           "".format(path_gromacs_data))
                     exit()
@@ -971,9 +975,7 @@ project.save()
 
                 list_crystals = get_list_crystals(self._simulations[-1]._crystals, crystals, catt)
                 for crystal in list_crystals:
-                    simulation_crystal = Crystal._copy_properties(crystal)
-                    simulation_crystal._cvs = dict()
-                    simulation._crystals.append(simulation_crystal)
+                    simulation._crystals.append(Crystal._copy_properties(crystal))
 
             simulation._gromacs = self._gromacs
             simulation._mdrun_options = self._mdrun_options
@@ -983,6 +985,108 @@ project.save()
 
             self._simulations.append(simulation)
             return simulation
+
+        elif simtype.lower() in ("metadynamics", "wtmd"):
+            if path_mdp is None:
+                path_gromacs_data = os.path.dirname(self._pypol_directory[:-1]) + "/data/Defaults/Gromacs/"
+                print("Default file {} will be used".format(path_gromacs_data + "wtmd.mdp"))
+                copyfile(path_gromacs_data + "wtmd.mdp", self._path_input + name + ".mdp")
+                path_mdp = self._path_input + name + ".mdp"
+            else:
+                if os.path.exists(path_mdp):
+                    copyfile(path_mdp, self._path_input + name + ".mdp")
+                    path_mdp = self._path_input + name + ".mdp"
+                else:
+                    print("Error: No mdp file has been found.\n"
+                          "If no mdp is specified, the default mdp parameters for WTMD are used."
+                          "You can check and modify the wtmd.mdp file in folder: {}"
+                          "".format(os.path.dirname(self._pypol_directory) + "/data/Defaults/Gromacs/"))
+                    exit()
+
+            simulation = Metadynamics(name=name,
+                                      gromacs=self._gromacs,
+                                      mdrun_options=self._mdrun_options,
+                                      atomtype=self._atomtype,
+                                      pypol_directory=self._pypol_directory,
+                                      path_data=self._path_data,
+                                      path_output=self._path_output,
+                                      path_input=self._path_input,
+                                      intermol=self._intermol,
+                                      lammps=self._lammps,
+                                      crystals=list(),
+                                      path_mdp=path_mdp,
+                                      molecules=self._molecules,
+                                      index=-1,
+                                      previous_sim="",
+                                      hide=False)
+            if not self._simulations:
+                print("Error: Equilibration is needed before performing Metadynamics simulations.")
+                exit()
+
+            for previous_simulation in self._simulations:
+                if previous_simulation._name == simulation._name:
+                    print("Error: Simulation with name {} already present.".format(simulation._name))
+                    exit()
+            simulation._previous_sim = self._simulations[-1]._name
+            simulation._sim_index = len(self._simulations)
+
+            list_crystals = get_list_crystals(self._simulations[-1]._crystals, crystals, catt)
+            for crystal in list_crystals:
+                simulation._crystals.append(Crystal._copy_properties(crystal))
+
+            default_cvs = False
+            while default_cvs not in ("y", "n"):
+                default_cvs = input("Do you want to use the default Collective Variables "
+                                    "(Potential Energy and Density)?[y/n]")
+            if default_cvs == "y":
+                rho_min = list_crystals[0].density
+                rho_max = list_crystals[0].density
+                for crystal in list_crystals:
+                    rho_cry = crystal.density
+                    if rho_max < rho_cry:
+                        rho_max = rho_cry
+                    if rho_min > rho_cry:
+                        rho_min = rho_cry
+                rho_min -= 50.
+                rho_max += 50.
+                rho_bin = int(rho_max - rho_min)
+                rho = self.new_cv("Density", "density")
+                rho._grid_min = rho_min
+                rho._grid_max = rho_max
+                rho._grid_bins = rho_bin
+                rho.use_walls = True
+
+                energy_min = list_crystals[0]._energy
+                energy_max = list_crystals[0]._energy
+                for crystal in list_crystals:
+                    energy_cry = crystal._energy
+                    if energy_max < energy_cry:
+                        energy_max = energy_cry
+                    if energy_min > energy_cry:
+                        energy_min = energy_cry
+                energy_min -= 25.
+                energy_max += 500.
+                energy_bin = int(energy_max - energy_min) * 10
+                energy = self.new_cv("Potential Energy", "energy")
+                energy._grid_min = energy_min
+                energy._grid_max = energy_max
+                energy._grid_bins = energy_bin
+
+                asb = self.new_cv("ASB", "asb")
+
+                simulation.set_cvs(asb, rho, energy)
+            else:
+                print("Include custom CV using the command simulation.set_cvs(cv1, cv2, cv3, ...). ")
+
+            simulation._gromacs = self._gromacs
+            simulation._mdrun_options = self._mdrun_options
+            simulation._path_data = self._path_data
+            simulation._path_output = self._path_output
+            simulation._path_input = self._path_input
+
+            self._simulations.append(simulation)
+            return simulation
+
         else:
             print("""
 Simulation Type '{}' not recognized. Choose between:
@@ -2307,14 +2411,15 @@ nvt = gaff.get_simulation("nvt")                              # Retrieve an exis
 nvt.get_results()                                             # Check normal termination and import potential energy
 project.save()                                                # Save project to be used later"""
 
-    def generate_input(self, bash_script=False, crystals="all"):
+    def generate_input(self, bash_script=False, crystals="all", catt=None):
         """
         Copy the Gromacs .mdp file to each crystal path.
         :param bash_script: If bash_script=True, a bash script is generated to run all simulations
         :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
+        :param catt:
         """
 
-        list_crystals = get_list_crystals(self._crystals, crystals)
+        list_crystals = get_list_crystals(self._crystals, crystals, catt)
 
         for crystal in list_crystals:
             copyfile(self.path_mdp, crystal._path + self.name + ".mdp")
@@ -2413,7 +2518,7 @@ class Metadynamics(MolecularDynamics):
 
     def __init__(self, name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                  path_input, intermol, lammps, crystals, path_mdp, molecules, index, previous_sim, hide,
-                 replicas=1, biasfactor=200, pace=1000, height=2.0, temp=300):
+                 replicas=1, biasfactor=200, pace=1000, height=2.0, temp=300, stride=100):
         """
         Perform Energy Minimization simulations using Gromacs.
         :param name: Name used to specify the object and print outputs
@@ -2441,10 +2546,180 @@ class Metadynamics(MolecularDynamics):
         self._pace = pace
         self._height = height
         self._temp = temp
+        self._energy_cutoff = False
+        self._stride = stride
 
-        # RMSD
-        self._rmsd = False
-        self._rmsd_toll = 0.5
+        # Plumed DRMSD
+        self._drmsd = False
+        self._drmsd_toll = 0.05
 
-        # Collective Variables
+        # CVS
         self._cvp = list()
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def replicas(self):
+        return self._replicas
+
+    @replicas.setter
+    def replicas(self, value: int):
+        self._replicas = value
+
+    @property
+    def pace(self):
+        return self._pace
+
+    @pace.setter
+    def pace(self, value: int):
+        self._pace = value
+
+    @property
+    def biasfactor(self):
+        return self._biasfactor
+
+    @biasfactor.setter
+    def biasfactor(self, value: Union[int, float]):
+        self._biasfactor = value
+
+    @property
+    def height(self):
+        return self._height
+
+    @height.setter
+    def height(self, value: Union[int, float]):
+        self._height = value
+
+    @property
+    def temp(self):
+        return self._temp
+
+    @temp.setter
+    def temp(self, value: Union[int, float]):
+        self._temp = value
+
+    @property
+    def energy_cutoff(self):
+        return self._energy_cutoff
+
+    @energy_cutoff.setter
+    def energy_cutoff(self, value: Union[int, float]):
+        self._energy_cutoff = value
+
+    @property
+    def drmsd(self):
+        return self._drmsd
+
+    @drmsd.setter
+    def drmsd(self, value: bool):
+        self._drmsd = value
+
+    @property
+    def drmsd_toll(self):
+        return self._drmsd_toll
+
+    @drmsd_toll.setter
+    def drmsd_toll(self, value: Union[int, float]):
+        self._drmsd_toll = value
+
+    @property
+    def collective_variables(self):
+        return self._cvp
+
+    @collective_variables.setter
+    def collective_variables(self, cvs):
+
+        def put_energy_at_the_end(colvars):
+            for cv in colvars:
+                if cv._type == "Potential Energy":
+                    colvars.append(colvars.pop(colvars.index(cv)))
+            return colvars
+
+        if isinstance(cvs, list):
+            self._cvp = put_energy_at_the_end(cvs)
+        elif isinstance(cvs, tuple):
+            cvs = list(cvs)
+            self._cvp = put_energy_at_the_end(cvs)
+        else:
+            self._cvp = [cvs]
+
+    def set_cvs(self, *cvs):
+        self.collective_variables = list(cvs)
+
+    def generate_input(self, bash_script=True, crystals="all", catt=None):
+        """
+        Copy the Gromacs .mdp file to each crystal path.
+        :param catt:
+        :param bash_script: If bash_script=True, a bash script is generated to run all simulations
+        :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
+        """
+        # TODO modify for replicas > 1
+        from PyPol.analysis import AvoidScrewedBox, Density, PotentialEnergy, _MetaCV
+        list_crystals = get_list_crystals(self._crystals, crystals, catt)
+        imp = self._molecules[0]._potential_energy
+        mw = 0
+        for atom in self._molecules[0].atoms:
+            mw += atom._mass
+
+        arg, sigma, grid_min, grid_max, grid_bin, walls = [], [], [], [], [], []
+        for cv in self._cvp:
+            if issubclass(cv, _MetaCV):
+                arg.append(cv._name)
+                sigma.append(str(cv._sigma))
+                grid_min.append(str(cv._grid_min))
+                grid_max.append(str(cv._grid_max))
+                grid_bin.append(str(cv._grid_bin))
+            if cv is AvoidScrewedBox:
+                walls.append(cv)
+            elif cv is Density:
+                if cv.use_walls:
+                    walls.append(cv.lwall)
+                    walls.append(cv.uwall)
+
+        arg = ",".join(arg)
+        sigma = ",".join(sigma)
+        grid_min = ",".join(grid_min)
+        grid_max = ",".join(grid_max)
+        grid_bin = ",".join(grid_bin)
+        arg_output = arg + f"{self._name}.bias,{self._name}.rbias,{self._name}.rct"
+        if walls:
+            for wall in walls:
+                arg_output += f",{wall._name}.bias"
+
+        for crystal in list_crystals:
+            file_plumed = open(crystal._path + f"plumed_{self._name}.dat", "w")
+            file_plumed.write("RESTART")
+            for cv in self._cvp:
+                if cv is AvoidScrewedBox:
+                    file_plumed.write(cv._metad(False))
+                elif cv is Density:
+                    cf = mw * crystal._Z * 1.66054
+                    file_plumed.write(cv._metad(cf, False))
+                elif cv is PotentialEnergy:
+                    file_plumed.write(cv._metad(crystal._Z, imp, walls))
+
+            file_plumed.write(f"METAD ...\n"
+                              f"LABEL={self._name}\n"
+                              f"ARG={arg}\n"
+                              f"PACE={self._pace}\n"
+                              f"HEIGHT={self._height}\n"
+                              f"SIGMA={sigma}\n"
+                              f"TEMP={self._temp}\n"
+                              f"BIASFACTOR={self._biasfactor}\n"
+                              f"GRID_MIN={grid_min}\n"
+                              f"GRID_MAX={grid_max}\n"
+                              f"GRID_BIN={grid_bin}\n"
+                              f"CALC_RCT\n"
+                              f"FILE=HILLS\n"
+                              f"... METAD\n\n"
+                              f"PRINT STRIDE={self._stride} ARG={arg_output} FILE=plumed_{self._name}_COLVAR")
+
+            file_plumed.close()
+
+        self._mdrun_options = f" -plumed plumed_{self._name}.dat"
+
+        super(Metadynamics, self).generate_input(bash_script, crystals, catt)
+
+    # TODO get_results module

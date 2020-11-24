@@ -13,11 +13,11 @@ from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation 
 
 
 #
-# Collective Variables
+# Fingerprints
 #
 
 
-class _CollectiveVariable(object):
+class _CollectiveVariable(object):  # TODO Change name to Fingerprint
     """
     General Class for Collective Variables.
     Attributes:\n
@@ -1464,29 +1464,406 @@ project.save()                                                # Save project
         bar.finish()
 
 
-class AvoidScrewedBox(object):
+# Metadynamics Collective Variables and Walls objects
+
+class Wall(object):
+    """
     """
 
-    """
-    def __init__(self, name, plumed):
+    def __init__(self, name, position="upper"):
         """
 
         :param name:
-        :param plumed:
         """
-        self.name = name
+
+        position = position.upper()
+        if position not in ("LOWER", "UPPER"):
+            print("Error: Position of the wall not recognized, choose between 'upper' and 'lower'.")
+            exit()
+        self._position = position
+        self._name = name
+        self._type = "Wall"
+        self._arg = list()
+        self._kappa = list()
+        self._offset = list()
+        self._exp = list()
+        self._eps = list()
+        self._at = list()
+        self._stride = 100
+        self._collective_variable_line = None
+
+    @property
+    def kappa(self):
+        return self._kappa
+
+    @kappa.setter
+    def kappa(self, values: list):
+        self._kappa = values
+
+    @property
+    def at(self):
+        return self._at
+
+    @at.setter
+    def at(self, values: list):
+        self._at = values
+
+    @property
+    def offset(self):
+        return self._offset
+
+    @offset.setter
+    def offset(self, values: list):
+        self._offset = values
+
+    @property
+    def eps(self):
+        return self._eps
+
+    @eps.setter
+    def eps(self, values: list):
+        self._eps = values
+
+    @property
+    def exp(self):
+        return self._exp
+
+    @exp.setter
+    def exp(self, values: list):
+        self._exp = values
+
+    @property
+    def stride(self):
+        return self._stride
+
+    @stride.setter
+    def stride(self, value: int):
+        self._stride = value
+
+    @property
+    def position(self):
+        return self._position
+
+    @position.setter
+    def position(self, value: str):
+        if value.upper() in ("LOWER", "UPPER"):
+            self._position = value
+        else:
+            print("Error: Position of the wall not recognized, choose between 'upper' and 'lower'.")
+            exit()
+
+    def add_arg(self, name, kappa=10000, offset=0.0, exp=2, eps=1, at=0.):
+        self._arg.append(name)
+        self._kappa.append(kappa)
+        self._offset.append(offset)
+        self._exp.append(exp)
+        self._eps.append(eps)
+        self._at.append(at)
+
+    def reset_arg(self, name, kappa=10000, offset=0.0, exp=2, eps=1, at=0.):
+        if name not in self._arg:
+            print("Error: No ARG with name {}".format(name))
+            exit()
+        i = self._arg.index(name)
+        self._kappa[i] = kappa
+        self._offset[i] = offset
+        self._exp[i] = exp
+        self._eps[i] = eps
+        self._at[i] = at
+
+    def __str__(self):
+        txt = "\nCV: {0._name} ({0._type})\nWall position: {0._position}"
+        for i in range(len(self._arg)):
+            txt += f"ARG={self._arg[i]} AT={self._at[i]} KAPPA={self._kappa[i]} EXP={self._exp[i]} " \
+                   f"EPS={self._eps[i]} OFFSET={self._offset[i]}\n"
+        return txt
+
+    def _write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write(self.__str__())
+        file_output.close()
+
+    def _metad(self, print_output=True):
+        txt = self._collective_variable_line
+        args = ",".join(self._arg)
+        at = ",".join(self._at)
+        kappa = ",".join(self._kappa)
+        exp = ",".join(self._exp)
+        eps = ",".join(self._eps)
+        offset = ",".join(self._offset)
+        txt += f"""
+{self._position}_WALLS ...
+ARG={args}
+AT={at}
+KAPPA={kappa}
+EXP={exp}
+EPS={eps}
+OFFSET={offset}
+LABEL={self._name}
+... {self._position}_WALLS"""
+
+        if print_output:
+            txt += f"\nPRINT ARG={args},{self._name}.bias FILE={self._name}_COLVAR STRIDE={self._stride}\n"
+        return txt
 
 
+class AvoidScrewedBox(Wall):
+    """
+
+    """
+
+    def __init__(self, name):
+        """
+
+        :param name:
+        """
+        super(AvoidScrewedBox, self).__init__(name, "UPPER")
+        self._type = "Avoid Screwed Box (Wall)"
+        self._collective_variable_line = """
+cell: CELL
+
+bx: MATHEVAL ARG=cell.bx,cell.ax FUNC=abs(x)-0.5*y PERIODIC=NO
+cx: MATHEVAL ARG=cell.cx,cell.ax FUNC=abs(x)-0.5*y PERIODIC=NO
+cy: MATHEVAL ARG=cell.cy,cell.by FUNC=abs(x)-0.5*y PERIODIC=NO"""
+
+        self.add_arg("bx", offset=0.1)
+        self.add_arg("cx", offset=0.1)
+        self.add_arg("cy", offset=0.1)
+
+    def generate_input(self, simulation: MolecularDynamics,
+                       crystals="all",
+                       catt=None):
+        list_crystals = get_list_crystals(simulation._crystals, crystals, attributes=catt)
+        add_plumed_file = False
+        file_plumed = None
+        if "-plumed" in simulation._mdrun_options:
+            add_plumed_file = input("A plumed file has been found in the mdrun options. \n"
+                                    "Do you want to add it the plumed input (NB: if not, it will be ignored for this "
+                                    "simulation)? [y/n] ")
+            if add_plumed_file.lower() in ("yes", "y", "true"):
+                add_plumed_file = True
+                it = iter(simulation._mdrun_options.split())
+                for i in it:
+                    if i == "-plumed":
+                        file_plumed = next(it)
+            else:
+                add_plumed_file = False
+        simulation._mdrun_options = " -plumed plumed_{}.dat ".format(self._name)
+        for crystal in list_crystals:
+            txt = self._metad()
+            f = open(crystal._path + "plumed_{}", "w")
+            f.write(txt)
+            if add_plumed_file:
+                if os.path.exists(crystal._path + file_plumed):
+                    f2 = open(crystal._path + file_plumed, "r")
+                    f.write("".join(f2.readlines()))
+                    f2.close()
+            f.close()
 
 
-class Density(object):
-    
-    def __init__(self):
-        super(Density, self).__init__()
+class _MetaCV(object):
+    """
+    General Class for Collective Variables.
+    Attributes:\n
+    - name: name of the CV.
+    - type: Type of the CV.
+    - clustering_type: How is it treated by clustering algorithms.
+    - kernel: kernel function to use in the histogram generation.
+    - bandwidth: the bandwidths for kernel density estimation.
+    - grid_min: the lower bounds for the grid.
+    - grid_max: the upper bounds for the grid.
+    - grid_bins: the number of bins for the grid.
+    - grid_space: the approximate grid spacing for the grid.
+    - timeinterval: Simulation time interval to generate the distribution.
+    """
+
+    _name = None
+    _sigma = None
+    _grid_bin = None
+    _grid_max = None
+    _grid_min = None
+
+    def __init__(self, name: str,
+                 cv_type: str = "",
+                 sigma: Union[float, list, tuple] = None,
+                 grid_min: Union[float, list, tuple] = None,
+                 grid_max: Union[float, list, tuple] = None,
+                 grid_bins: Union[int, list, tuple] = None,
+                 grid_space: Union[float, list, tuple] = None):
+        """
+        General Class for Collective Variables.
+        :param name: name of the CV.
+        :param cv_type: Type of the CV.
+        :param grid_min: the lower bounds for the grid.
+        :param grid_max: the upper bounds for the grid.
+        :param grid_bins: the number of bins for the grid.
+        :param grid_space: the approximate grid spacing for the grid.
+        """
+        self._name = name
+        self._type = cv_type
+        self._grid_min = grid_min
+        self._grid_max = grid_max
+        self._grid_bins = grid_bins
+        self._grid_space = grid_space
+        self._sigma = sigma
+        self._stride = 100
+
+    @property
+    def stride(self):
+        return self._stride
+
+    @stride.setter
+    def stride(self, value: int):
+        self._stride = value
+
+    @property
+    def sigma(self):
+        return self._sigma
+
+    @sigma.setter
+    def sigma(self, sigma: float):
+        if self._grid_space < sigma * 0.5:
+            self._sigma = sigma
+        else:
+            print("""
+The bin size must be smaller than half the sigma. Choose a sigma greater than {}. 
+Alternatively, you can change the bin space or the number of bins.""".format(self._grid_space * 2))
+
+    @property
+    def grid_min(self):
+        return self._grid_min
+
+    @grid_min.setter
+    def grid_min(self, grid_min: float):
+        self._grid_min = grid_min
+        self.grid_space = self._grid_space
+
+    @property
+    def grid_max(self):
+        return self._grid_max
+
+    @grid_max.setter
+    def grid_max(self, grid_max: float):
+        self._grid_max = grid_max
+        self.grid_space = self._grid_space
+
+    @property
+    def grid_bins(self):
+        return self._grid_bins
+
+    @grid_bins.setter
+    def grid_bins(self, grid_bins: int):
+        self._grid_bins = grid_bins
+        if self._grid_max:
+            self._grid_space = (self._grid_max - self._grid_min) / float(self._grid_bins)
+            if self._grid_space > self._sigma * 0.5:
+                print("The bin size must be smaller than half the bandwidth. Please change the bandwidth accordingly.")
+
+    @property
+    def grid_space(self):
+        return self._grid_space
+
+    @grid_space.setter
+    def grid_space(self, grid_space: float):
+        self._grid_space = grid_space
+        if self._grid_space > self._sigma * 0.5:
+            print("The bin size must be smaller than half the bandwidth. Please change the bandwidth accordingly.")
+        if self._grid_max:
+            self._grid_bins = int((self._grid_max - self._grid_min) / self._grid_space)
+
+    # Read-only properties
+    @property
+    def name(self):
+        return self._name
+
+    def __str__(self):
+
+        txt = """
+CV: {0._name} ({0._type})
+SIGMA={0._sigma:.3f} GRID_BIN={0._grid_bins} GRID_MAX={0._grid_max:.3f} FRID_MIN={0._grid_min:.3f}""".format(self)
+        return txt
+
+    def _write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write(self.__str__())
+        file_output.close()
 
 
-class PotentialEnergy(_CollectiveVariable):
-    pass
+class Density(_MetaCV):
+
+    def __init__(self, name):
+        super().__init__(name, "Density")
+        self._sigma = 10.
+        self._use_walls = False
+        self._walls = []
+
+    @property
+    def use_walls(self):
+        return self._use_walls
+
+    @use_walls.setter
+    def use_walls(self, value: bool, offset=25.):
+        self._use_walls = value
+        if self._use_walls:
+            if self._grid_max and self._grid_min:
+                self._walls = [Wall(self._name + "_upper", "UPPER"), Wall(self._name + "_lower", "LOWER")]
+                self.lwall.add_arg(self._name, at=self._grid_min + offset)
+                self.uwall.add_arg(self._name, at=self._grid_max - offset)
+            else:
+                print("Error: Define grid_max and grid_min before walls.")
+                exit()
+
+    @property
+    def walls(self):
+        return self._walls
+
+    @property
+    def uwall(self):
+        if self._walls:
+            return self._walls[0]
+
+    @property
+    def lwall(self):
+        if self._walls:
+            return self._walls[1]
+
+    def _metad(self, value, print_output=True):
+        txt = f"""vol: VOLUME
+density: MATHEVAL ARG=vol FUNC={value:.3f}/x PERIODIC=NO # FUNC = NMOLS*MW*CONVERSIONFACTOR/VOLUME
+"""
+        if self._use_walls:
+            for wall in self._walls:
+                txt += wall._metad(False)
+
+        if print_output:
+            if self._use_walls:
+                args = self._walls[0]._name + ".bias," + self._walls[1]._name + ".bias"
+                txt += f"PRINT ARG={self._name},{args} FILE={self._name}_COLVAR STRIDE={self._stride}"
+            else:
+                txt += f"PRINT ARG={self._name} FILE={self._name}_COLVAR STRIDE={self._stride}"
+        return txt
+
+
+class PotentialEnergy(_MetaCV):
+
+    def __init__(self, name):
+        super(PotentialEnergy, self).__init__(name, "Potential Energy")
+
+    def _metad(self, nmols, imp, remove_bias: list = None, print_output=True):
+        if not remove_bias:
+            txt = f"""{self._name}: ENERGY
+elatt: MATHEVAL ARG={self._name} VAR=a FUNC=a/{nmols}+{imp} PERIODIC=NO"""
+        else:
+            list_var = list("bcdefghijklmnopqrstuvwxyz")
+            arg = ",".join([i._name + ".bias" for i in remove_bias])
+            var = ",".join([list_var[i] for i in range(len(remove_bias))])
+            func = "-".join([list_var[i] for i in range(len(remove_bias))])
+            txt = f"""ene_pot: ENERGY
+elatt: MATHEVAL ARG={self._name},{arg} VAR=a,{var} FUNC=(a-{func})/{nmols}+{imp} PERIODIC=NO"""
+
+        if print_output:
+            txt += f"PRINT ARG={self._name} FILE={self._name}_COLVAR STRIDE={self._stride}"
+        return txt
 
 
 class _GG(object):
@@ -1947,6 +2324,7 @@ Clustering Type: {0._clustering_type}
         file_output = open(path_output, "a")
         file_output.write(self.__str__())
         file_output.close()
+
 
 #
 # Utilities
