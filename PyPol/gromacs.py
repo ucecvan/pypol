@@ -2672,12 +2672,13 @@ class Metadynamics(MolecularDynamics):
 
         arg, sigma, grid_min, grid_max, grid_bin, walls = [], [], [], [], [], []
         for cv in self._cvp:
-            if issubclass(cv, _MetaCV):
+            if issubclass(type(cv), _MetaCV):
                 arg.append(cv._name)
                 sigma.append(str(cv._sigma))
                 grid_min.append(str(cv._grid_min))
                 grid_max.append(str(cv._grid_max))
                 grid_bin.append(str(cv._grid_bin))
+
             if cv is AvoidScrewedBox:
                 walls.append(cv)
             elif cv is Density:

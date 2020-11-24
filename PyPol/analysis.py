@@ -1572,7 +1572,7 @@ class Wall(object):
         self._at[i] = at
 
     def __str__(self):
-        txt = "\nCV: {0._name} ({0._type})\nWall position: {0._position}"
+        txt = "\nCV: {0._name} ({0._type})\nWall position: {0._position}".format(self)
         for i in range(len(self._arg)):
             txt += f"ARG={self._arg[i]} AT={self._at[i]} KAPPA={self._kappa[i]} EXP={self._exp[i]} " \
                    f"EPS={self._eps[i]} OFFSET={self._offset[i]}\n"
