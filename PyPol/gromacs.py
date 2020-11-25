@@ -2594,11 +2594,11 @@ class Metadynamics(MolecularDynamics):
         self._temp = temp
         self._stride = stride
 
-        # Committor
-        self._energy_cutoff = False
+        # Committor: EnergyCutOff
+        self._energy_cutoff = None
         self._energy_cutoff_stride = stride * 100
 
-        # Plumed DRMSD
+        # Committor: DRMSD
         self._drmsd = False
         self._drmsd_stride = stride * 100
         self._drmsd_toll = 0.25
@@ -2746,6 +2746,9 @@ class Metadynamics(MolecularDynamics):
                     nmols_max = crystal._Z
             self._energy_cutoff = round(1700. / nmols_max, 2)
 
+        print("Creating Plumed files for '{}' simulation:".format(self._name))
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
         for crystal in list_crystals:
             file_plumed = open(crystal._path + f"plumed_{self._name}.dat", "w")
             file_plumed.write("RESTART\n\n")
@@ -2760,7 +2763,6 @@ class Metadynamics(MolecularDynamics):
 
             file_plumed.write(f"""
 # Metadynamics Parameters
-rct_mol: MATHEVAL ARG={self._name}.rct FUNC=x/{int(crystal._Z)}.0 PERIODIC=NO
 METAD ...
 LABEL={self._name}
 ARG={arg}
@@ -2775,6 +2777,8 @@ GRID_BIN={grid_bin}
 CALC_RCT
 FILE=HILLS
 ... METAD
+
+rct_mol: MATHEVAL ARG={self._name}.rct FUNC=x/{int(crystal._Z)}.0 PERIODIC=NO
 
 PRINT STRIDE={self._stride} ARG={arg_output} FILE=plumed_{self._name}_COLVAR
 
@@ -2815,6 +2819,9 @@ COMMITTOR ...
   BASIN_UL={self._drmsd_toll + 10.}
 ... COMMITTOR\n""")
             file_plumed.close()
+            bar.update(nbar)
+            nbar += 1
+        bar.finish()
 
         self._mdrun_options = f" -plumed plumed_{self._name}.dat"
 
