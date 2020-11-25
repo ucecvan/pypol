@@ -2564,7 +2564,7 @@ class Metadynamics(MolecularDynamics):
 
     def __init__(self, name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                  path_input, intermol, lammps, crystals, path_mdp, molecules, index, previous_sim, hide,
-                 replicas=1, biasfactor=200, pace=1000, height=2.0, temp=300, stride=100):
+                 replicas=1, biasfactor=200, pace=1000, height=2.0, temp=300, stride=10):
         """
         Perform Energy Minimization simulations using Gromacs.
         :param name: Name used to specify the object and print outputs
@@ -2592,12 +2592,16 @@ class Metadynamics(MolecularDynamics):
         self._pace = pace
         self._height = height
         self._temp = temp
-        self._energy_cutoff = False
         self._stride = stride
+
+        # Committor
+        self._energy_cutoff = False
+        self._energy_cutoff_stride = stride * 10
 
         # Plumed DRMSD
         self._drmsd = False
-        self._drmsd_toll = 0.05
+        self._drmsd_stride = stride * 10
+        self._drmsd_toll = 0.25
 
         # CVS
         self._cvp = list()
@@ -2701,7 +2705,7 @@ class Metadynamics(MolecularDynamics):
         :param bash_script: If bash_script=True, a bash script is generated to run all simulations
         :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
         """
-        # TODO modify for replicas > 1
+        # TODO modify for replicas > 1 ==> modify list of crystals?
         from PyPol.analysis import AvoidScrewedBox, Density, PotentialEnergy, _MetaCV
         list_crystals = get_list_crystals(self._crystals, crystals, catt)
         imp = self._molecules[0]._potential_energy
@@ -2730,10 +2734,17 @@ class Metadynamics(MolecularDynamics):
         grid_min = ",".join(grid_min)
         grid_max = ",".join(grid_max)
         grid_bin = ",".join(grid_bin)
-        arg_output = arg + f",{self._name}.bias,{self._name}.rbias,{self._name}.rct"
+        arg_output = arg + f",{self._name}.bias,{self._name}.rbias,{self._name}.rct,rct_mol"
         if walls:
             for wall in walls:
                 arg_output += f",{wall._name}.bias"
+
+        if not isinstance(self._energy_cutoff, (int, float)):
+            nmols_max = 0
+            for crystal in list_crystals:
+                if crystal._Z > nmols_max:
+                    nmols_max = crystal._Z
+            self._energy_cutoff = round(1700. / nmols_max, 2)
 
         for crystal in list_crystals:
             file_plumed = open(crystal._path + f"plumed_{self._name}.dat", "w")
@@ -2747,22 +2758,62 @@ class Metadynamics(MolecularDynamics):
                 elif type(cv) is PotentialEnergy:
                     file_plumed.write(cv._metad(crystal._Z, imp, walls))
 
-            file_plumed.write(f"METAD ...\n"
-                              f"LABEL={self._name}\n"
-                              f"ARG={arg}\n"
-                              f"PACE={self._pace}\n"
-                              f"HEIGHT={self._height}\n"
-                              f"SIGMA={sigma}\n"
-                              f"TEMP={self._temp}\n"
-                              f"BIASFACTOR={self._biasfactor}\n"
-                              f"GRID_MIN={grid_min}\n"
-                              f"GRID_MAX={grid_max}\n"
-                              f"GRID_BIN={grid_bin}\n"
-                              f"CALC_RCT\n"
-                              f"FILE=HILLS\n"
-                              f"... METAD\n\n"
-                              f"PRINT STRIDE={self._stride} ARG={arg_output} FILE=plumed_{self._name}_COLVAR")
+            file_plumed.write(f"""
+# Metadynamics Parameters
+rct_mol: MATHEVAL ARG={self._name}.rct FUNC=x/{int(crystal._Z)}.0 PERIODIC=NO
+METAD ...
+LABEL={self._name}
+ARG={arg}
+PACE={self._pace}
+HEIGHT={self._height}
+SIGMA={sigma}
+TEMP={self._temp}
+BIASFACTOR={self._biasfactor}
+GRID_MIN={grid_min}
+GRID_MAX={grid_max}
+GRID_BIN={grid_bin}
+CALC_RCT
+FILE=HILLS
+... METAD
 
+PRINT STRIDE={self._stride} ARG={arg_output} FILE=plumed_{self._name}_COLVAR
+
+# Stop simulation after energy cutoff is reached
+COMMITTOR ...
+ARG=rct_mol
+STRIDE={self._energy_cutoff_stride}
+BASIN_LL={self._energy_cutoff}
+BASIN_UL={self._energy_cutoff + 10.}
+... COMMITTOR\n""")
+
+            if self._drmsd:
+                os.chdir(crystal._path)
+                os.system("{0._gromacs} trjconv -f {0._previous_sim}.gro -o plumed_{0.name}_TEMPORARY.pdb "
+                          "-s {0._previous_sim}.tpr "
+                          "<<< 0 &> /dev/null".format(self))
+                file_pdb = open(crystal._path + f"plumed_{self._name}_TEMPORARY.pdb", "r")
+                file_pdb_out = open(crystal._path + f"plumed_{self._name}.pdb", "w")
+                for line in file_pdb:
+                    if line.startswith(("HETATM", "ATOM")):
+                        line = line[:54] + "  1.00  1.00" + line[66:]
+                        file_pdb_out.write(line)
+                    else:
+                        file_pdb_out.write(line)
+                file_pdb_out.close()
+                file_pdb.close()
+                os.remove(crystal._path + f"plumed_{self._name}_TEMPORARY.pdb")
+
+                file_plumed.write(f"""
+# Stop simulation when a phase transition occurred
+drmsd: DRMSD REFERENCE=plumed_{self._name}.pdb LOWER_CUTOFF=0.01 UPPER_CUTOFF=0.5
+PRINT FILE=plumed_{self._name}_DRMSD ARG=drmsd STRIDE={self._stride * 10}
+
+COMMITTOR ...
+  ARG=drmsd
+  STRIDE={self._drmsd_stride}
+  BASIN_LL={self._drmsd_toll}
+  BASIN_UL={self._drmsd_toll + 10.}
+... COMMITTOR\n""")
             file_plumed.close()
 
         self._mdrun_options = f" -plumed plumed_{self._name}.dat"

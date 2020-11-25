@@ -1584,7 +1584,7 @@ class Wall(object):
         file_output.close()
 
     def _metad(self, print_output=True):
-        txt = "\n" + self._collective_variable_line + "\n"
+        txt = "\n" + "# Wall\n" + self._collective_variable_line + "\n"
         args = ",".join(self._arg)
         at = ",".join([str(a) for a in self._at])
         kappa = ",".join([str(a) for a in self._kappa])
@@ -1828,6 +1828,7 @@ class Density(_MetaCV):
 
     def _metad(self, value, print_output=True):
         txt = f"""
+# Density
 {self._name}_vol: VOLUME
 {self._name}: MATHEVAL ARG={self._name}_vol FUNC={value:.3f}/x PERIODIC=NO # FUNC = NMOLS*MW*CONVERSIONFACTOR/VOLUME
 """
@@ -1852,6 +1853,7 @@ class PotentialEnergy(_MetaCV):
     def _metad(self, nmols, imp, remove_bias: list = None, print_output=True):
         if not remove_bias:
             txt = f"""
+# Potential Energy Difference
 {self._name}_pot: ENERGY
 {self._name}: MATHEVAL ARG={self._name}_pot VAR=a FUNC=a/{nmols}+{imp} PERIODIC=NO"""
         else:
