@@ -1855,7 +1855,7 @@ class PotentialEnergy(_MetaCV):
             txt = f"""
 # Potential Energy Difference
 {self._name}_pot: ENERGY
-{self._name}: MATHEVAL ARG={self._name}_pot VAR=a FUNC=a/{nmols}+{imp} PERIODIC=NO"""
+{self._name}: MATHEVAL ARG={self._name}_pot VAR=a FUNC=a/{nmols}-{imp} PERIODIC=NO"""
         else:
             list_var = list("bcdefghijklmnopqrstuvwxyz")
             arg = ",".join([i._name + ".bias" for i in remove_bias])
@@ -1863,7 +1863,7 @@ class PotentialEnergy(_MetaCV):
             func = "-".join([list_var[i] for i in range(len(remove_bias))])
             txt = f"""
 {self._name}_pot: ENERGY
-{self._name}: MATHEVAL ARG={self._name}_pot,{arg} VAR=a,{var} FUNC=(a-{func})/{nmols}+{imp} PERIODIC=NO\n"""
+{self._name}: MATHEVAL ARG={self._name}_pot,{arg} VAR=a,{var} FUNC=(a-{func})/{nmols}-{imp} PERIODIC=NO\n"""
 
         if print_output:
             txt += f"PRINT ARG={self._name} FILE={self._name}_COLVAR STRIDE={self._stride}\n"

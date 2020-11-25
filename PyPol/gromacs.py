@@ -2759,7 +2759,7 @@ class Metadynamics(MolecularDynamics):
                     cf = mw * crystal._Z * 1.66054
                     file_plumed.write(cv._metad(cf, False))
                 elif type(cv) is PotentialEnergy:
-                    file_plumed.write(cv._metad(crystal._Z, imp, walls))
+                    file_plumed.write(cv._metad(crystal._Z, imp, walls, False))
 
             file_plumed.write(f"""
 # Metadynamics Parameters
@@ -2786,8 +2786,8 @@ PRINT STRIDE={self._stride} ARG={arg_output} FILE=plumed_{self._name}_COLVAR
 COMMITTOR ...
 ARG=rct_mol
 STRIDE={self._energy_cutoff_stride}
-BASIN_LL={self._energy_cutoff}
-BASIN_UL={self._energy_cutoff + 10.}
+BASIN_LL1={self._energy_cutoff}
+BASIN_UL1={self._energy_cutoff + 10.}
 ... COMMITTOR\n""")
 
             if self._drmsd:
@@ -2815,8 +2815,8 @@ PRINT FILE=plumed_{self._name}_DRMSD ARG=drmsd STRIDE={self._stride * 10}
 COMMITTOR ...
   ARG=drmsd
   STRIDE={self._drmsd_stride}
-  BASIN_LL={self._drmsd_toll}
-  BASIN_UL={self._drmsd_toll + 10.}
+  BASIN_LL1={self._drmsd_toll}
+  BASIN_UL1={self._drmsd_toll + 10.}
 ... COMMITTOR\n""")
             file_plumed.close()
             bar.update(nbar)
