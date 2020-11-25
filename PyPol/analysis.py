@@ -1584,15 +1584,17 @@ class Wall(object):
         file_output.close()
 
     def _metad(self, print_output=True):
-        txt = "\n" + "# Wall\n" + self._collective_variable_line + "\n"
+        if self._collective_variable_line:
+            txt = "\n" + "# Wall\n" + self._collective_variable_line + "\n"
+        else:
+            txt = "\n" + "# Wall\n"
         args = ",".join(self._arg)
         at = ",".join([str(a) for a in self._at])
         kappa = ",".join([str(a) for a in self._kappa])
         exp = ",".join([str(a) for a in self._exp])
         eps = ",".join([str(a) for a in self._eps])
         offset = ",".join([str(a) for a in self._offset])
-        txt += f"""
-{self._position}_WALLS ...
+        txt += f"""{self._position}_WALLS ...
 ARG={args}
 AT={at}
 KAPPA={kappa}
@@ -1620,9 +1622,7 @@ class AvoidScrewedBox(Wall):
         """
         super(AvoidScrewedBox, self).__init__(name, "UPPER")
         self._type = "Avoid Screwed Box (Wall)"
-        self._collective_variable_line = """
-cell: CELL
-
+        self._collective_variable_line = """cell: CELL
 bx: MATHEVAL ARG=cell.bx,cell.ax FUNC=abs(x)-0.5*y PERIODIC=NO
 cx: MATHEVAL ARG=cell.cx,cell.ax FUNC=abs(x)-0.5*y PERIODIC=NO
 cy: MATHEVAL ARG=cell.cy,cell.by FUNC=abs(x)-0.5*y PERIODIC=NO"""
@@ -1863,10 +1863,10 @@ class PotentialEnergy(_MetaCV):
             func = "-".join([list_var[i] for i in range(len(remove_bias))])
             txt = f"""
 {self._name}_pot: ENERGY
-{self._name}: MATHEVAL ARG={self._name}_pot,{arg} VAR=a,{var} FUNC=(a-{func})/{nmols}+{imp} PERIODIC=NO"""
+{self._name}: MATHEVAL ARG={self._name}_pot,{arg} VAR=a,{var} FUNC=(a-{func})/{nmols}+{imp} PERIODIC=NO\n"""
 
         if print_output:
-            txt += f"PRINT ARG={self._name} FILE={self._name}_COLVAR STRIDE={self._stride}"
+            txt += f"PRINT ARG={self._name} FILE={self._name}_COLVAR STRIDE={self._stride}\n"
         return txt
 
 

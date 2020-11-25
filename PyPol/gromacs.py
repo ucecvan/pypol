@@ -2564,7 +2564,7 @@ class Metadynamics(MolecularDynamics):
 
     def __init__(self, name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                  path_input, intermol, lammps, crystals, path_mdp, molecules, index, previous_sim, hide,
-                 replicas=1, biasfactor=200, pace=1000, height=2.0, temp=300, stride=10):
+                 replicas=1, biasfactor=200, pace=1000, height=2.0, temp=300, stride=1000):
         """
         Perform Energy Minimization simulations using Gromacs.
         :param name: Name used to specify the object and print outputs
@@ -2596,11 +2596,11 @@ class Metadynamics(MolecularDynamics):
 
         # Committor
         self._energy_cutoff = False
-        self._energy_cutoff_stride = stride * 10
+        self._energy_cutoff_stride = stride * 100
 
         # Plumed DRMSD
         self._drmsd = False
-        self._drmsd_stride = stride * 10
+        self._drmsd_stride = stride * 100
         self._drmsd_toll = 0.25
 
         # CVS
