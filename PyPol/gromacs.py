@@ -2601,10 +2601,13 @@ class Metadynamics(MolecularDynamics):
         # Committor: DRMSD
         self._drmsd = False
         self._drmsd_stride = 100000
-        self._drmsd_toll = 0.25
+        self._drmsd_toll = 0.2
+        self._drmsd_lower = 0.1
+        self._drmsd_upper = 0.8
 
         # CVS
         self._cvp = list()
+        self.restart = True
 
     @property
     def type(self):
@@ -2751,7 +2754,8 @@ class Metadynamics(MolecularDynamics):
         nbar = 1
         for crystal in list_crystals:
             file_plumed = open(crystal._path + f"plumed_{self._name}.dat", "w")
-            file_plumed.write("RESTART\n\n")
+            if self.restart:
+                file_plumed.write("RESTART\n\n")
             for cv in self._cvp:
                 if type(cv) is AvoidScrewedBox:
                     file_plumed.write(cv._metad(False))
@@ -2797,9 +2801,13 @@ BASIN_UL1={self._energy_cutoff + 10.}
                           "<<< 0 &> /dev/null".format(self))
                 file_pdb = open(crystal._path + f"plumed_{self._name}_TEMPORARY.pdb", "r")
                 file_pdb_out = open(crystal._path + f"plumed_{self._name}.pdb", "w")
+                molnum = 1
                 for line in file_pdb:
                     if line.startswith(("HETATM", "ATOM")):
                         line = line[:54] + "  1.00  1.00" + line[66:]
+                        if int(line[22:26]) != molnum:
+                            molnum = int(line[22:26])
+                            line = "TER\n" + line
                         file_pdb_out.write(line)
                     else:
                         file_pdb_out.write(line)
@@ -2809,9 +2817,14 @@ BASIN_UL1={self._energy_cutoff + 10.}
 
                 file_plumed.write(f"""
 # Stop simulation when a phase transition occurred
-drmsd: DRMSD REFERENCE=plumed_{self._name}.pdb LOWER_CUTOFF=0.01 UPPER_CUTOFF=0.5
+DRMSD ...
+REFERENCE=plumed_{self._name}.pdb 
+LOWER_CUTOFF={self._drmsd_lower} 
+UPPER_CUTOFF={self._drmsd_upper}
+TYPE=INTER-DRMSD
+LABEL=drmsd
+... DRMSD
 PRINT FILE=plumed_{self._name}_DRMSD ARG=drmsd STRIDE={self._stride * 10}
-
 COMMITTOR ...
   ARG=drmsd
   STRIDE={self._drmsd_stride}
