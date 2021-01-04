@@ -1032,7 +1032,12 @@ project.save()
 
             list_crystals = get_list_crystals(self._simulations[-1]._crystals, crystals, catt)
             for crystal in list_crystals:
-                simulation._crystals.append(Crystal._copy_properties(crystal))
+                new_crystal = Crystal._copy_properties(crystal)
+                new_crystal._box = crystal._box
+                new_crystal._cell_parameters = crystal._cell_parameters
+                new_crystal._volume = crystal._volume
+                new_crystal._energy = crystal._energy
+                simulation._crystals.append(new_crystal)
 
             default_cvs = False
             while default_cvs not in ("y", "n"):
@@ -1057,7 +1062,7 @@ project.save()
                     orho._grid_bins = rho_bin
                     orho.use_walls = True
                     return orho
-                
+
                 def gen_energy():
                     energy_min = list_crystals[0]._energy
                     energy_max = list_crystals[0]._energy
@@ -1087,7 +1092,7 @@ project.save()
                         rho = self.get_cv("density")
                 else:
                     rho = gen_rho()
-                    
+
                 if "energy" in list_cv:
                     dcv = input("CV called 'energy' already present in the CVs set.\n"
                                 "Do you want to use it (if not, it will be overwritten with a new one)? [y/n] ")
@@ -1448,13 +1453,16 @@ class _GroSim(_GroDef):
                 if not self._mdp:
                     self._mdp = self._import_mdp(self._path_mdp)
                 ltf = float(self._mdp["dt"]) * float(self._mdp["nsteps"])
-                file_edr = sbp.getoutput("{} check -e {}".format(self._gromacs, crystal._path + self.name + ".edr"))
-                for line in file_edr.split(sep="\n"):
-                    if "Last energy frame read" in line:
-                        if float(line.split()[-1]) == ltf:
-                            return True
-                        else:
-                            return False
+                if ltf < 0:
+                    return True
+                else:
+                    file_edr = sbp.getoutput("{} check -e {}".format(self._gromacs, crystal._path + self.name + ".edr"))
+                    for line in file_edr.split(sep="\n"):
+                        if "Last energy frame read" in line:
+                            if float(line.split()[-1]) == ltf:
+                                return True
+                            else:
+                                return False
             else:
                 file_output.close()
                 return False
@@ -2840,4 +2848,73 @@ COMMITTOR ...
 
         super(Metadynamics, self).generate_input(bash_script, crystals, catt)
 
-    # TODO get_results module
+    def _check_committor(self, crystal):
+        os.chdir(crystal._path)
+
+        def split_traj(traj_file, time):
+            time = int(time)
+            file_name, file_ext = os.path.splitext(traj_file)
+            copyfile(crystal._path + traj_file, crystal._path + "TMP_PYPOL." + file_ext)
+            os.system("{0._gromacs} trjconv -f TMP_PYPOL.{1} -o {2} -e {3} -s {0._name}.tpr "
+                      "<<< 0 &> /dev/null".format(self, file_ext, traj_file, time))
+            os.system("{0._gromacs} trjconv -f TMP_PYPOL.{1} -o additional_{2} -b {3} -s {0._name}.tpr "
+                      "<<< 0 &> /dev/null".format(self, file_ext, traj_file, time))
+
+            os.rename(crystal._path + file_name + ".gro", crystal._path + file_name + "_old.gro")
+            os.system("{0._gromacs} trjconv -f TMP_PYPOL.{1} -o {2}.gro -b {3} -dump {4} -s {0._name}.tpr "
+                      "<<< 0 &> /dev/null".format(self, file_ext, file_name, time - 100, time))
+
+            os.remove("TMP_PYPOL." + file_ext)
+
+        def split_hills(hills_file, time):
+            os.rename(hills_file, hills_file)
+            file_hills = open("PYPOL_bck." + hills_file, "r")
+            file_hills_out = open(hills_file, "w")
+            for line in file_hills:
+                if line.strip().startswith("#"):
+                    file_hills_out.write(line)
+                elif float(line.strip().split()[0]) <= time:
+                    file_hills_out.write(line)
+            file_hills.close()
+            file_hills_out.close()
+
+        if self._drmsd:
+            committor_drmsd = np.genfromtxt(crystal._path + f"plumed_{self._name}_DRMSD", comments="#")
+            if committor_drmsd[:, 1].any() >= self._drmsd:
+                traj_end = committor_drmsd[np.argmax(committor_drmsd[:, 1] > self._drmsd), 0]
+                split_traj(crystal._name + ".xtc", traj_end)
+                split_hills("HILLS", traj_end)
+                return True
+
+        # noinspection PyTypeChecker
+        committor_rct = np.genfromtxt(crystal._path + f"plumed_{self._name}_DRMSD", names=True,
+                                        comments="#! FIELDS ")
+        if np.max(committor_rct["rct_mol"]) >= self._energy_cutoff:
+            traj_end = int(committor_rct["time"][np.argmax(committor_rct["rct_mol"] > self._energy_cutoff)])
+            split_traj(crystal._name + ".xtc", traj_end)
+            split_hills("HILLS", traj_end)
+            return True
+        return False
+
+    def get_results(self, crystals="all", timeinterval=50):
+        # TODO Save Potential Energy and Density from before!
+        list_crystals = get_list_crystals(self._crystals, crystals, _include_melted=True)
+        if not self._mdp:
+            self._mdp = self._import_mdp(self._path_mdp)
+        print("Checking '{}' simulations and loading results:".format(self._name))
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
+        for crystal in list_crystals:
+            if super()._get_results(crystal):
+                if self._check_committor(crystal):
+                    crystal._state = "complete"
+                else:
+                    print("An error has occurred with Gromacs. Check simulation {} in folder {}."
+                          "".format(self.name, crystal._path))
+
+                bar.update(nbar)
+                nbar += 1
+            else:
+                print("An error has occurred with Gromacs. Check simulation {} in folder {}."
+                      "".format(self.name, crystal._path))
+        bar.finish()
