@@ -2870,7 +2870,7 @@ COMMITTOR ...
             os.remove("TMP_PYPOL" + file_ext)
 
         def split_hills(hills_file, time):
-            os.rename(hills_file, hills_file)
+            os.rename(hills_file, "PYPOL_bck." + hills_file)
             file_hills = open("PYPOL_bck." + hills_file, "r")
             file_hills_out = open(hills_file, "w")
             for line in file_hills:
@@ -2885,7 +2885,7 @@ COMMITTOR ...
             committor_drmsd = np.genfromtxt(crystal._path + f"plumed_{self._name}_DRMSD", comments="#")
             if np.max(committor_drmsd[:, 1]) >= self._drmsd_toll:
                 traj_end = committor_drmsd[np.argmax(committor_drmsd[:, 1] > self._drmsd_toll), 0]
-                print(f"DRMSD cutoff (({self._drmsd}) reached at time {traj_end} ps.")
+                print(f"DRMSD cutoff ({self._drmsd}) reached at time {traj_end} ps.")
                 split_traj(self._name + ".xtc", traj_end)
                 split_hills("HILLS", traj_end)
                 return True
@@ -2894,7 +2894,7 @@ COMMITTOR ...
         committor_rct = np.genfromtxt(crystal._path + f"plumed_{self._name}_COLVAR", names=True, comments="#! FIELDS ")
         if np.max(committor_rct["rct_mol"]) >= self._energy_cutoff:
             traj_end = int(committor_rct["time"][np.argmax(committor_rct["rct_mol"] > self._energy_cutoff)])
-            print(f"Energy cutoff (({self._energy_cutoff}) reached at time {traj_end} ps.")
+            print(f"Energy cutoff ({self._energy_cutoff}) reached at time {traj_end} ps.")
             split_traj(self._name + ".xtc", traj_end)
             split_hills("HILLS", traj_end)
             return True

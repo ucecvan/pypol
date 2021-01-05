@@ -765,7 +765,8 @@ project.save()                                                # Save project"""
         bar.finish()
 
     def identify_orientational_disorder(self,
-                                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
+                                        simulation: Union[EnergyMinimization, CellRelaxation,
+                                                          MolecularDynamics, Metadynamics],
                                         crystals: Union[str, list, tuple] = "all",
                                         cutoff: float = 0.1, catt=None):
         if self._grid_min != 0. and self._grid_max != np.pi:
@@ -2771,12 +2772,14 @@ class Clustering(object):
             fo.write("# FSFDP parameters for every group:\n")
 
         for index in self._distance_matrix.index:
-            if self._distance_matrix.at[index, "Number of structures"] == 1:
+            if int(self._distance_matrix.at[index, "Number of structures"]) == 0:
+                continue
+            elif int(self._distance_matrix.at[index, "Number of structures"]) == 1:
                 nc = self._distance_matrix.at[index, "Structures"][0]._name
                 columns = ["rho", "sigma", "NN", "cluster", "distance"]
                 self._cluster_data[index] = pd.DataFrame([[0, 0, pd.NA, nc, 0]], index=[nc], columns=columns)
                 self._clusters[index] = {nc: [nc]}
-            elif self._distance_matrix.at[index, "Number of structures"] == 2:
+            elif int(self._distance_matrix.at[index, "Number of structures"]) == 2:
                 nc1 = self._distance_matrix.at[index, "Structures"][0]._name
                 nc2 = self._distance_matrix.at[index, "Structures"][1]._name
                 columns = ["rho", "sigma", "NN", "cluster", "distance"]
@@ -2789,7 +2792,7 @@ class Clustering(object):
                     self._cluster_data[index] = pd.DataFrame([[0, 0, nc2, nc1, 0], [0, 0, nc1, nc1, d_12]],
                                                              index=[nc1, nc2], columns=columns)
                     self._clusters[index] = {nc1: [nc1, nc2]}
-            elif self._distance_matrix.at[index, "Number of structures"] > 2:
+            elif int(self._distance_matrix.at[index, "Number of structures"]) > 2:
                 if self._algorithm == "fsfdp":
                     self._cluster_data[index], sc = FSFDP(self._distance_matrix.at[index, "Distance Matrix"],
                                                           kernel=self._kernel,
@@ -2812,26 +2815,26 @@ class Clustering(object):
                     k: self._cluster_data[index].index[self._cluster_data[index]["cluster"] == k].tolist()
                     for k in list(self._cluster_data[index]["cluster"].unique())}
 
-                if self._centers.lower() == "energy":
-                    new_clusters = copy.deepcopy(self._clusters[index])
-                    energies = {k._name: k._energy for k in self._distance_matrix.at[index, "Structures"]}
-                    for center in self._clusters[index].keys():
-                        changes = [center, None]
-                        emin = energies[center]
-                        for crystal in self._clusters[index][center]:
-                            if energies[crystal] < emin:
-                                changes[1] = crystal
-                                emin = energies[crystal]
-                        if changes[1]:
-                            new_clusters[changes[1]] = new_clusters.pop(changes[0])
-                            changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
-                    self._clusters[index] = new_clusters
+            if self._centers.lower() == "energy":
+                new_clusters = copy.deepcopy(self._clusters[index])
+                energies = {k._name: k._energy for k in self._distance_matrix.at[index, "Structures"]}
+                for center in self._clusters[index].keys():
+                    changes = [center, None]
+                    emin = energies[center]
+                    for crystal in self._clusters[index][center]:
+                        if energies[crystal] < emin:
+                            changes[1] = crystal
+                            emin = energies[crystal]
+                    if changes[1]:
+                        new_clusters[changes[1]] = new_clusters.pop(changes[0])
+                        changes_string += "{:>25} ---> {:25}\n".format(changes[0], changes[1])
+                self._clusters[index] = new_clusters
 
-                for crystal in self._distance_matrix.at[index, "Structures"]:
-                    for cc in self._clusters[index].keys():
-                        if crystal._name in self._clusters[index][cc]:
-                            crystal._state = cc
-                            break
+            for crystal in self._distance_matrix.at[index, "Structures"]:
+                for cc in self._clusters[index].keys():
+                    if crystal._name in self._clusters[index][cc]:
+                        crystal._state = cc
+                        break
         cluster_groups = [g for g in self._clusters.keys() for _ in self._clusters[g].keys()]
         self._clusters = {k: v for g in self._clusters.keys() for k, v in self._clusters[g].items()}
         self._clusters = pd.concat((
