@@ -2855,19 +2855,19 @@ COMMITTOR ...
         def split_traj(traj_file, time):
             time = int(time)
             file_name, file_ext = os.path.splitext(traj_file)
-            copyfile(crystal._path + traj_file, crystal._path + "TMP_PYPOL." + file_ext)
-            os.system("{0._gromacs} trjconv -f TMP_PYPOL.{1} -o {2} -e {3} -s {0._name}.tpr "
+            copyfile(crystal._path + traj_file, crystal._path + "TMP_PYPOL" + file_ext)
+            os.system("{0._gromacs} trjconv -f TMP_PYPOL{1} -o {2} -e {3} -s {0._name}.tpr "
                       "<<< 0 &> /dev/null".format(self, file_ext, traj_file, time))
-            os.system("{0._gromacs} trjconv -f TMP_PYPOL.{1} -o additional_{2} -b {3} -s {0._name}.tpr "
+            os.system("{0._gromacs} trjconv -f TMP_PYPOL{1} -o additional_{2} -b {3} -s {0._name}.tpr "
                       "<<< 0 &> /dev/null".format(self, file_ext, traj_file, time))
-            os.system("{0._gromacs} trjconv -f TMP_PYPOL.{1} -o plumed_{2}.xtc -b {4} -e {3} -s {0._name}.tpr "
+            os.system("{0._gromacs} trjconv -f TMP_PYPOL{1} -o plumed_{2}.xtc -b {4} -e {3} -s {0._name}.tpr "
                       "<<< 0 &> /dev/null".format(self, file_ext, file_name, time, time - timeinterval))
 
             os.rename(crystal._path + file_name + ".gro", crystal._path + file_name + "_old.gro")
-            os.system("{0._gromacs} trjconv -f TMP_PYPOL.{1} -o {2}.gro -b {3} -dump {4} -s {0._name}.tpr "
+            os.system("{0._gromacs} trjconv -f TMP_PYPOL{1} -o {2}.gro -b {3} -dump {4} -s {0._name}.tpr "
                       "<<< 0 &> /dev/null".format(self, file_ext, file_name, time - 100, time))
 
-            os.remove("TMP_PYPOL." + file_ext)
+            os.remove("TMP_PYPOL" + file_ext)
 
         def split_hills(hills_file, time):
             os.rename(hills_file, hills_file)
@@ -2885,7 +2885,7 @@ COMMITTOR ...
             committor_drmsd = np.genfromtxt(crystal._path + f"plumed_{self._name}_DRMSD", comments="#")
             if committor_drmsd[:, 1].any() >= self._drmsd:
                 traj_end = committor_drmsd[np.argmax(committor_drmsd[:, 1] > self._drmsd), 0]
-                split_traj(crystal._name + ".xtc", traj_end)
+                split_traj(self._name + ".xtc", traj_end)
                 split_hills("HILLS", traj_end)
                 return True
 
