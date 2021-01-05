@@ -2891,7 +2891,7 @@ COMMITTOR ...
                 return True
 
         # noinspection PyTypeChecker
-        committor_rct = np.genfromtxt(crystal._path + f"plumed_{self._name}_DRMSD", names=True, comments="#! FIELDS ")
+        committor_rct = np.genfromtxt(crystal._path + f"plumed_{self._name}_COLVAR", names=True, comments="#! FIELDS ")
         if np.max(committor_rct["rct_mol"]) >= self._energy_cutoff:
             traj_end = int(committor_rct["time"][np.argmax(committor_rct["rct_mol"] > self._energy_cutoff)])
             print(f"Energy cutoff (({self._energy_cutoff}) reached at time {traj_end} ps.")
