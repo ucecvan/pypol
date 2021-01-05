@@ -2883,8 +2883,8 @@ COMMITTOR ...
 
         if self._drmsd:
             committor_drmsd = np.genfromtxt(crystal._path + f"plumed_{self._name}_DRMSD", comments="#")
-            if np.max(committor_drmsd[:, 1]) >= self._drmsd:
-                traj_end = committor_drmsd[np.argmax(committor_drmsd[:, 1] > self._drmsd), 0]
+            if np.max(committor_drmsd[:, 1]) >= self._drmsd_toll:
+                traj_end = committor_drmsd[np.argmax(committor_drmsd[:, 1] > self._drmsd_toll), 0]
                 print(f"DRMSD cutoff (({self._drmsd}) reached at time {traj_end} ps.")
                 split_traj(self._name + ".xtc", traj_end)
                 split_hills("HILLS", traj_end)
