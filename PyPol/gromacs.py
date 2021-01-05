@@ -2883,8 +2883,9 @@ COMMITTOR ...
 
         if self._drmsd:
             committor_drmsd = np.genfromtxt(crystal._path + f"plumed_{self._name}_DRMSD", comments="#")
-            if committor_drmsd[:, 1].any() >= self._drmsd:
+            if np.max(committor_drmsd[:, 1]) >= self._drmsd:
                 traj_end = committor_drmsd[np.argmax(committor_drmsd[:, 1] > self._drmsd), 0]
+                print(f"DRMSD cutoff (({self._drmsd}) reached at time {traj_end} ps.")
                 split_traj(self._name + ".xtc", traj_end)
                 split_hills("HILLS", traj_end)
                 return True
@@ -2893,7 +2894,8 @@ COMMITTOR ...
         committor_rct = np.genfromtxt(crystal._path + f"plumed_{self._name}_DRMSD", names=True, comments="#! FIELDS ")
         if np.max(committor_rct["rct_mol"]) >= self._energy_cutoff:
             traj_end = int(committor_rct["time"][np.argmax(committor_rct["rct_mol"] > self._energy_cutoff)])
-            split_traj(crystal._name + ".xtc", traj_end)
+            print(f"Energy cutoff (({self._energy_cutoff}) reached at time {traj_end} ps.")
+            split_traj(self._name + ".xtc", traj_end)
             split_hills("HILLS", traj_end)
             return True
 
@@ -2904,19 +2906,23 @@ COMMITTOR ...
         list_crystals = get_list_crystals(self._crystals, crystals, _include_melted=True)
         if not self._mdp:
             self._mdp = self._import_mdp(self._path_mdp)
-        print("Checking '{}' simulations and loading results:".format(self._name))
-        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
-        nbar = 1
+        print("Checking '{}' simulations and loading results:\n".format(self._name))
+        # bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        # nbar = 1
         for crystal in list_crystals:
+            print(crystal._name)
+            print("Check Normal Termination...", end="")
             if super()._get_results(crystal):
+                print("done")
                 if self._check_committor(crystal, timeinterval):
                     crystal._state = "complete"
+                    print("-" * 50)
                 else:
                     print("An error has occurred with Gromacs. Check simulation {} in folder {}."
                           "".format(self.name, crystal._path))
             else:
                 print("An error has occurred with Gromacs. Check simulation {} in folder {}."
                       "".format(self.name, crystal._path))
-            bar.update(nbar)
-            nbar += 1
-        bar.finish()
+        #     bar.update(nbar)
+        #     nbar += 1
+        # bar.finish()
