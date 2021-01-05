@@ -9,7 +9,7 @@ from typing import Union
 
 from PyPol.utilities import get_list_crystals
 from PyPol.crystals import Molecule
-from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation  # , Metadynamics
+from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation, Metadynamics
 
 
 #
@@ -309,7 +309,7 @@ tor.get_results(npt, plot=False)                              # Generate plumed 
 project.save()                                                # Save project"""
 
     def generate_input(self,
-                       simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+                       simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                        bash_script=True,
                        crystals="all",
                        catt=None,
@@ -363,36 +363,51 @@ project.save()                                                # Save project"""
             file_mdp.close()
 
             traj_time = int(nsteps * dt)
-            if isinstance(self._timeinterval, tuple):
-                traj_start = self._timeinterval[0]
-                traj_end = self._timeinterval[1]
-            elif isinstance(self._timeinterval, int):
-                traj_start = traj_time - self._timeinterval
-                traj_end = traj_time
-            else:
-                print("Error: No suitable time interval.")
-                exit()
+            if traj_time > 0:
+                if isinstance(self._timeinterval, tuple):
+                    traj_start = self._timeinterval[0]
+                    traj_end = self._timeinterval[1]
+                elif isinstance(self._timeinterval, int):
+                    traj_start = traj_time - self._timeinterval
+                    traj_end = traj_time
+                else:
+                    print("Error: No suitable time interval.")
+                    exit()
 
             file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
             for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
-            file_script.write('"\n\n'
-                              'for crystal in $crystal_paths ; do\n'
-                              'cd "$crystal" || exit \n'
-                              '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
-                              '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
-                              '--trajectory-stride {7} --mc mc.dat\n'
-                              'rm plumed_{1}.xtc\n'
-                              'done\n'
-                              ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
-                                        self._plumed, self._name, dt, traj_stride))
-            file_script.close()
+
+            if isinstance(simulation, Metadynamics):
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '#{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                  '--trajectory-stride {7} --mc mc.dat\n'
+                                  '#rm plumed_{1}.xtc\n'
+                                  'done\n'
+                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                            self._plumed, self._name, dt, traj_stride))
+                file_script.close()
+            else:
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                  '--trajectory-stride {7} --mc mc.dat\n'
+                                  'rm plumed_{1}.xtc\n'
+                                  'done\n'
+                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                            self._plumed, self._name, dt, traj_stride))
+                file_script.close()
         print("=" * 100)
 
     def get_results(self,
-                    simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+                    simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True, catt=None):
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
@@ -606,7 +621,7 @@ project.save()                                                # Save project"""
         file_output.write(self.__str__())
         file_output.close()
 
-    def generate_input(self, simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+    def generate_input(self, simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                        bash_script=True, crystals="all", catt=None, matt=None):
         """
 
@@ -664,36 +679,49 @@ project.save()                                                # Save project"""
             file_mdp.close()
 
             traj_time = int(nsteps * dt)
-            if isinstance(self._timeinterval, tuple):
-                traj_start = self._timeinterval[0]
-                traj_end = self._timeinterval[1]
-            elif isinstance(self._timeinterval, int):
-                traj_start = traj_time - self._timeinterval
-                traj_end = traj_time
-            else:
-                print("Error: No suitable time interval.")
-                exit()
+            if traj_time > 0:
+                if isinstance(self._timeinterval, tuple):
+                    traj_start = self._timeinterval[0]
+                    traj_end = self._timeinterval[1]
+                elif isinstance(self._timeinterval, int):
+                    traj_start = traj_time - self._timeinterval
+                    traj_end = traj_time
+                else:
+                    print("Error: No suitable time interval.")
+                    exit()
 
             file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
             for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
-            file_script.write('"\n\n'
-                              'for crystal in $crystal_paths ; do\n'
-                              'cd "$crystal" || exit \n'
-                              '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
-                              '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
-                              '--trajectory-stride {7} --mc mc.dat\n'
-                              'rm plumed_{1}.xtc\n'
-                              'done\n'
-                              ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
-                                        self._plumed, self._name, dt, traj_stride))
+            if isinstance(simulation, Metadynamics):
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '#{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                  '--trajectory-stride {7} --mc mc.dat\n'
+                                  '#rm plumed_{1}.xtc\n'
+                                  'done\n'
+                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                            self._plumed, self._name, dt, traj_stride))
+            else:
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                  '--trajectory-stride {7} --mc mc.dat\n'
+                                  'rm plumed_{1}.xtc\n'
+                                  'done\n'
+                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                            self._plumed, self._name, dt, traj_stride))
             file_script.close()
         print("=" * 100)
 
     def get_results(self,
-                    simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+                    simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True, catt=None):
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
@@ -737,7 +765,7 @@ project.save()                                                # Save project"""
         bar.finish()
 
     def identify_orientational_disorder(self,
-                                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+                                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                                         crystals: Union[str, list, tuple] = "all",
                                         cutoff: float = 0.1, catt=None):
         if self._grid_min != 0. and self._grid_max != np.pi:
@@ -913,7 +941,7 @@ mo.get_results(npt, plot=False)                               # Generate plumed 
 project.save()                                                # Save project"""
 
     def generate_input(self,
-                       simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+                       simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                        bash_script: bool = True,
                        crystals="all",
                        catt=None, matt=None):
@@ -1024,37 +1052,50 @@ project.save()                                                # Save project"""
             file_mdp.close()
 
             traj_time = int(nsteps * dt)
-            if isinstance(self._timeinterval, tuple):
-                traj_start = self._timeinterval[0]
-                traj_end = self._timeinterval[1]
-            elif isinstance(self._timeinterval, int):
-                traj_start = traj_time - self._timeinterval
-                traj_end = traj_time
-            else:
-                print("Error: No suitable time interval.")
-                exit()
+            if traj_time > 0:
+                if isinstance(self._timeinterval, tuple):
+                    traj_start = self._timeinterval[0]
+                    traj_end = self._timeinterval[1]
+                elif isinstance(self._timeinterval, int):
+                    traj_start = traj_time - self._timeinterval
+                    traj_end = traj_time
+                else:
+                    print("Error: No suitable time interval.")
+                    exit()
 
             file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
             for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
-            file_script.write('"\n\n'
-                              'for crystal in $crystal_paths ; do\n'
-                              'cd "$crystal" || exit \n'
-                              '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
-                              '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
-                              '--trajectory-stride {7} --mc mc.dat\n'
-                              'rm plumed_{1}.xtc\n'
-                              'done\n'
-                              ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
-                                        self._plumed, self._name, dt, traj_stride))
+            if isinstance(simulation, Metadynamics):
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '#{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                  '--trajectory-stride {7} --mc mc.dat\n'
+                                  '#rm plumed_{1}.xtc\n'
+                                  'done\n'
+                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                            self._plumed, self._name, dt, traj_stride))
+            else:
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                  '--trajectory-stride {7} --mc mc.dat\n'
+                                  'rm plumed_{1}.xtc\n'
+                                  'done\n'
+                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                            self._plumed, self._name, dt, traj_stride))
             file_script.close()
 
         print("=" * 100)
 
     def get_results(self,
-                    simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+                    simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True,
                     catt=None):
@@ -1302,7 +1343,7 @@ project.save()                                                # Save project
         file_output.close()
 
     def generate_input(self,
-                       simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+                       simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                        bash_script: bool = True,
                        crystals="all",
                        catt=None,
@@ -1387,35 +1428,48 @@ project.save()                                                # Save project
             file_mdp.close()
 
             traj_time = int(nsteps * dt)
-            if isinstance(self._timeinterval, tuple):
-                traj_start = self._timeinterval[0]
-                traj_end = self._timeinterval[1]
-            elif isinstance(self._timeinterval, int):
-                traj_start = traj_time - self._timeinterval
-                traj_end = traj_time
-            else:
-                print("Error: No suitable time interval.")
-                exit()
+            if traj_time > 0:
+                if isinstance(self._timeinterval, tuple):
+                    traj_start = self._timeinterval[0]
+                    traj_end = self._timeinterval[1]
+                elif isinstance(self._timeinterval, int):
+                    traj_start = traj_time - self._timeinterval
+                    traj_end = traj_time
+                else:
+                    print("Error: No suitable time interval.")
+                    exit()
 
             file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
             for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
-            file_script.write('"\n\n'
-                              'for crystal in $crystal_paths ; do\n'
-                              'cd "$crystal" || exit \n'
-                              '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
-                              '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
-                              '--trajectory-stride {7} --mc mc.dat\n'
-                              'rm plumed_{1}.xtc\n'
-                              'done\n'
-                              ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
-                                        self._plumed, self._name, dt, traj_stride))
+            if isinstance(simulation, Metadynamics):
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '#{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                  '--trajectory-stride {7} --mc mc.dat\n'
+                                  '#rm plumed_{1}.xtc\n'
+                                  'done\n'
+                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                            self._plumed, self._name, dt, traj_stride))
+            else:
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                  '--trajectory-stride {7} --mc mc.dat\n'
+                                  'rm plumed_{1}.xtc\n'
+                                  'done\n'
+                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                            self._plumed, self._name, dt, traj_stride))
             file_script.close()
 
     def get_results(self,
-                    simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+                    simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True, catt=None):
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
@@ -2169,7 +2223,7 @@ project.save()
                                             if bins[b] < j * bins_space + self._grid_min[i] <= bins[b + 1]]
 
     def run(self,
-            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
             crystals="all", catt=None):
 
         pd.set_option('display.max_columns', None)
@@ -2293,7 +2347,7 @@ class GGFA(_GG):
         self._attribute = attribute
 
     def run(self,
-            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
             crystals="all", catt=None):
 
         pd.set_option('display.max_columns', None)
@@ -2547,7 +2601,7 @@ class Clustering(object):
         return combinations
 
     def run(self,
-            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics],
+            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
             crystals="all",
             group_threshold: float = 0.8,
             gen_sim_mat: bool = True, catt=None):

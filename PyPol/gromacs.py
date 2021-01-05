@@ -228,6 +228,7 @@ Atoms:
         graph2 = _create_graph(molecule.contact_matrix, nodes2)
 
         new_molecule = Molecule(reference._residue, molecule._index)
+        # noinspection PyPep8Naming
         GM = isomorphism.GraphMatcher(graph2, graph1, node_match=lambda a, b: a["type"] == b["type"])
         if GM.is_isomorphic():
             atom_map = GM.mapping
@@ -2848,7 +2849,7 @@ COMMITTOR ...
 
         super(Metadynamics, self).generate_input(bash_script, crystals, catt)
 
-    def _check_committor(self, crystal):
+    def _check_committor(self, crystal, timeinterval):
         os.chdir(crystal._path)
 
         def split_traj(traj_file, time):
@@ -2859,6 +2860,8 @@ COMMITTOR ...
                       "<<< 0 &> /dev/null".format(self, file_ext, traj_file, time))
             os.system("{0._gromacs} trjconv -f TMP_PYPOL.{1} -o additional_{2} -b {3} -s {0._name}.tpr "
                       "<<< 0 &> /dev/null".format(self, file_ext, traj_file, time))
+            os.system("{0._gromacs} trjconv -f TMP_PYPOL.{1} -o plumed_{2}.xtc -b {4} -e {3} -s {0._name}.tpr "
+                      "<<< 0 &> /dev/null".format(self, file_ext, file_name, time, time - timeinterval))
 
             os.rename(crystal._path + file_name + ".gro", crystal._path + file_name + "_old.gro")
             os.system("{0._gromacs} trjconv -f TMP_PYPOL.{1} -o {2}.gro -b {3} -dump {4} -s {0._name}.tpr "
@@ -2887,13 +2890,13 @@ COMMITTOR ...
                 return True
 
         # noinspection PyTypeChecker
-        committor_rct = np.genfromtxt(crystal._path + f"plumed_{self._name}_DRMSD", names=True,
-                                        comments="#! FIELDS ")
+        committor_rct = np.genfromtxt(crystal._path + f"plumed_{self._name}_DRMSD", names=True, comments="#! FIELDS ")
         if np.max(committor_rct["rct_mol"]) >= self._energy_cutoff:
             traj_end = int(committor_rct["time"][np.argmax(committor_rct["rct_mol"] > self._energy_cutoff)])
             split_traj(crystal._name + ".xtc", traj_end)
             split_hills("HILLS", traj_end)
             return True
+
         return False
 
     def get_results(self, crystals="all", timeinterval=50):
@@ -2906,15 +2909,14 @@ COMMITTOR ...
         nbar = 1
         for crystal in list_crystals:
             if super()._get_results(crystal):
-                if self._check_committor(crystal):
+                if self._check_committor(crystal, timeinterval):
                     crystal._state = "complete"
                 else:
                     print("An error has occurred with Gromacs. Check simulation {} in folder {}."
                           "".format(self.name, crystal._path))
-
-                bar.update(nbar)
-                nbar += 1
             else:
                 print("An error has occurred with Gromacs. Check simulation {} in folder {}."
                       "".format(self.name, crystal._path))
+            bar.update(nbar)
+            nbar += 1
         bar.finish()
