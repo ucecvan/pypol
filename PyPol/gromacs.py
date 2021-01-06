@@ -2865,7 +2865,7 @@ COMMITTOR ...
             if os.path.exists(crystal._path + file_name + ".gro"):
                 os.rename(crystal._path + file_name + ".gro", crystal._path + file_name + "_old.gro")
             os.system("{0._gromacs} trjconv -f TMP_PYPOL{1} -o {2}.gro -b {3} -dump {4} -s {0._name}.tpr "
-                      "<<< 0 &> /dev/null".format(self, file_ext, file_name, time - 100, time))
+                      "<<< 0 &> /dev/null".format(self, file_ext, file_name, time - 200, time - 10))
 
             os.remove("TMP_PYPOL" + file_ext)
 
