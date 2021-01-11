@@ -43,6 +43,7 @@ class Crystal(object):
         self._box = None
         self._cell_parameters = None
         self._volume = None
+        self._density = None
         self._Z = 0
         self._nmoleculestypes = list()
 
@@ -176,9 +177,11 @@ Methods:
 
     @property
     def density(self):
-        return self._density()
+        if not self._density:
+            self._density = self._calculate_density()
+        return self._density
 
-    def _density(self):
+    def _calculate_density(self):
         # TODO not suitable for 2 or more molecules
         mw = 0
         for atom in self.molecules[0].atoms:
@@ -194,12 +197,28 @@ Methods:
         return txt
 
     def set_attribute(self, att, val):
+        """
+        Create a custom attribute for the Crystal.
+        :param att: Attribute label
+        :param val: Attribute value
+        :return:
+        """
         self._attributes[att] = val
 
     def get_attribute(self, att):
+        """
+        Retrieve an existing attribute from a Molecule object
+        :param att: Attribute label
+        :return:
+        """
         return self._attributes[att]
 
     def update_molecules(self, molecules):
+        """
+        Save a list of molecules in the current state.
+        :param molecules:
+        :return:
+        """
         self._save_coordinates(molecules)
 
     def _save_coordinates(self, molecules):
@@ -254,20 +273,6 @@ Methods:
         new_crystal._attributes = crystal._attributes
         return new_crystal
 
-    # @staticmethod
-    # def _recursive_group_check(atom_i, molecule):
-    #     """
-    #     TODO Remove after test
-    #     :param atom_i:
-    #     :param molecule:
-    #     :return:
-    #     """
-    #     for j in atom_i._bonds:
-    #         atom_j = molecule._atoms[j]
-    #         if not atom_j._group:
-    #             atom_j._group = atom_i._group
-    #             Crystal._recursive_group_check(atom_j, molecule)
-
     @staticmethod
     def _arrange_atoms_in_molecules(molecules: list):
         """
@@ -289,7 +294,6 @@ Methods:
                     continue
 
                 bfs = breadth_first_order(graph, atom, False, False)
-                # print(bfs, min(bfs))
                 removed = removed + list(bfs)
 
                 new_molecule = Molecule(molecule._residue)
@@ -377,6 +381,7 @@ Methods:
 
         # Atom types that can be switched by antechamber, especially from experimental data. They are considered
         # equivalent only during the index assignation in the generate_input module but not during the simulation.
+        # (This because the atomtypes are used only for the reindexing and not to generate a force field)
         equivalent_atom_types = {
             'cq': 'cp',
             'cd': 'c2',  # Not true but equivalent for the index assignation. It should be 'cd': 'cc'. However,
@@ -428,34 +433,6 @@ Methods:
 
         # Check if molecule contains more than one component.
         molecules = Crystal._arrange_atoms_in_molecules(molecules)
-
-        # TODO Remove after test
-        # gn = 1
-        # for molecule in molecules:
-        #     for atom in molecule._atoms:
-        #         if not atom._group:
-        #             atom._group = gn
-        #             gn += 1
-        #             new_crystal._recursive_group_check(atom, molecule)
-        #
-        # if gn - 2 != molecules[-1]._index:
-        #     new_molecule_list = list()
-        #     for molecule in molecules:
-        #         for atom in molecule._atoms:
-        #             molecule_name = molecule._residue
-        #             molecule_index = atom._group - 1
-        #             if not new_molecule_list or new_molecule_list[-1]._index < molecule_index:
-        #                 new_molecule_list.append(Molecule._load(molecule_index, molecule_name))
-        #             for new_molecule in new_molecule_list:
-        #                 if molecule_index == new_molecule._index:
-        #                     new_molecule._atoms.append(atom)
-        #                     new_molecule._natoms = len(new_molecule._atoms)
-        #     molecules = new_molecule_list
-        #     for molecule in molecules:
-        #         for atom in molecule._atoms:
-        #             n = int(atom._index / molecule._natoms)
-        #             atom._index = atom._index - (molecule._natoms * n)
-        #             atom._bonds = [bond - (molecule._natoms * n) for bond in atom._bonds]
 
         # Calculate geometrical centre of each molecule and remove replicas
         new_molecule_index = 0
@@ -649,9 +626,20 @@ for molecule in crystal.molecules:
         return txt
 
     def set_attribute(self, att, val):
+        """
+        Create a custom attribute for the molecule.
+        :param att: Attribute label
+        :param val: Attribute value
+        :return:
+        """
         self._attributes[att] = val
 
     def get_attribute(self, att):
+        """
+        Retrieve an existing attribute from a Molecule object
+        :param att: Attribute label
+        :return:
+        """
         return self._attributes[att]
 
     def _calculate_centroid(self):
@@ -776,7 +764,7 @@ Attributes:
 Example:
 To access atom info:
 for atom in molecule.atoms:
-    print(atom)"""
+    print(atom.index, atom.label)"""
 
     @property
     def index(self):
@@ -809,52 +797,3 @@ for atom in molecule.atoms:
     @property
     def mass(self):
         return self._mass
-
-    # TODO remove after test
-    # @staticmethod
-    # def _loadfromcrd(index, name, ff_type, gaff_type, coordinates, element, bonds):
-    #     """
-    #
-    #     :param index:
-    #     :param name:
-    #     :param ff_type:
-    #     :param gaff_type:
-    #     :param coordinates:
-    #     :param element:
-    #     :param bonds:
-    #     :return:
-    #     """
-    #     new_atom = Atom(name)
-    #     new_atom._index = index
-    #     new_atom._ff_type = ff_type
-    #     new_atom._type = gaff_type
-    #     new_atom._coordinates = coordinates
-    #     new_atom._element = element
-    #     new_atom._bonds = bonds
-    #     return new_atom
-    #
-    # @staticmethod
-    # def _loadfromff(index, gaff_type, ff_type, name, bonds=None, coordinates=None, charge=None, mass=None):
-    #     """
-    #     TODO Useless, change __init__() and function usage
-    #     :param index:
-    #     :param gaff_type:
-    #     :param ff_type:
-    #     :param name:
-    #     :param bonds:
-    #     :param coordinates:
-    #     :param charge:
-    #     :param mass:
-    #     :return:
-    #     """
-    #     if bonds is None:
-    #         bonds = list()
-    #     new_atom = Atom(name)
-    #     new_atom._index = index
-    #     new_atom._type = gaff_type
-    #     new_atom._ff_type = ff_type
-    #     new_atom._coordinates = coordinates
-    #     new_atom._bonds = bonds
-    #     new_atom._charge = charge
-    #     new_atom._mass = mass
-    #     return new_atom

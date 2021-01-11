@@ -27,6 +27,7 @@ class Project(object):
     - get_method(method_name): Get a Method object stored in the project
     - del_method(method_name): Delete a stored Method object and all the dat, Input and Output folders used for it
     """
+
     def __init__(self, path_working_directory, name="project"):
         """
         Define a new project name and location.
@@ -124,7 +125,7 @@ class Project(object):
                 for simulation in method._simulations:
                     if hasattr(simulation, "_atomtype"):
                         simulation._atomtype = new_path
-                    
+
     @property
     def gromacs_path(self):
         return self._gromacs
@@ -311,65 +312,12 @@ Number of Methods: {3}
         for method in self._methods:
             method._write_output(self._path_progress)
 
-    # def _file2pdb(self, path_id):
-    #     """
-    #     TODO remove after test ---> Moved to preprocessing.py
-    #     Convert a structure to the .pdb file format, normalize labels and pack it.
-    #     Error: Many steps should be made since the conversion program of the CSD python API fails in the direct
-    #     conversion of many file format to the .pdb one.
-    #     :param path_id:
-    #     :return:
-    #     """
-    #     import os
-    #     print("Importing structure '{}'".format(os.path.basename(path_id)))
-    #     path_id_dir = os.path.dirname(path_id)
-    #     file_python = path_id_dir + "/converter_csd.py"
-    #
-    #     file_default = open(self._pypol_directory + "Defaults/converter_csd.py")
-    #     file_converter = open(file_python, "w")
-    #     for line in file_default:
-    #         if "PATH_TO_FILE" in line:
-    #             file_converter.write('path_id = r"{}"\n'.format(path_id))
-    #         else:
-    #             file_converter.write(line)
-    #     file_converter.close()
-    #     file_default.close()
-    #
-    #     os.system(self._run_csd_python_api + " < " + file_python)
-    #
-    # def new_project(self, overwrite=False):
-    #     """
-    #     Generate all the fundamental directories in the project folder.
-    #     :param overwrite: if True, delete the previous folder
-    #     :return:
-    #     """
-    #
-    #     from PyPol.utilities import create
-    #     from PyPol import check_package_paths
-    #
-    #     check_package_paths()
-    #
-    #     print("PyPol {}\nNew Project: {}".format(self._version, self._name))
-    #     print("=" * 100)
-    #     if not os.path.exists(self._working_directory):
-    #         create(self._working_directory, arg_type='dir', backup=False)
-    #     else:
-    #         if overwrite:
-    #             create(self._working_directory, arg_type='dir', backup=False)
-    #         else:
-    #             print("Error: Folder already exists.\n "
-    #                   "You can change directory name or overwrite with 'overwrite=True' "
-    #                   "(everything inside will be deleted)")
-    #             exit()
-    #     create(self._path_input, arg_type='dir')
-    #     create(self._path_output, arg_type='dir')
-    #     create(self._path_data, arg_type='dir')
-
     def save(self):
         """
         Save project to project folder.
         :return:
         """
+        print("Saving Project...", end="")
         import pickle
         import os
         if os.path.exists(self._working_directory + "/.pypol.pkl"):
@@ -377,14 +325,16 @@ Number of Methods: {3}
         with open(self._path_pickle, "wb") as file_pickle:
             pickle.dump(self, file_pickle)
         self._write_output()
+        print("done")
 
-    def change_working_directory(self, path, reset_program_paths=False):
+    def change_working_directory(self, path: str, reset_program_paths: bool = False):
         """
         Change the working directory and all the paths in the project.
-        :param path:
-        :param reset_program_paths:
+        :param path: New Project Path
+        :param reset_program_paths: If True, check packages paths
         :return:
         """
+        print("-" * 50)
         print("Changing project directory from:\n'{}'\nto:\n'{}'".format(self._working_directory, path))
         self._working_directory = path
         self._path_progress = self._working_directory + "/" + self._name + "_output.dat"
@@ -405,7 +355,7 @@ Number of Methods: {3}
             for crystal in method._initial_crystals:
                 crystal._path = method._path_data + crystal._name + "/"
 
-            for simulation in method._simulations:  # TODO Add method.metadynamics
+            for simulation in method._simulations:
                 simulation._path_data = method._path_data
                 simulation._path_output = method._path_output
                 simulation._path_input = method._path_input
@@ -416,7 +366,6 @@ Number of Methods: {3}
                     crystal._path = method._path_data + crystal._name + "/"
 
         if reset_program_paths:
-
             from PyPol import check_package_paths
             package_paths = check_package_paths()
 
@@ -429,12 +378,18 @@ Number of Methods: {3}
             self.intermol_path = package_paths["intermol"]
             self.plumed_path = package_paths["plumed"]
             self.htt_plumed_path = package_paths["htt_plumed"]
+        print("-" * 50)
 
-    def add_structures(self, path_structures):  # TODO Remove gen_unit_cell=False
+    def add_structures(self, path_structures: str):
         """
-        Add a new set of structures in the project_folder/Input/Sets/Set_name directory.
-        :param path_structures:
-        :return:
+        Add a new structure (if path_structures is a file) or a set of structures (if path_structures is a folder)
+        in the project_folder/Input/Sets/Set_name directory. Structures are converted to the pdb files using openbabel.
+        The GAFF atomtype of each atom is detected using the atomtype program from AmberTools. This is required for the
+        reindexing of atoms once a molecular forcefield is uploaded but has no impact in the forcefield used for
+        simulations. Finally, for each structure, a Crystal object is created and stored in the Project object.
+        A list of stored structures can be printed by typing "print(<project_name>.initial_crystals)".
+
+        :param path_structures: Path to a structure file or a folder containg the structures.
         """
         import os
         from openbabel import openbabel
@@ -489,7 +444,7 @@ Number of Methods: {3}
                 ob_conversion = openbabel.OBConversion()
                 ob_conversion.SetInAndOutFormats(extension, "pdb")
                 mol = openbabel.OBMol()
-                ob_conversion.ReadFile(mol, path_structures+item)
+                ob_conversion.ReadFile(mol, path_structures + item)
                 ob_conversion.WriteFile(mol, path_structure_pdb)
 
             else:
@@ -515,11 +470,11 @@ Number of Methods: {3}
 
     def new_method(self, name: str, package="gromacs", _import=False):
         """
-        Add a method to the project.
-        :param name:
-        :param package:
+        Add a new method to the project. Type <method_name>.help() for more information about how to use it.
+        :param name: str, label of the method, it will be used to retrieve the method later on
+        :param package: MD package used to perform simulations
         :param _import:
-        :return:
+        :return: Method object
         """
         import copy
         if package.lower() == "gromacs":
@@ -551,8 +506,8 @@ Number of Methods: {3}
     def get_method(self, method_name):
         """
         Find an existing method by its name.
-        :param method_name:
-        :return:
+        :param method_name: Label given to the Method object
+        :return: Method object
         """
         if self._methods:
             for existing_method in self._methods:
@@ -563,8 +518,7 @@ Number of Methods: {3}
     def del_method(self, method_name):
         """
         Delete an existing method.
-        :param method_name:
-        :return:
+        :param method_name: Label given to the Method object
         """
         import shutil
 
@@ -583,10 +537,11 @@ Number of Methods: {3}
 
 def load_project(project_folder: str, use_backup=False):
     """
-    Load an existing project.
-    :param project_folder:
-    :param use_backup:
-    :return:
+    Load an existing project. The Project object is saved in the project directory every time the command Project.save()
+    is used.
+    :param project_folder: project folder specified in the new_project function
+    :param use_backup: Use the Project object for the previous save
+    :return: Project object
     """
     project_folder = os.path.realpath(project_folder)
     file_pickle = project_folder + "/.pypol.pkl"
@@ -605,11 +560,11 @@ def load_project(project_folder: str, use_backup=False):
 
 def new_project(path_working_directory: str, name="project", overwrite=False):
     """
-    Generate all the fundamental directories in the project folder.
+    Create a new Project object and generate all the fundamental directories in the project folder.
     :param name: Name of the new project.
-    :param path_working_directory: Path to the new project directory.
+    :param path_working_directory: Path to the new project directory. A new directory will be created.
     :param overwrite: if True, delete the previous folder.
-    :return: Project
+    :return: Project object
     """
 
     from PyPol.utilities import create
@@ -635,64 +590,3 @@ def new_project(path_working_directory: str, name="project", overwrite=False):
     create(nproject._path_data, arg_type='dir')
 
     return nproject
-
-# TODO Problem in method initial structures generation
-# def import_project(path_working_directory):
-#     from PyPol.crystals import Crystal
-#     path_working_directory = os.path.realpath(path_working_directory)
-#     name = ""
-#     if os.path.exists(path_working_directory):
-#         for item in os.listdir(path_working_directory):
-#             if item.endswith("_output.dat"):
-#                 name = item.replace("_output.dat", "")
-#     if not name:
-#         print("Error: Path '{}' does not exist".format(path_working_directory))
-#     nproject = Project(path_working_directory, name)
-#
-#     if os.path.exists(nproject._path_input_structures):
-#         for item in os.listdir(nproject._path_input_structures):
-#             new_crystal = Crystal._loadfrompdb(item, nproject._path_input_structures + item + "/pc.pdb",
-#                                                include_atomtype=True)
-#             new_crystal._index = len(nproject._initial_crystals)
-#             nproject._initial_crystals.append(new_crystal)
-#
-#     for item in os.listdir(nproject._path_input):
-#         if item != "Initial_Structures" and ".bkp." not in item:
-#             for item2 in os.listdir(nproject._path_input):
-#                 if item2.endswith(".mdp"):
-#                     nmethod = nproject.new_method(item, _import=True)
-#                     nproject._methods.append(nmethod)
-#                     break  # TODO Add other packages
-#
-#     for m in nproject._methods:
-#         # Import Molecules
-#         for item in os.listdir(m._path_input):
-#             if item.endswith(".itp"):
-#
-#                 file_itp = open(m._path_input + item, "r")
-#                 for line in file_itp:
-#                     if "[ moleculetype ]" in line:
-#                         line = next(file_itp)
-#                         while line.lstrip().startswith(";"):
-#                             line = next(file_itp)
-#                         name = line.split()[0]
-#                 file_itp.close()
-#                 m.new_molecule(m._path_input + item, m._path_input + f"molecule_{name}.mol2")
-#
-#         # Import Simulations
-#         for item in sorted(os.listdir(m._path_input), key=os.path.getctime):
-#             if item.endswith(".mdp"):
-#                 type = ""
-#                 file_mdp = open(m._path_input + item, "r")
-#                 for line in file_mdp:
-#                     if line.startswith("integrator"):
-#                         type = line.split(sep="=")[1].strip().lower()
-#
-#                 file_mdp.close()
-#                 if type in ("steep", "cg", "l-bfgs"):
-#                     nsim = m.new_simulation(item[:-4], "em", m._path_input + item)
-#                     nsim.get_results()
-#                 elif type in ("md", "md-vv", "md-vv-avek", "sd", "bd"):
-#                     # TODO Add Metadynamics check
-#                     nsim = m.new_simulation(item[:-4], "md", m._path_input + item)
-#                     nsim.get_results()

@@ -2,7 +2,7 @@
 def create(path, arg_type, backup=True):
     """
     Generate a new directory or a new file.
-    Error: Rewrite in a more compact way. Use os.remove instead of os.system(rm ...)
+    TODO Rewrite in a more compact way. Use os.remove instead of os.system(rm ...)
     :param path: Path of the directory/file to generate
     :param arg_type: Is it a file or directory?
     :param backup: If the directory/file already exists, create a backup directory/file
@@ -87,6 +87,12 @@ def get_list(elements):
 
 
 def check_attributes(list_crystals: list, attributes: dict):
+    """
+    Given a list of crystals, check if attribute is present in each of them and discard those that do not have it.
+    :param list_crystals: list of Crystal objects
+    :param attributes: dict of attributes
+    :return: List of Crystals that have the specified attributes
+    """
     new_list = []
     for crystal in list_crystals:
         if attributes.items() <= crystal._attributes.items():
@@ -95,6 +101,15 @@ def check_attributes(list_crystals: list, attributes: dict):
 
 
 def get_list_crystals(scrystals, crystals, attributes=None, _include_melted=False):
+    """
+    Select a subgroup of crystal from a list. This can be done by specifying the state of the crystal, a list of crystal
+    objects or identifier and by including crystal attributes
+    :param scrystals: Simulation Crystals, list of crystals from a specific simulation object.
+    :param crystals: Crystal state to select. It can be "all", "incomplete", "centers"
+    :param attributes: Crystal attributes to match for selecting the output crystal list
+    :param _include_melted: Together with crystals="all" include also melted structures in the output crystal list.
+    :return: list of Crystal objects
+    """
     if attributes is None:
         attributes = {}
     from PyPol.crystals import Crystal
@@ -169,6 +184,7 @@ def box2cell(box):
 
 
 # Simulation box variations
+# best_b and best_c select the non-primitive cell that minimize off-diagonal elements of the box matrix.
 def best_c(box, max_replica, toll=0.08):
     """
     Return c vector of a non-primitive cell with minimum angle with respect to z axis.
@@ -219,6 +235,12 @@ def best_b(box, max_replica, toll=0.08):
 
 
 def translate_molecule(molecule, box):
+    """
+    Translate the molecule center of mass (COM) inside the simulation box.
+    :param molecule: molecule center of mass
+    :param box: box matrix
+    :return: Molecule object
+    """
     import numpy as np
 
     def translate_atoms(target, vector):
@@ -238,6 +260,12 @@ def translate_molecule(molecule, box):
 
 
 def point_in_box(point, box):
+    """
+    Check if point coordinates are inside the box.
+    :param point: point coordinates
+    :param box: 3x3 Matrix
+    :return: bool
+    """
     import numpy as np
     a = np.dot(point, np.linalg.inv(box.T))
     if (a >= 0.).all() and (a <= 1.).all():

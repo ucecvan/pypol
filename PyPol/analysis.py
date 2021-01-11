@@ -13,11 +13,11 @@ from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation,
 
 
 #
-# Fingerprints
+# Distributions
 #
 
 
-class _CollectiveVariable(object):  # TODO Change name to Fingerprint
+class _CollectiveVariable(object):  # TODO Change name to Distributions
     """
     General Class for Collective Variables.
     Attributes:\n
@@ -177,7 +177,7 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
 
 class Torsions(_CollectiveVariable):
     """
-    General Class for Collective Variables.
+    Generates a distribution of the torsional angles of the selected atoms.
     Attributes:\n
     - name: name of the CV.
     - type: Type of the CV.
@@ -240,18 +240,6 @@ class Torsions(_CollectiveVariable):
     def molecule(self, molecule):
         self._molecule = molecule
 
-    def set_atoms(self, atoms: Union[list, tuple], molecule: Molecule):
-        """
-        Select atom indices of the reference molecule. This is used to identify the torsions of each molecule in the
-        crystal.
-        :param atoms: list, Atom indices. All atoms indices are available in the project output file after the topology
-        is defined.
-        :param molecule: obj, Reference molecule
-        :return:
-        """
-        self.atoms = atoms
-        self.molecule = molecule
-
     @staticmethod
     def help():
         return """
@@ -308,6 +296,18 @@ npt = gaff.get_simulation("npt")                              # Retrieve a compl
 tor.get_results(npt, plot=False)                              # Generate plumed driver input for the selected simulation
 project.save()                                                # Save project"""
 
+    def set_atoms(self, atoms: Union[list, tuple], molecule: Molecule):
+        """
+        Select atom indices of the reference molecule. This is used to identify the torsions of each molecule in the
+        crystal.
+        :param atoms: list, Atom indices. All atoms indices are available in the project output file after the topology
+        is defined.
+        :param molecule: obj, Reference molecule
+        :return:
+        """
+        self.atoms = atoms
+        self.molecule = molecule
+
     def generate_input(self,
                        simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                        bash_script=True,
@@ -315,13 +315,17 @@ project.save()                                                # Save project"""
                        catt=None,
                        matt=None):
         """
-        Generate the plumed input files
+        Generate the plumed input files. If the catt option is used, only crystals with the specified attribute are
+        used. If the matt option is used only molecules with the specified attributes are used. In both cases,
+        attributes must be specified in the form of a python dict, menaning catt={"AttributeLabel": "AttributeValue"}.
 
-        :param matt:
-        :param catt:
         :param simulation: Simulation object
         :param bash_script: If True, generate a bash script to run simulations
-        :param crystals:
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param matt: Use Molecular attributes to select the molecules list
+        :param catt: Use crystal attributes to select the crystal list
         :return:
         """
 
@@ -410,6 +414,17 @@ project.save()                                                # Save project"""
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True, catt=None):
+        """
+        Verify if the distribution has been correctly generated and store the result. If the distribution is taken over
+        different frames, the average is calculated.
+        :param simulation: Simulation object
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param plot: If true, generate a plot of the distribution.
+        :param catt: Use crystal attributes to select the crystal list
+        :return:
+        """
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
@@ -624,12 +639,17 @@ project.save()                                                # Save project"""
     def generate_input(self, simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                        bash_script=True, crystals="all", catt=None, matt=None):
         """
+        Generate the plumed input files. If the catt option is used, only crystals with the specified attribute are
+        used. If the matt option is used only molecules with the specified attributes are used. In both cases,
+        attributes must be specified in the form of a python dict, menaning catt={"AttributeLabel": "AttributeValue"}.
 
-        :param matt:
-        :param catt:
-        :param simulation:
-        :param bash_script:
-        :param crystals:
+        :param matt: Use Molecular attributes to select the molecules list
+        :param catt: Use crystal attributes to select the crystal list
+        :param simulation: Simulation object
+        :param bash_script: If True, generate a bash script to run simulations
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
         :return:
         """
         if not self._atoms:
@@ -724,6 +744,18 @@ project.save()                                                # Save project"""
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True, catt=None):
+        """
+        Verify if the distribution has been correctly generated and store the result. If the distribution is taken over
+        different frames, the average is calculated.
+        :param simulation: Simulation object
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param plot: If true, generate a plot of the distribution.
+        :param catt: Use crystal attributes to select the crystal list
+        :return:
+        """
+
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
@@ -769,6 +801,17 @@ project.save()                                                # Save project"""
                                                           MolecularDynamics, Metadynamics],
                                         crystals: Union[str, list, tuple] = "all",
                                         cutoff: float = 0.1, catt=None):
+        """
+        Given the intermolecular angle distribution obtained for each crystal in a simulation, it compares
+        it with an homogeneous distribution (typical of melted systems) to identify possible orientational disorder.
+        :param simulation: Simulation object
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param cutoff: Distance cutoff from melted to be used for identifying melted structures
+        :param catt: Use crystal attributes to select the crystal list
+        :return:
+        """
         if self._grid_min != 0. and self._grid_max != np.pi:
             print("Error: A range between 0 and pi must be used to identify melted structures.")
             exit()
@@ -795,7 +838,7 @@ project.save()                                                # Save project"""
 
 class Combine(object):
     """
-    Combine torsional or intertorsional angles in multidimensional distributions.
+    Combine torsional or intermolecular torsional angles in multidimensional distributions.
 
     Attributes:\n
     - name: name of the CV.
@@ -947,14 +990,17 @@ project.save()                                                # Save project"""
                        crystals="all",
                        catt=None, matt=None):
         """
-        TODO output format, only one cv is printed!
+        Generate the plumed input files. If the catt option is used, only crystals with the specified attribute are
+        used. If the matt option is used only molecules with the specified attributes are used. In both cases,
+        attributes must be specified in the form of a python dict, menaning catt={"AttributeLabel": "AttributeValue"}.
 
-        :param matt:
-        :param catt:
-        :param simulation:
-        :param bash_script:
-        :param crystals:
-
+        :param simulation: Simulation object
+        :param bash_script: If True, generate a bash script to run simulations
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param matt: Use Molecular attributes to select the molecules list
+        :param catt: Use crystal attributes to select the crystal list
         :return:
         """
 
@@ -1100,6 +1146,17 @@ project.save()                                                # Save project"""
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True,
                     catt=None):
+        """
+        Verify if the distribution has been correctly generated and store the result. If the distribution is taken over
+        different frames, the average is calculated.
+        :param simulation: Simulation object
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param plot: If true, generate a plot of the distribution. This is not available for 3D distributions or higher.
+        :param catt: Use crystal attributes to select the crystal list
+        :return:
+        """
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
@@ -1135,7 +1192,7 @@ project.save()                                                # Save project"""
                                     dpi=300)
                         plt.close("all")
                 else:
-                    # TODO use 3D plots (create script to be run afterwards), or 3 2D imshow
+                    # TODO
                     pass
 
                 bar.update(nbar)
@@ -1309,7 +1366,14 @@ project.save()                                                # Save project
     """
 
     def set_atoms(self, atoms: str, molecule: Molecule, overwrite: bool = True):
-
+        """
+        Select the atoms from the Molecule obj to generate calculate the molecule position.
+        :param atoms: str. You can use atoms="all" to select all atoms or atoms="non-hydrogen"
+                      to select all atoms except H.
+        :param molecule: Molecular forcfield Molecule object
+        :param overwrite: If True, ignores previous atom settings
+        :return:
+        """
         for idx_mol in range(len(self._molecules)):
             ref_mol = self._molecules[idx_mol]
             if ref_mol._residue == molecule._residue and overwrite:
@@ -1350,13 +1414,17 @@ project.save()                                                # Save project
                        catt=None,
                        matt=None):
         """
+        Generate the plumed input files. If the catt option is used, only crystals with the specified attribute are
+        used. If the matt option is used only molecules with the specified attributes are used. In both cases,
+        attributes must be specified in the form of a python dict, menaning catt={"AttributeLabel": "AttributeValue"}.
 
-
-        :param matt:
-        :param catt:
-        :param bash_script:
-        :param simulation:
-        :param crystals:
+        :param matt: Use Molecular attributes to select the molecules list
+        :param catt: Use crystal attributes to select the crystal list
+        :param bash_script: If True, generate a bash script to run simulations
+        :param simulation: Simulation object
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
         :return:
         """
 
@@ -1473,6 +1541,18 @@ project.save()                                                # Save project
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True, catt=None):
+        """
+        Verify if the distribution has been correctly generated and store the result. If the distribution is taken over
+        different frames, the average is calculated.
+        :param simulation: Simulation object
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param plot: If true, generate a plot of the distribution.
+        :param catt: Use crystal attributes to select the crystal list
+        :return:
+        """
+
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
         print("\n" + str(self._name))
         bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
@@ -1523,12 +1603,30 @@ project.save()                                                # Save project
 
 class Wall(object):
     """
+    Creates a plumed input file for upper and lower lower WALLS
+    Attributes:\n
+    - name: label for the WALL.
+    - type: Wall.
+    - arg: Inputs for the wall
+    - position: Position of the wall
+    - kappa: Force constant of the wall
+    - offset: The offset for the start of the wall
+    - exp: powers for the wall
+    - eps: the rescaling factor
+    - stride: If possible, the stride used for printing the bias potential in the output file
+    - collective_variable_line: String to be added above the Wall command. This can be used to specify the inputs for
+      the wall (ARG)
+
+    Methods:\n
+    - add_arg(name, kappa=100000, offset=0.0, exp=2, eps=1, at=0.): Add a new input for the wall
+    - reset_arg(name, kappa=100000, offset=0.0, exp=2, eps=1, at=0.): Modify an existing input for the wall
     """
 
     def __init__(self, name, position="upper"):
         """
-
-        :param name:
+        Wall object.
+        :param name: Name given to the variable Wall
+        :param position: "upper" or "lower"
         """
 
         position = position.upper()
@@ -1546,6 +1644,14 @@ class Wall(object):
         self._at = list()
         self._stride = 100
         self._collective_variable_line = ""
+
+    @property
+    def collective_variable_line(self):
+        return self._collective_variable_line
+
+    @collective_variable_line.setter
+    def collective_variable_line(self, values: str):
+        self._collective_variable_line = values
 
     @property
     def kappa(self):
@@ -1607,7 +1713,17 @@ class Wall(object):
             print("Error: Position of the wall not recognized, choose between 'upper' and 'lower'.")
             exit()
 
-    def add_arg(self, name, kappa=10000, offset=0.0, exp=2, eps=1, at=0.):
+    def add_arg(self, name, kappa=100000, offset=0.0, exp=2, eps=1, at=0.):
+        """
+        Add an argument to the Wall object.
+        :param name: Inputs (arg) for the wall
+        :param at: Position of the wall
+        :param kappa: Force constant of the wall
+        :param offset: The offset for the start of the wall
+        :param exp: powers for the wall
+        :param eps: the rescaling factor
+        :return:
+        """
         self._arg.append(name)
         self._kappa.append(kappa)
         self._offset.append(offset)
@@ -1615,7 +1731,18 @@ class Wall(object):
         self._eps.append(eps)
         self._at.append(at)
 
-    def reset_arg(self, name, kappa=10000, offset=0.0, exp=2, eps=1, at=0.):
+    def reset_arg(self, name, kappa=100000, offset=0.0, exp=2, eps=1, at=0.):
+        """
+        Modify an existing argument of the Wall object with the default ones, unless they are specified.
+        :param name: Inputs (arg) for the wall
+        :param at: Position of the wall
+        :param kappa: Force constant of the wall
+        :param offset: The offset for the start of the wall
+        :param exp: powers for the wall
+        :param eps: the rescaling factor
+        :return:
+        """
+
         if name not in self._arg:
             print("Error: No ARG with name {}".format(name))
             exit()
@@ -1667,7 +1794,30 @@ LABEL={self._name}
 
 class AvoidScrewedBox(Wall):
     """
+    Creates a plumed input file forcing the non-diagonal element of the box matrix to stay within a certain range:
+    abs(bx) <= 0.5*ax
+    abs(cx) <= 0.5*ax
+    abs(cy) <= 0.5*by
+    This is done by creating three upper walls with the following attributes:
+    Attributes:\n
+    - name: label for the WALL.
+    - type: "Avoid Screwed Box (Wall)"
+    - arg: [bx,cx,cy]
+    - position: [0.,0.,0.]
+    - kappa: [100000,100000,100000]
+    - offset: [0.1, 0.1, 0.1]
+    - exp: [2,2,2]
+    - eps: [1,1,1]
+    - stride: If possible, the stride used for printing the bias potential in the output file
+    - collective_variable_line: "
+    cell: CELL
+    bx: MATHEVAL ARG=cell.bx,cell.ax FUNC=abs(x)-0.5*y PERIODIC=NO
+    cx: MATHEVAL ARG=cell.cx,cell.ax FUNC=abs(x)-0.5*y PERIODIC=NO
+    cy: MATHEVAL ARG=cell.cy,cell.by FUNC=abs(x)-0.5*y PERIODIC=NO"
 
+    Methods:\n
+    - add_arg(name, kappa=100000, offset=0.0, exp=2, eps=1, at=0.): Add a new input for the wall
+    - reset_arg(name, kappa=100000, offset=0.0, exp=2, eps=1, at=0.): Modify an existing input for the wall
     """
 
     def __init__(self, name):
@@ -1689,6 +1839,19 @@ cy: MATHEVAL ARG=cell.cy,cell.by FUNC=abs(x)-0.5*y PERIODIC=NO"""
     def generate_input(self, simulation: MolecularDynamics,
                        crystals="all",
                        catt=None):
+
+        """
+        Generate the plumed input files. This is particularly useful for crystals with tilted boxes.
+        If the catt option is used, only crystals with the specified attribute are used.
+        Attributes must be specified in the form of a python dict, menaning catt={"AttributeLabel": "AttributeValue"}.
+        NB: The <simulation>.mdrun_options attribute is modified to include "-plumed plumed_<name>.dat"
+        :param catt: Use crystal attributes to select the crystal list
+        :param simulation: Simulation object
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :return:
+        """
         list_crystals = get_list_crystals(simulation._crystals, crystals, attributes=catt)
         add_plumed_file = False
         file_plumed = None
@@ -1722,15 +1885,12 @@ class _MetaCV(object):
     General Class for Collective Variables.
     Attributes:\n
     - name: name of the CV.
-    - type: Type of the CV.
-    - clustering_type: How is it treated by clustering algorithms.
-    - kernel: kernel function to use in the histogram generation.
-    - bandwidth: the bandwidths for kernel density estimation.
+    - cv_type: Type of the CV.
+    - sigma: the bandwidth for kernel density estimation.
     - grid_min: the lower bounds for the grid.
     - grid_max: the upper bounds for the grid.
     - grid_bins: the number of bins for the grid.
     - grid_space: the approximate grid spacing for the grid.
-    - timeinterval: Simulation time interval to generate the distribution.
     """
 
     _name = None
@@ -1750,6 +1910,7 @@ class _MetaCV(object):
         General Class for Collective Variables.
         :param name: name of the CV.
         :param cv_type: Type of the CV.
+        :param sigma: the bandwidth for kernel density estimation.
         :param grid_min: the lower bounds for the grid.
         :param grid_max: the upper bounds for the grid.
         :param grid_bins: the number of bins for the grid.
@@ -1845,8 +2006,27 @@ SIGMA={0._sigma:.3f} GRID_BIN={0._grid_bins} GRID_MAX={0._grid_max:.3f} GRID_MIN
 
 
 class Density(_MetaCV):
+    """
+    Use the density of the crystal as a collective variable
+    Attributes:\n
+    - name: name of the CV.
+    - cv_type: Type of the CV.
+    - sigma: the bandwidth for kernel density estimation.
+    - grid_min: the lower bounds for the grid.
+    - grid_max: the upper bounds for the grid.
+    - grid_bins: the number of bins for the grid.
+    - grid_space: the approximate grid spacing for the grid.
+    - use_walls: Use walls at the upper and lower bounds of the grid to force the system not to escape from it
+    - walls: return a list with the upper and lower walls
+    - uwall: return the upper wall
+    - lwall: return the lower wall
+    """
 
     def __init__(self, name):
+        """
+        Use the density of the crystal as a collective variable
+        :param name: name of the CV
+        """
         super().__init__(name, "Density", sigma=10.)
         self._use_walls = False
         self._walls = []
@@ -1901,7 +2081,17 @@ class Density(_MetaCV):
 
 
 class PotentialEnergy(_MetaCV):
-
+    """
+    Use the Potential Energy of the crystal as a collective variable
+    Attributes:\n
+    - name: name of the CV.
+    - cv_type: Type of the CV.
+    - sigma: the bandwidth for kernel density estimation.
+    - grid_min: the lower bounds for the grid.
+    - grid_max: the upper bounds for the grid.
+    - grid_bins: the number of bins for the grid.
+    - grid_space: the approximate grid spacing for the grid.
+    """
     def __init__(self, name):
         super(PotentialEnergy, self).__init__(name, "Potential Energy", sigma=2.)
 
@@ -1926,7 +2116,13 @@ class PotentialEnergy(_MetaCV):
 
 
 class _GG(object):
-
+    """
+    General Class for Groups objects.
+    Attributes:\n
+    - name: name of the CV.
+    - type: Type of the CV.
+    - clustering_type: "classification"
+    """
     def __init__(self, name: str, gtype: str):
         """
         Generate Groups From Distribution
@@ -1981,7 +2177,7 @@ class _GG(object):
 
 class GGFD(_GG):
     """
-    Classify structeres based on their structural fingerprint .
+    Classify structures based on their structural fingerprint.
     Attributes:\n
     - name: name of the CV.
     - type: Type of the CV.
@@ -2191,7 +2387,18 @@ project.save()
 """
 
     def set_group_bins(self, *args: Union[list, tuple], periodic: bool = True):  # , threshold="auto"
-        # TODO Change args to dict with key == names of the variables
+        # TODO Change args to dict with key == names of the variables.
+        #  As it is right now you have to remember the order in which ND dimensional distribution are added together.
+        """
+        Select boundaries for the groups grouping method. args must be iterable objects.
+        If periodic = False, an additional boundary is put at the grid max and min.
+        :param args: A list or a tuple of the dividing boundaries in a distribution. The number of boundaries must be
+               equal to the dimension of the distribution.
+        :param periodic: If True, periodic conditions are applied to the grouping algorithm. Mixing periodic and
+               non-periodic boundaries can be done by setting periodic=True and adding a 0. to the boundary list in
+               which it is not true
+        :return:
+        """
         args = list(args)
         if len(args) != self._D:
             print("Error: incorrect number of args, {} instead of {}.".format(len(args), self._D))
@@ -2226,6 +2433,15 @@ project.save()
     def run(self,
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
             crystals="all", catt=None):
+        """
+        Creates groups from the crystal distributions in the simulation object.
+        :param simulation: Simulation Object (EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics)
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+               "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+               a specific subset of crystals by listing crystal names.
+        :param catt: Use crystal attributes to select the crystal list
+        :return:
+        """
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -2303,43 +2519,26 @@ project.save()
                 groups[group_index[0]] = group_index
 
         self._run(simulation, groups, crystals)
-        # TODO REMOVE AFTER TEST
-        # cvg = {}
-        # for i in groups.keys():
-        #     groups[i] = groups[i].to_list()
-        #     cvg[i] = 0
-        #
-        # for crystal in list_crystals:
-        #     crystal._cvs[self._name] = copy.deepcopy(cvg)
-        #     for group in groups.keys():
-        #         if crystal._name in groups[group]:
-        #             crystal._cvs[self._name][group] += 1
-        #             break
-        #     cvg = {}
-        #     for i in groups.keys():
-        #         cvg[i] = 0
-        #
-        #     for crystal in list_crystals:
-        #         crystal._cvs[self._name] = copy.deepcopy(cvg)
-        #         for group in groups.keys():
-        #             if crystal._name in groups[group]:
-        #                 crystal._cvs[self._name][group] += 1
-        #                 break
-        #
-        # file_hd = open("{}/Groups_{}_{}.dat".format(simulation._path_output, self._name, simulation._name), "w")
-        # file_hd.write("# Group_name             Crystal_IDs\n")
-        # for group in groups.keys():
-        #     file_hd.write("{:<25}: {}\n".format(str(group), groups[group]))
-        # file_hd.close()
 
 
 class GGFA(_GG):
+    """
+    Classify structures based on their attributes.
+    Attributes:\n
+    - name: name of the CV.
+    - type: Type of the CV.
+    - clustering_type: "classification"
+    - attribute: Attribute label to be used for classification
 
+    Methods:\n
+    - help(): returns available attributes and methods. (TODO)
+    - run(simulation): Creates groups looking at the crystal attributes in the simulation object
+    """
     def __init__(self, name: str, attribute: str):
         """
-        Generate Groups From Distribution
-        :param name:
-        :param attribute:
+        Generate Groups From Attributes
+        :param name: Group Label.
+        :param attribute: Attribute label to be used for classification.
         """
 
         # Grouping Properties
@@ -2347,9 +2546,22 @@ class GGFA(_GG):
 
         self._attribute = attribute
 
+    @property
+    def attribute(self):
+        return self._attribute
+
     def run(self,
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
             crystals="all", catt=None):
+        """
+        Creates groups from the crystal attributes in the simulation object.
+        :param simulation: Simulation Object (EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics)
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+               "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+               a specific subset of crystals by listing crystal names.
+        :param catt: Use crystal attributes to select the crystal list
+        :return:
+        """
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -2389,51 +2601,17 @@ Clustering Type: {0._clustering_type}
 # Utilities
 #
 
-# TODO Remove after test
-# def sort_groups(grid_min, grid_max, groups, tolerance=0.01):
-#     """
-#
-#     :param grid_min:
-#     :param grid_max:
-#     :param groups:
-#     :param tolerance:
-#     :return:
-#     """
-#     new_groups = {k: groups[k] for k in sorted(groups, key=groups.get) if k != "Others"}
-#
-#     ranges = list()
-#     for cv_ranges in new_groups.values():
-#         for cv_range in cv_ranges:
-#             ranges.append(cv_range)
-#     ranges.sort(key=lambda x: x[0])
-#     gmin = grid_min
-#     new_groups["Others"] = list()
-#     for cv_range in ranges:
-#         if cv_range[0] > gmin and cv_range[0] - gmin > tolerance:
-#             new_groups["Others"].append((gmin, cv_range[0]))
-#             gmin = cv_range[1]
-#         else:
-#             gmin = cv_range[1]
-#         if cv_range == ranges[-1] and cv_range[1] < grid_max and grid_max - cv_range[1] > tolerance:
-#             new_groups["Others"].append((gmin, grid_max))
-#
-#     if not new_groups["Others"]:
-#         del new_groups["Others"]
-#
-#     return new_groups
-
-
 def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, index_lines=True, attributes=None):
     """
+    Generates the atom list used in the plumed input.
 
-
-    :param index_lines:
-    :param atoms:
-    :param molecule:
-    :param crystal:
-    :param keyword:
-    :param lines:
-    :param attributes:
+    :param atoms: Atoms used by the CV
+    :param molecule: Molecule from which the atoms' index are taken
+    :param crystal: Crystal object from which the molecules are taken
+    :param keyword: String put before the atoms' index
+    :param lines: string to which new lines are appended
+    :param index_lines: starting index for the variable "keyword"
+    :param attributes: Molecular attributes used to select the molecules
     :return:
     """
     if attributes is None:
@@ -2479,7 +2657,7 @@ class Clustering(object):
         self._cvp = cvs
 
         self._int_type = "discrete"
-        self._algorithm = "fsfdp"  # Only possible
+        self._algorithm = "fsfdp"  # Only method available
         self._kernel = "gaussian"
         self._centers = "energy"
         self._d_c = []

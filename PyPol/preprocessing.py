@@ -199,6 +199,7 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
 
 def gen_unit_cells(path_structures, path_output):
     """
+    TODO: Delete, CSD Python API updated to python3
     Add a new set of structures in the project_folder/Input/Sets/Set_name directory.
     :param path_structures:
     :param path_output:

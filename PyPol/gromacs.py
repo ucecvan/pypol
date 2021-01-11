@@ -87,7 +87,8 @@ class _GroDef(object):
 
 
 class Method(_GroDef):
-    # TODO Create module ==> update_crystal_list
+    # TODO Create module update_crystal_list.
+    # TODO Create anchor option to allow non-Sequential simulations list
     """
     The Method object defines the forcefield and the simulations to be used in the analysis.
     Gromacs is used for MD simulations.
@@ -205,7 +206,7 @@ Atoms:
         return new_atom
 
     def _graph_v2f_index_serch(self, molecule, reference):
-        # TODO Not suitable for more than one molecule. ===> Split between molecules can be done before (new_molecule?)
+        # TODO Not suitable for more than one molecule.
         from networkx.algorithms import isomorphism
 
         reference._generate_contact_matrix()
@@ -246,7 +247,6 @@ Atoms:
 
     def _orthogonalize(self, crystal: Crystal, target_lengths=(60., 60.)):
         """
-        TODO Probably there is a better algorithm
         Find the most orthogonal, non-primitive cell starting from the CSP-generated cell.
         Cell vector length are limited by the target length parameters defined in the generate_input module.\n
         :param crystal: Target Crystal
@@ -423,18 +423,16 @@ Attributes:\n
 Methods:\n
     - help(): print attributes and methods available
     - new_topology(path_top): Save the [ defaults ] section of a .top file and imports other than .itp files.
-    - new_molecule(path_itp, path_crd, name="MOL", potential_energy=0.0): Import forcefield parameters from .itp file.
+    - new_molecule(path_itp, path_crd, potential_energy=0.0): Import forcefield parameters from .itp file.
                 Parameters:
                     - path_itp:         Path of the .itp file
                     - path_crd:         Path of the coordinate file used to generate the forcefield. The conformation of
                                         the isolated molecule is not relevant but the atom order MUST be the same one of
                                         the forcefield.
-                    - name:             Three-letters residue name of the molecule, as usually specified in the topology 
-                                        file. 
                     - potential_energy: Potential energy of an isolated molecule. This is used to calculate the lattice 
-                                        energy
+                                        energy.
     - get_molecule(name): return the molecule object with the specified name.
-    - generate_input(self, box=(40., 40., 40.), orthogonalize=False): Generate the initial coordinate and the topology 
+    - generate_input(self, box=(40., 40., 40.), orthogonalize=True): Generate the initial coordinate and the topology 
                 files. Parameters: 
                     - box: Supercells are generated so that their box vectors are close in module to the ones specified.
                            Distance values are in Angstrom.
@@ -457,8 +455,8 @@ Methods:\n
                     - "tor":     Torsional angle.
                     - "mo":      Intermolecular torsional angle.  
                     - "rdf":     Radial Distribution Function.  
-                    - "density": TODO
-                    - "energy":  TODO
+                    - "density": Density
+                    - "energy":  Potential Energy
                 Use the <cv>.help() method to obtain details on how to use it.
     - combine_cvs(name, cvs): Torsions ("tor") and MolecularOrientation ("mo") objects are combined in ND distributions.
     - ggfd(name, cv): Sort crystals in groups according to their similarity in the distribution used or to predefined
@@ -473,6 +471,18 @@ Methods:\n
     - del_clustering_parameters(name): delete the clustering parameters object with the specified name.
 
 Examples: 
+- Import Forcefield and generate structures:                                                                            
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.new_method('GAFF')                             # Creates a new method
+path_top = '/home/Work/Forcefield/topol.top'                  # Topology file to be used in simulations
+path_itp = '/home/Work/Forcefield/MOL.itp'                    # Molecular forcefield file
+path_crd = '/home/Work/Forcefield/molecule.mol2'              # Isolated molecule file. 
+gaff.new_topology(path_top)                                   # Copy relevant part of the topology to the project folder
+gaff.new_molecule(path_itp, path_crd, "MOL", -100.0000)       # Copy molecular forcefield of molecule "MOL"
+gaff.generate_input(box=(50., 50., 50.), orthogonalize=True)  # Generates the input files for the simulation
+project.save()                                                # Save project to be used later   
+
 - Create a new method and print its manual:                                                                            
 from PyPol import pypol as pp                                                                                           
 project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
@@ -578,13 +588,12 @@ project.save()
         """
         Define the molecular forcefield. The coordinate file used to generate the force field is necessary to
         identify atom properties, index order and bonds. If it is not a .mol2 file, it is converted to it with
-        openbabel. A 3 letters name can be assigned to the molecule.\n
+        openbabel. \n
         :param path_itp: Path to the .itp file containing the molecular forcefield.
         :param path_crd: Path of the coordinate file used to generate the forcefield.
         :param potential_energy: Potential energy of an isolated molecule used to calculate the Lattice energy of
         Crystals
         """
-        # :param name: 3-letters name of the molecule
         # Atom types that can be switched by antechamber, especially from experimental data. They are considered
         # equivalent only during the index assignation in the generate_input module but not during the simulation.
         equivalent_atom_types = {
@@ -696,6 +705,11 @@ project.save()
         self._molecules.append(molecule)
 
     def get_molecule(self, mol_name):
+        """
+        Retrieve the Molecule object imported from the molecular forcefield (.itp file)
+        :param mol_name: label of the molecule
+        :return:
+        """
         for molecule in self._molecules:
             if mol_name == molecule.residue:
                 return molecule
@@ -748,8 +762,9 @@ project.save()
 
     def generate_input(self, box=(4., 4., 4.), orthogonalize=True):
         """
-        Generate the coordinate and the topology files to be used for energy minimization simulations.
         TODO Not suitable for more than 1 molecule!
+        Generate the coordinate and the topology files to be used for energy minimization simulations.
+
         :param box: Target length in the three direction. The number of replicas depends on the Crystal box parameters.
         :param orthogonalize: Find the most orthogonal, non-primitive cell
         :return:
@@ -817,8 +832,32 @@ project.save()
             print("-" * 100)
         self._initial_crystals = new_crystal_list
 
-    def new_simulation(self, name, simtype, path_mdp=None, path_lmp_in=None, path_lmp_ff=None,
+    def new_simulation(self, name: str, simtype: str, path_mdp=None, path_lmp_in=None, path_lmp_ff=None,
                        crystals="all", catt=None):
+        """
+        Creates a new simulation object of the specified type:
+            - "em":   Energy minimization using Gromacs. Use name="em" or name="relax" without specifying the path_mdp
+                      variable to use the defaul mdp file.
+            - "cr":   Cell relaxation using LAMMPS. If no input or forcefiled file are specified, a new topology
+                      is obtained converting the Gromacs one with InterMol.
+            - "md":   Molecular Dynamics using Gromacs. Use names "nvt", "berendsen", "parrinello", "md" without
+                      specifying path_mdp to use the default ones.
+                      Check the PyPol/data/Defaults/Gromacs folder to see or modify them.
+            - "wtmd": Well-Tempered Metadynamics simulations
+        If no path_mdp, path_lmp_in, path_lmp_ff are given, default input files will be used.
+        Use the <simulation>.help() method to obtain details on how to use it.
+        :param name: Label of the new simulation object.
+        :param simtype: Specify which simulation object to use.
+        :param path_mdp: Path to the gromacs mdp file to be used in the
+        :param path_lmp_in: Path to the LAMMPS input file
+        :param path_lmp_ff: Path to the LAMMPS topology file
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                          a specific subset of crystals by listing crystal names.
+        :param catt: (dict) Specify The custom attributes the crystal must have in to be added to the next simulation.
+                     It must be in the form of a python dict, menaning catt={"AttributeLabel": "AttributeValue"}
+        :return: Simulation object (EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics)
+        """
         if simtype.lower() in ("energy minimisation", "em", "cell relaxation", "cr"):
             if simtype.lower() in ("energy minimisation", "em"):
 
@@ -1191,6 +1230,25 @@ Simulation Type '{}' not recognized. Choose between:
         print("No method found with name {}".format(simulation_name))
 
     def new_cv(self, name, cv_type):
+        """
+        Add a new Distribution Object or Collective Variable Object to the CV's list.
+        Available Distribution types:
+                    - "tor":     Torsional angle.
+                    - "mo":      Intermolecular torsional angle.
+                    - "rdf":     Radial Distribution Function.
+        Available Collective Variables:
+                    - "density": Density of the crystal.
+                    - "energy":  Potential Energy of the crystal.
+        Use the <cv>.help() method to obtain details on how to use it.
+        You can also add the AvoidScrewedBox object to the collective variables in order to avoid too tilted boxes.
+        This is done by typing:
+        asb= <method_name>.new_cv("asb", cv_type="asb")
+        asb.generate_input(<simulation_name>)
+
+        :param name: Object label
+        :param cv_type: Specify which CV object to use
+        :return:
+        """
         import PyPol.analysis as als
 
         for cv in self._cvp:
@@ -1219,7 +1277,7 @@ Simulation Type '{}' not recognized. Choose between:
             cv = als.PotentialEnergy(name)
             self._cvp.append(cv)
             return cv
-        elif cv_type.lower() == "asb":
+        elif cv_type.lower() in ("asb", "avoidscrewedbox"):
             cv = als.AvoidScrewedBox(name)
             self._cvp.append(cv)
             return cv
@@ -1227,7 +1285,13 @@ Simulation Type '{}' not recognized. Choose between:
             print("Collective Variable Type '{}' not available.".format(cv_type))
             exit()
 
-    def combine_cvs(self, name, cvs):
+    def combine_cvs(self, name, cvs: Union[tuple, list]):
+        """
+        Multiple 1-D Torsions ("tor") or MolecularOrientation ("mo") objects are combined in ND distributions.
+        :param name: Object label
+        :param cvs: Tuple or list of 1-D Distributions (all from the same class) to combine in ND distribution.
+        :return: Combine object
+        """
         from PyPol.analysis import Combine
         for cv in self._cvp:
             if cv._name == name:
@@ -1240,6 +1304,13 @@ Simulation Type '{}' not recognized. Choose between:
             return cv
 
     def ggfd(self, name, cv):
+        """
+        Generate Groups from Distributions. Sort crystals in groups according to their similarity in the distribution
+        used or to predefined group boundaries. Use the GGFD.help() module for more detailed information.
+        :param name: object label
+        :param cv: Distribution to be used to define the different groups
+        :return: GGFD object
+        """
         from PyPol.analysis import GGFD
         for existing_cv in self._cvp:
             if existing_cv._name == name:
@@ -1251,6 +1322,13 @@ Simulation Type '{}' not recognized. Choose between:
         return cv
 
     def ggfa(self, name, attribute):
+        """
+        Generate Groups from Attributes. Sort crystals in groups according to their attributes.
+        Use the GGFA.help() module for more detailed information.
+        :param name: object label
+        :param attribute: dict with the attribute to use for classification
+        :return: GGFA object
+        """
         from PyPol.analysis import GGFA
         for existing_cv in self._cvp:
             if existing_cv._name == name:
@@ -1265,7 +1343,7 @@ Simulation Type '{}' not recognized. Choose between:
         """
         Find an existing CV by its name.
         :param cv_name: Name assigned to the collective variable
-        :return:
+        :return: Distribution or CollectiveVariable object
         """
         if self._cvp:
             for existing_cv in self._cvp:
@@ -1274,6 +1352,11 @@ Simulation Type '{}' not recognized. Choose between:
         print("No CV found with name {}".format(cv_name))
 
     def del_cv(self, cv_name: str):
+        """
+        Delete an existing Distribution or CollectiveVariable object.
+        :param cv_name: object label
+        :return:
+        """
         if self._cvp:
             for existing_cv in self._cvp:
                 if existing_cv._name == cv_name:
@@ -1282,6 +1365,15 @@ Simulation Type '{}' not recognized. Choose between:
             print("No CV found with name {}".format(cv_name))
 
     def new_clustering_parameters(self, name: str, cvs: Union[list, tuple]):
+        """
+        Creates a new clustering parameters object. CVs are divided in group and distribution types.
+        Initially, crystals are sorted according to the group they belong. A distance matrix is generated and a
+        clustering analysis using the FSFDP algorithm is then performed in each group.
+        Use the <clustering>.help() method to obtain details on how to use it.
+        :param name: object label
+        :param cvs: list or tuple of Distribution/Group object to be used for the clustering
+        :return:
+        """
         from PyPol.analysis import Clustering
         cvp = list()
         if isinstance(cvs[0], str):
@@ -1318,6 +1410,11 @@ Simulation Type '{}' not recognized. Choose between:
         print("No CV found with name {}".format(clustering_parameter_name))
 
     def del_clustering_parameters(self, clustering_method: str):
+        """
+        Delete an existing clustering parameters by.\n
+        :param clustering_method: Name assigned to the clustering method
+        :return:
+        """
         if self._clustering_parameters:
             for existing_cm in self._clustering_parameters:
                 if existing_cm._name == clustering_method:
@@ -1471,6 +1568,15 @@ class _GroSim(_GroDef):
             return False
 
     def plot_landscape(self, path, cluster_centers=False, save_data=True, crystals="all", catt=None):
+        """
+        Plot the crystal energy landscape resulting from a completed simulation.
+        :param path: Output path of the plot image
+        :param cluster_centers: Use only cluster centers and scale their mark size by the size of the cluster
+        :param save_data: Save a file with the densities and energies of all crystal used
+        :param crystals:  You can select a specific subset of crystals by listing crystal names.
+        :param catt: Use crystal attributes to select the crystal list
+        :return:
+        """
         import pandas as pd
         print("=" * 50)
         print("Generating crystal energy landscape:")
@@ -1683,7 +1789,10 @@ project.save()                                                # Save project to 
     def get_results(self, crystals="all"):
         """
         Verify if the simulation ended correctly and upload new crystal properties.
-        :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
+        :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter.
+                         Alternatively, you can use:
+                         - "all": Select all non-melted structures
+                         - "incomplete": Select crystals whose simulation normal ending has not been detected before.
         :return:
         """
         list_crystals = get_list_crystals(self._crystals, crystals)
@@ -1878,7 +1987,7 @@ Attributes:
 - path_lmp_ff: LAMMPS Topology file for molecule
 
 Methods:
-- generate_input(bash_script=False, crystals="all"): copy the .mdp file in each crystal folder.
+- generate_input(bash_script=False, crystals="all"): 
 - get_results(crystals="all"): check if simulations ended or a rerun is necessary.
 
 Examples: 
@@ -2219,9 +2328,12 @@ project.save()                                                # Save project to 
 
     def generate_input(self, bash_script=False, crystals="all"):
         """
-        Generate LAMMPS inputs.
-        :param bash_script:
-        :param crystals:
+        Generate LAMMPS inputs. If no topology is given, a LAMMPS topology is generated from the gromacs one
+        using Intermol. The latter is applied to a single molecule and then replicated for each molecule of the crystal.
+
+
+        :param bash_script: If bash_script=True, a bash script is generated to run all simulations
+        :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
         :return:
         """
         if self._path_lmp_ff is None:
@@ -2305,7 +2417,10 @@ project.save()                                                # Save project to 
         """
         Verify if the simulation ended correctly and upload new crystal properties.
         Convert files back to the Gromacs file format.
-        :param crystals:
+        :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter.
+                         Alternatively, you can use:
+                         - "all": Select all non-melted structures
+                         - "incomplete": Select crystals whose simulation normal ending has not been detected before.
         :return:
         """
         list_crystals = get_list_crystals(self._crystals, crystals)
@@ -2471,7 +2586,7 @@ project.save()                                                # Save project to 
         Copy the Gromacs .mdp file to each crystal path.
         :param bash_script: If bash_script=True, a bash script is generated to run all simulations
         :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
-        :param catt:
+        :param catt: Use crystal attributes to select the crystal list
         """
 
         list_crystals = get_list_crystals(self._crystals, crystals, catt)
@@ -2507,8 +2622,13 @@ project.save()                                                # Save project to 
     def get_results(self, crystals="all", timeinterval=200):
         """
         Verify if the simulation ended correctly and upload new crystal properties.
-        :param crystals: List of Crystal objects
-        :param timeinterval:
+        :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter.
+                         Alternatively, you can use:
+                         - "all": Select all non-melted structures
+                         - "incomplete": Select crystals whose simulation normal ending has not been detected before.
+        :param timeinterval: int, Time interval in ps to use for calculating different properties averages.
+                             For example, a timeinterval of 500 means that the last 500 ps of the simulation are used
+                             to calculate the average potential energy of the system.
         """
 
         list_crystals = get_list_crystals(self._crystals, crystals, _include_melted=True)
@@ -2553,6 +2673,7 @@ project.save()                                                # Save project to 
                 crystal._box = np.array([float(new_box[ii]) for ii in idx_gromacs]).reshape((3, 3))
                 crystal._cell_parameters = box2cell(crystal._box)
                 crystal._volume = np.linalg.det(crystal._box)
+                crystal._calculate_density()
             else:
                 print("The {} simulation of crystal {} is not completed".format(self._name, crystal._name))
                 incomplete_simulations = True
@@ -2712,12 +2833,15 @@ class Metadynamics(MolecularDynamics):
 
     def generate_input(self, bash_script=True, crystals="all", catt=None):
         """
-        Copy the Gromacs .mdp file to each crystal path.
-        :param catt:
-        :param bash_script: If bash_script=True, a bash script is generated to run all simulations
-        :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
+        Copy the Gromacs .mdp file to each crystal path and produce plumed file for Metadynamics.
+        :param catt: Use crystal attributes to select the crystal list.
+        :param bash_script: If bash_script=True, a bash script is generated to run all simulations.
+        :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter.
+                         Alternatively, you can use:
+                         - "all": Select all non-melted structures
+                         - "incomplete": Select crystals whose simulation normal ending has not been detected before.
         """
-        # TODO modify for replicas > 1 ==> modify list of crystals?
+        # TODO Only 1 replica available ==> no statistical analysis
         from PyPol.analysis import AvoidScrewedBox, Density, PotentialEnergy, _MetaCV
         list_crystals = get_list_crystals(self._crystals, crystals, catt)
         imp = self._molecules[0]._potential_energy
@@ -2903,7 +3027,16 @@ COMMITTOR ...
         return False
 
     def get_results(self, crystals="all", timeinterval=50):
-        # TODO Save Potential Energy and Density from before!
+        """
+        Verify if the simulation ended correctly and upload new crystal properties.
+        :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter.
+                         Alternatively, you can use:
+                         - "all": Select all non-melted structures
+                         - "incomplete": Select crystals whose simulation normal ending has not been detected before.
+        :param timeinterval: int, Time interval in ps to use for calculating different properties averages.
+                             For example, a timeinterval of 500 means that the last 500 ps of the simulation are used
+                             to calculate the average potential energy of the system.
+        """
         list_crystals = get_list_crystals(self._crystals, crystals, _include_melted=True)
         if not self._mdp:
             self._mdp = self._import_mdp(self._path_mdp)
