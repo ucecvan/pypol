@@ -352,6 +352,8 @@ Number of Methods: {3}
             method._path_input = self._path_input + method._name + "/"
             method._path_output = self._path_output + method._name + "/"
             method._project = self
+            for molecule in method.molecules:
+                molecule._forcefield = method._path_input + os.path.basename(molecule._forcefield)
             for crystal in method._initial_crystals:
                 crystal._path = method._path_data + crystal._name + "/"
 

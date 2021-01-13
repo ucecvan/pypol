@@ -248,14 +248,14 @@ def translate_molecule(molecule, box):
             atom._coordinates += vector
         target._calculate_centroid()
         return target
-
-    if not point_in_box(molecule.centroid, box):
-        a = np.dot(molecule.centroid, np.linalg.inv(box.T))
-        for i in range(3):
-            if a[i] < 0.0:
-                translate_atoms(molecule, (int(a[i])-1) * -box[:, i])
-            elif a[i] > 1.0:
-                translate_atoms(molecule, int(a[i]) * -box[:, i])
+    a = np.round(np.dot(molecule.centroid, np.linalg.inv(box.T)), 3)
+    for i in range(3):
+        if a[i] < 0.0:
+            molecule = translate_atoms(molecule, (int(a[i])-1) * -box[:, i])
+        if a[i] == 0.0:
+            molecule = translate_atoms(molecule, box[:, i])
+        elif a[i] > 1.0:
+            molecule = translate_atoms(molecule, int(a[i]) * -box[:, i])
     return molecule
 
 

@@ -163,6 +163,10 @@ class Method(_GroDef):
         return self._topology
 
     @property
+    def molecules(self):
+        return self._molecules
+
+    @property
     def nmolecules(self):
         return self._nmolecules
 

@@ -1,5 +1,5 @@
 import numpy as np
-from PyPol.utilities import cell2box, point_in_box
+from PyPol.utilities import cell2box, point_in_box, translate_molecule
 import os
 
 
@@ -435,10 +435,17 @@ Methods:
         molecules = Crystal._arrange_atoms_in_molecules(molecules)
 
         # Calculate geometrical centre of each molecule and remove replicas
+        def check_replica(molecule, list_molecules):
+            for refmol in list_molecules:
+                if np.linalg.norm(molecule.centroid - refmol.centroid) < 0.1:
+                    return False
+            return True
+
         new_molecule_index = 0
         new_molecules = []
         for molecule in molecules:
-            if point_in_box(molecule.centroid, new_crystal._box):
+            molecule = translate_molecule(molecule, new_crystal._box)
+            if check_replica(molecule, new_molecules):
                 molecule._index = new_molecule_index
                 new_molecules.append(molecule)
                 new_molecule_index += 1

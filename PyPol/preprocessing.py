@@ -6,7 +6,7 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
     Starting from a mol2 file (other file formats available) containing ONE molecule it generates a GAFF forcefield
     and perform non-periodical energy minimization of the isolated molecule.
     :param path_coord: path of the file containing the coordinates of the atoms
-    :param path_output: output path in which the topology will be saved
+    :param path_output: Directory output path in which the topology will be saved
     :param res_name: Residue name, max 3 letters
     :param generate_charges: Charge generation method used by antechamber
     :return:
