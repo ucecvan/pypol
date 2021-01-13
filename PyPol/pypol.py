@@ -213,6 +213,9 @@ class Project(object):
             for method in self._methods:
                 if hasattr(method, "_pypol_directory"):
                     method._pypol_directory = new_path
+                for simulation in method._simulations:
+                    if hasattr(simulation, "_pypol_directory"):
+                        simulation._pypol_directory = new_path
 
     @staticmethod
     def help():
@@ -352,6 +355,7 @@ Number of Methods: {3}
             method._path_input = self._path_input + method._name + "/"
             method._path_output = self._path_output + method._name + "/"
             method._topology = method._path_input + os.path.basename(method._topology)
+
             for molecule in method.molecules:
                 molecule._forcefield = method._path_input + os.path.basename(molecule._forcefield)
             for crystal in method._initial_crystals:
@@ -362,7 +366,6 @@ Number of Methods: {3}
                 simulation._path_output = method._path_output
                 simulation._path_input = method._path_input
                 simulation._project = method._project
-                simulation.Method = method
                 simulation._path_mdp = simulation._path_input + simulation._name + ".mdp"
                 for crystal in simulation._crystals:
                     crystal._path = method._path_data + crystal._name + "/"

@@ -3,7 +3,7 @@ import os
 import shutil
 
 # PyPol Version
-version = "20.10"
+version = "21.01"
 
 
 def set_default_package_path(package, path):
