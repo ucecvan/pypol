@@ -89,7 +89,7 @@ class Project(object):
 
     @working_directory.setter
     def working_directory(self, new_path: str):
-        self.change_working_directory(new_path, True)
+        self.change_working_directory(new_path, reset_program_paths=True)
 
     @property
     def name(self):
@@ -208,7 +208,7 @@ class Project(object):
     @pypol_path.setter
     def pypol_path(self, new_path: str):
         new_path = os.path.realpath(new_path)
-        if os.path.exists(new_path) and os.path.exists(new_path + "/PyPol/pypol.py"):
+        if os.path.exists(new_path) and os.path.exists(new_path + "/pypol.py"):
             self._pypol_directory = new_path
             for method in self._methods:
                 if hasattr(method, "_pypol_directory"):
@@ -367,6 +367,8 @@ Number of Methods: {3}
                 simulation._path_input = method._path_input
                 simulation._project = method._project
                 simulation._path_mdp = simulation._path_input + simulation._name + ".mdp"
+                if hasattr(simulation, "_topology"):
+                    simulation._topology = simulation._path_input + os.path.basename(simulation._topology)
                 for crystal in simulation._crystals:
                     crystal._path = method._path_data + crystal._name + "/"
 
@@ -427,6 +429,7 @@ Number of Methods: {3}
         elif os.path.isfile(path_structures):
             items = [os.path.basename(path_structures)]
             path_structures = os.path.dirname(path_structures) + "/"
+            print(items, path_structures)
         else:
             print("No such file or directory")
 
@@ -470,6 +473,7 @@ Number of Methods: {3}
             self._initial_crystals.append(new_crystal)
             bar.update(nbar)
             nbar += 1
+            print(new_crystal._path)
         bar.finish()
         print("=" * 100)
 

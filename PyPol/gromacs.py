@@ -242,7 +242,7 @@ Atoms:
                 new_molecule._atoms.append(new_atom)
             new_molecule._atoms.sort(key=lambda a: a._index)
             new_molecule._natoms = len(new_molecule._atoms)
-            if molecule._attributes:
+            if hasattr(molecule, "_attributes") and molecule._attributes:
                 new_molecule._attributes = molecule._attributes
             return new_molecule
         else:
@@ -2697,7 +2697,7 @@ project.save()                                                # Save project to 
 class Metadynamics(MolecularDynamics):
 
     def __init__(self, name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
-                 path_input, intermol, lammps, crystals, path_mdp, molecules, index, previous_sim, hide,
+                 path_input, intermol, lammps, crystals, path_mdp, molecules, index, previous_sim, hide=True,
                  replicas=1, biasfactor=200, pace=1000, height=2.0, temp=300, stride=100):
         """
         Perform Energy Minimization simulations using Gromacs.
@@ -3045,8 +3045,6 @@ COMMITTOR ...
         if not self._mdp:
             self._mdp = self._import_mdp(self._path_mdp)
         print("Checking '{}' simulations and loading results:\n".format(self._name))
-        # bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
-        # nbar = 1
         for crystal in list_crystals:
             print(crystal._name)
             print("Check Normal Termination...", end="")
@@ -3061,6 +3059,8 @@ COMMITTOR ...
             else:
                 print("An error has occurred with Gromacs. Check simulation {} in folder {}."
                       "".format(self.name, crystal._path))
-        #     bar.update(nbar)
-        #     nbar += 1
-        # bar.finish()
+
+        self._completed = "complete"
+        for crystal in self.crystals:
+            if not crystal._state == "complete":
+                self._completed = False
