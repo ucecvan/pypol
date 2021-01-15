@@ -369,9 +369,9 @@ Number of Methods: {3}
                 simulation._path_mdp = simulation._path_input + simulation._name + ".mdp"
                 if hasattr(simulation, "_topology"):
                     simulation._topology = simulation._path_input + os.path.basename(simulation._topology)
-                if hasattr(simulation, "_path_lmp_in"):
+                if hasattr(simulation, "_path_lmp_in") and isinstance(simulation._path_lmp_in, str):
                     simulation._path_lmp_in = simulation._path_input + os.path.basename(simulation._path_lmp_in)
-                if hasattr(simulation, "_path_lmp_ff"):
+                if hasattr(simulation, "_path_lmp_ff") and isinstance(simulation._path_lmp_ff, str):
                     simulation._path_lmp_ff = simulation._path_input + os.path.basename(simulation._path_lmp_ff)
                 for crystal in simulation._crystals:
                     crystal._path = method._path_data + crystal._name + "/"
