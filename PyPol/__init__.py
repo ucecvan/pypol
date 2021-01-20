@@ -102,7 +102,7 @@ def check_package_paths():
 
     # Atomtype (AmberTools)
     if not os.path.exists(package_paths["atomtype"]):
-        print("Check AmberTools folder")
+        print("Check AmberTools 'atomtype' path")
         cmd_atomtype = _which(("atomtype"), "atomtype")
         if cmd_atomtype:
             package_paths["atomtype"] = cmd_atomtype

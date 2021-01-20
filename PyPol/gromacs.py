@@ -770,7 +770,7 @@ project.save()
         Generate the coordinate and the topology files to be used for energy minimization simulations.
 
         :param box: Target length in the three direction. The number of replicas depends on the Crystal box parameters.
-        :param orthogonalize: Find the most orthogonal, non-primitive cell
+        :param orthogonalize: Find the most orthogonal primitive cell
         :return:
         """
 
@@ -779,62 +779,156 @@ project.save()
         new_crystal_list = list()
         crystal_index = 0
         for crystal in self._initial_crystals:
-            print(crystal._name)
-            new_molecules = list()
-            print("Index check...", end="")
-            for molecule in crystal._load_coordinates():
-                new_molecule = self._graph_v2f_index_serch(molecule, self._molecules[0])
-                new_molecules.append(new_molecule)
-
-            crystal._nmoleculestypes = np.full((len(self._molecules)), 0)
-            for molecule_i in self._molecules:
-                for molecule_j in new_molecules:
-                    if molecule_i._residue == molecule_j.residue:
-                        crystal._nmoleculestypes[molecule_i._index] += 1
-            crystal._Z = len(new_molecules)
-
-            crystal._index = crystal_index
+            new_crystal_list.append(self._add_crystal(crystal, crystal_index, box=box, orthogonalize=orthogonalize))
             crystal_index += 1
-
-            crystal._path = self._path_data + crystal._name + "/"
-            create(crystal._path, arg_type="dir", backup=True)
-            crystal._save_coordinates(new_molecules)
-
-            crystal._save_pdb(crystal._path + "pc.pdb")
-            crystal._save_gro(crystal._path + "pc.gro")
-            print("done", end="\n")
-
-            if orthogonalize:
-                print("Othogonalize...", end="")
-                crystal = self._orthogonalize(crystal, (box[1], box[2]))
-                print("done", end="\n")
-            print("Supercell...", end="")
-            crystal = self._supercell_generator(crystal, box)
-            crystal._save_pdb(crystal._path + "sc.pdb")
-            crystal._save_gro(crystal._path + "sc.gro")
-            print("done", end="\n")
-            self._generate_masscharge(crystal)
-            new_crystal_list.append(crystal)
-
-            print("Import topology...", end="")
-            for molecule in self._molecules:
-                copyfile(molecule._forcefield, crystal._path + os.path.basename(molecule._forcefield))
-            if not self._topology:
-                self.new_topology(os.path.dirname(self._pypol_directory[:-1]) + "/data/Defaults/Gromacs/topol.top")
-            copyfile(self._topology, crystal._path + os.path.basename(self._topology))
-            file_top = open(crystal._path + os.path.basename(self._topology), "a")
-            for molecule in self._molecules:
-                file_top.write('#include "{}"\n'.format(os.path.basename(molecule._forcefield)))
-            file_top.write("\n[ system ]\n"
-                           "Crystal{}\n"
-                           "\n[ molecules ]\n"
-                           "; Compound    nmols\n".format(crystal._index))
-            for molecule in self._molecules:
-                file_top.write('  {:3}         {}\n'.format(molecule._residue, crystal._Z))
-            file_top.close()
-            print("done", end="\n")
-            print("-" * 100)
+            # print(crystal._name)
+            # new_molecules = list()
+            # print("Index check...", end="")
+            # for molecule in crystal._load_coordinates():
+            #     new_molecule = self._graph_v2f_index_serch(molecule, self._molecules[0])
+            #     new_molecules.append(new_molecule)
+            #
+            # crystal._nmoleculestypes = np.full((len(self._molecules)), 0)
+            # for molecule_i in self._molecules:
+            #     for molecule_j in new_molecules:
+            #         if molecule_i._residue == molecule_j.residue:
+            #             crystal._nmoleculestypes[molecule_i._index] += 1
+            # crystal._Z = len(new_molecules)
+            #
+            # crystal._index = crystal_index
+            # crystal_index += 1
+            #
+            # crystal._path = self._path_data + crystal._name + "/"
+            # create(crystal._path, arg_type="dir", backup=True)
+            # crystal._save_coordinates(new_molecules)
+            #
+            # crystal._save_pdb(crystal._path + "pc.pdb")
+            # crystal._save_gro(crystal._path + "pc.gro")
+            # print("done", end="\n")
+            #
+            # if orthogonalize:
+            #     print("Othogonalize...", end="")
+            #     crystal = self._orthogonalize(crystal, (box[1], box[2]))
+            #     print("done", end="\n")
+            # print("Supercell...", end="")
+            # crystal = self._supercell_generator(crystal, box)
+            # crystal._save_pdb(crystal._path + "sc.pdb")
+            # crystal._save_gro(crystal._path + "sc.gro")
+            # print("done", end="\n")
+            # self._generate_masscharge(crystal)
+            # new_crystal_list.append(crystal)
+            #
+            # print("Import topology...", end="")
+            # for molecule in self._molecules:
+            #     copyfile(molecule._forcefield, crystal._path + os.path.basename(molecule._forcefield))
+            # if not self._topology:
+            #     self.new_topology(os.path.dirname(self._pypol_directory[:-1]) + "/data/Defaults/Gromacs/topol.top")
+            # copyfile(self._topology, crystal._path + os.path.basename(self._topology))
+            # file_top = open(crystal._path + os.path.basename(self._topology), "a")
+            # for molecule in self._molecules:
+            #     file_top.write('#include "{}"\n'.format(os.path.basename(molecule._forcefield)))
+            # file_top.write("\n[ system ]\n"
+            #                "Crystal{}\n"
+            #                "\n[ molecules ]\n"
+            #                "; Compound    nmols\n".format(crystal._index))
+            # for molecule in self._molecules:
+            #     file_top.write('  {:3}         {}\n'.format(molecule._residue, crystal._Z))
+            # file_top.close()
+            # print("done", end="\n")
+            # print("-" * 100)
         self._initial_crystals = new_crystal_list
+
+    def update_crystal_list(self, new_list_crystals, box=(4., 4., 4.), orthogonalize=True):
+        """
+        Add structures to existing method. If a structure is already present in the initial set of structures, it will
+        not be added. If simulations objects are available, all their state will be set to "incomplete" and inputs
+        for the new structures generated.
+        :param new_list_crystals:
+        :param box: Target length in the three direction. The number of replicas depends on the Crystal box parameters.
+        :param orthogonalize: Find the most orthogonal cell
+        :return:
+        """
+        existing_crystals = [c._name for c in self._initial_crystals]
+        list_crystals = [c for c in new_list_crystals if c._name not in existing_crystals]
+        crystal_index = len(self._initial_crystals)
+        if not list_crystals:
+            print("Error: no new structures to add.")
+            exit()
+        if self._simulations:
+            print("Simulations state will be set to 'incomplete' and inputs for the new structures generated")
+        for crystal in list_crystals:
+            new_crystal = self._add_crystal(crystal, crystal_index, box=box, orthogonalize=orthogonalize)
+            self._initial_crystals.append(new_crystal)
+            for simulation in self._simulations:
+                simulation._crystals.append(Crystal._copy_properties(new_crystal))
+        list_crystals_names = [c.name for c in list_crystals]
+        for simulation in self._simulations:
+            simulation._completed = False
+            if simulation._type == "Cell Relaxation" and simulation._sim_index != 0:
+                print("Inputs for 'Cell Relaxation' cannot be generated in advance. \n"
+                      "Once previous simulation are terminated, use the CellRelaxation.genereate_input module with the "
+                      "following crystals list:\ncrystals = [{}".format(list_crystals_names[0]), end="")
+                for i in list_crystals_names[1:]:
+                    print(", " + i, end="")
+                print("]")
+                continue
+            simulation.generate_input(bash_script=True, crystals=list_crystals_names)
+
+    def _add_crystal(self, crystal, crystal_index, box=(4., 4., 4.), orthogonalize=True):
+        print(crystal._name)
+        new_molecules = list()
+        print("Index check...", end="")
+        for molecule in crystal._load_coordinates():
+            new_molecule = self._graph_v2f_index_serch(molecule, self._molecules[0])
+            new_molecules.append(new_molecule)
+
+        crystal._nmoleculestypes = np.full((len(self._molecules)), 0)
+        for molecule_i in self._molecules:
+            for molecule_j in new_molecules:
+                if molecule_i._residue == molecule_j.residue:
+                    crystal._nmoleculestypes[molecule_i._index] += 1
+        crystal._Z = len(new_molecules)
+
+        crystal._index = crystal_index
+
+        crystal._path = self._path_data + crystal._name + "/"
+        create(crystal._path, arg_type="dir", backup=True)
+        crystal._save_coordinates(new_molecules)
+
+        crystal._save_pdb(crystal._path + "pc.pdb")
+        crystal._save_gro(crystal._path + "pc.gro")
+        print("done", end="\n")
+
+        if orthogonalize:
+            print("Othogonalize...", end="")
+            crystal = self._orthogonalize(crystal, (box[1], box[2]))
+            print("done", end="\n")
+        print("Supercell...", end="")
+        crystal = self._supercell_generator(crystal, box)
+        crystal._save_pdb(crystal._path + "sc.pdb")
+        crystal._save_gro(crystal._path + "sc.gro")
+        print("done", end="\n")
+        self._generate_masscharge(crystal)
+
+        print("Import topology...", end="")
+        for molecule in self._molecules:
+            copyfile(molecule._forcefield, crystal._path + os.path.basename(molecule._forcefield))
+        if not self._topology:
+            self.new_topology(os.path.dirname(self._pypol_directory[:-1]) + "/data/Defaults/Gromacs/topol.top")
+        copyfile(self._topology, crystal._path + os.path.basename(self._topology))
+        file_top = open(crystal._path + os.path.basename(self._topology), "a")
+        for molecule in self._molecules:
+            file_top.write('#include "{}"\n'.format(os.path.basename(molecule._forcefield)))
+        file_top.write("\n[ system ]\n"
+                       "Crystal{}\n"
+                       "\n[ molecules ]\n"
+                       "; Compound    nmols\n".format(crystal._index))
+        for molecule in self._molecules:
+            file_top.write('  {:3}         {}\n'.format(molecule._residue, crystal._Z))
+        file_top.close()
+        print("done", end="\n")
+        print("-" * 100)
+        return crystal
 
     def new_simulation(self, name: str, simtype: str, path_mdp=None, path_lmp_in=None, path_lmp_ff=None,
                        crystals="all", catt=None):
@@ -926,9 +1020,7 @@ project.save()
                 simulation._sim_index = len(self._simulations)
                 list_crystals = get_list_crystals(self._simulations[-1]._crystals, crystals, catt)
                 for crystal in list_crystals:
-                    simulation_crystal = Crystal._copy_properties(crystal)
-                    simulation_crystal._cvs = dict()
-                    simulation._crystals.append(simulation_crystal)
+                    simulation._crystals.append(Crystal._copy_properties(crystal))
 
             if simulation._type == "Energy Minimisation":
                 if simulation._path_mdp != self._path_input + simulation._name + ".mdp":
