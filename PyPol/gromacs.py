@@ -781,61 +781,6 @@ project.save()
         for crystal in self._initial_crystals:
             new_crystal_list.append(self._add_crystal(crystal, crystal_index, box=box, orthogonalize=orthogonalize))
             crystal_index += 1
-            # print(crystal._name)
-            # new_molecules = list()
-            # print("Index check...", end="")
-            # for molecule in crystal._load_coordinates():
-            #     new_molecule = self._graph_v2f_index_serch(molecule, self._molecules[0])
-            #     new_molecules.append(new_molecule)
-            #
-            # crystal._nmoleculestypes = np.full((len(self._molecules)), 0)
-            # for molecule_i in self._molecules:
-            #     for molecule_j in new_molecules:
-            #         if molecule_i._residue == molecule_j.residue:
-            #             crystal._nmoleculestypes[molecule_i._index] += 1
-            # crystal._Z = len(new_molecules)
-            #
-            # crystal._index = crystal_index
-            # crystal_index += 1
-            #
-            # crystal._path = self._path_data + crystal._name + "/"
-            # create(crystal._path, arg_type="dir", backup=True)
-            # crystal._save_coordinates(new_molecules)
-            #
-            # crystal._save_pdb(crystal._path + "pc.pdb")
-            # crystal._save_gro(crystal._path + "pc.gro")
-            # print("done", end="\n")
-            #
-            # if orthogonalize:
-            #     print("Othogonalize...", end="")
-            #     crystal = self._orthogonalize(crystal, (box[1], box[2]))
-            #     print("done", end="\n")
-            # print("Supercell...", end="")
-            # crystal = self._supercell_generator(crystal, box)
-            # crystal._save_pdb(crystal._path + "sc.pdb")
-            # crystal._save_gro(crystal._path + "sc.gro")
-            # print("done", end="\n")
-            # self._generate_masscharge(crystal)
-            # new_crystal_list.append(crystal)
-            #
-            # print("Import topology...", end="")
-            # for molecule in self._molecules:
-            #     copyfile(molecule._forcefield, crystal._path + os.path.basename(molecule._forcefield))
-            # if not self._topology:
-            #     self.new_topology(os.path.dirname(self._pypol_directory[:-1]) + "/data/Defaults/Gromacs/topol.top")
-            # copyfile(self._topology, crystal._path + os.path.basename(self._topology))
-            # file_top = open(crystal._path + os.path.basename(self._topology), "a")
-            # for molecule in self._molecules:
-            #     file_top.write('#include "{}"\n'.format(os.path.basename(molecule._forcefield)))
-            # file_top.write("\n[ system ]\n"
-            #                "Crystal{}\n"
-            #                "\n[ molecules ]\n"
-            #                "; Compound    nmols\n".format(crystal._index))
-            # for molecule in self._molecules:
-            #     file_top.write('  {:3}         {}\n'.format(molecule._residue, crystal._Z))
-            # file_top.close()
-            # print("done", end="\n")
-            # print("-" * 100)
         self._initial_crystals = new_crystal_list
 
     def update_crystal_list(self, new_list_crystals, box=(4., 4., 4.), orthogonalize=True):
@@ -869,7 +814,7 @@ project.save()
                       "Once previous simulation are terminated, use the CellRelaxation.genereate_input module with the "
                       "following crystals list:\ncrystals = [{}".format(list_crystals_names[0]), end="")
                 for i in list_crystals_names[1:]:
-                    print(", " + i, end="")
+                    print(", '" + i + "'", end="")
                 print("]")
                 continue
             simulation.generate_input(bash_script=True, crystals=list_crystals_names)
@@ -1871,7 +1816,7 @@ project.save()                                                # Save project to 
             file_script = open(self._path_data + "/run_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
-            for crystal in self._crystals:
+            for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
             file_script.write('"\n\n'
                               'for crystal in $crystal_paths ; do\n'
@@ -2222,6 +2167,9 @@ project.save()                                                # Save project to 
         Check if conversion is done correctly.
         :return:
         """
+        if os.path.exists(self._path_input + "lmp_input.in") and self._path_lmp_in == self._path_input + "lmp_input.in":
+            os.rename(self._path_input + "lmp_input.in", self._path_input + "bck.lmp_input.in")
+            self._path_lmp_in = self._path_input + "bck.lmp_input.in"
         file_lmp_in = open(self._path_lmp_in)
         file_lmp_in_new = open(self._path_input + "lmp_input.in", "w")
         write_read_data = True
@@ -2499,7 +2447,7 @@ project.save()                                                # Save project to 
             file_script = open(self._path_data + "/run_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
-            for crystal in self._crystals:
+            for crystal in list_crystals:
                 file_script.write(crystal._path + "lammps/\n")
             file_script.write('"\n\n'
                               'for crystal in $crystal_paths ; do\n'
@@ -2694,7 +2642,7 @@ project.save()                                                # Save project to 
             file_script = open(self.path_data + "/run_" + self.name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
-            for crystal in self.crystals:
+            for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
 
             if os.path.exists(self.crystals[0]._path + self._previous_sim + "cpt"):

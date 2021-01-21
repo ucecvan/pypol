@@ -1,5 +1,5 @@
 import numpy as np
-from PyPol.utilities import cell2box, point_in_box, translate_molecule
+from PyPol.utilities import cell2box, translate_molecule  #, point_in_box
 import os
 
 
@@ -177,7 +177,7 @@ Methods:
 
     @property
     def density(self):
-        if not self._density:
+        if not hasattr(self, "_density") or not self._density: # TODO Remove hasattr for new projects
             self._density = self._calculate_density()
         return self._density
 
