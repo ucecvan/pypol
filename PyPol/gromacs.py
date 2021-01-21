@@ -2717,7 +2717,7 @@ project.save()                                                # Save project to 
                 crystal._box = np.array([float(new_box[ii]) for ii in idx_gromacs]).reshape((3, 3))
                 crystal._cell_parameters = box2cell(crystal._box)
                 crystal._volume = np.linalg.det(crystal._box)
-                crystal._calculate_density()
+                crystal._density = crystal._calculate_density()
             else:
                 print("The {} simulation of crystal {} is not completed".format(self._name, crystal._name))
                 incomplete_simulations = True
