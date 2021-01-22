@@ -1276,6 +1276,7 @@ Simulation Type '{}' not recognized. Choose between:
         Available Distribution types:
                     - "tor":     Torsional angle.
                     - "mo":      Intermolecular torsional angle.
+                    - "planes":  Intermolecular torsional angle between planes (useful for planar molecules).
                     - "rdf":     Radial Distribution Function.
         Available Collective Variables:
                     - "density": Density of the crystal.
@@ -1304,6 +1305,10 @@ Simulation Type '{}' not recognized. Choose between:
             return cv
         elif cv_type.lower() in ("molecularorientation", "mo"):
             cv = als.MolecularOrientation(name, self._htt_plumed)
+            self._cvp.append(cv)
+            return cv
+        elif cv_type.lower() == "planes":
+            cv = als.Planes(name, self._plumed)
             self._cvp.append(cv)
             return cv
         elif cv_type.lower() == "rdf":
@@ -2709,15 +2714,9 @@ project.save()                                                # Save project to 
             if crystal._state == "complete":
                 new_rank[crystal._name] = crystal._energy
                 os.chdir(crystal._path)
-                os.system('{} energy -f {}.edr -b {} <<< "Potential" &> PyPol_Temporary_Potential.txt'
+                os.system('{} energy -f {}.edr -b {} <<< "Box" &> PyPol_Temporary_Box.txt'
                           ''.format(self.gromacs, self.name, traj_start))
-                file_coord = open(crystal._path + 'PyPol_Temporary_Potential.txt')
-                # file_gro = open(crystal._path + self.name + ".gro", "r")
-                # new_box = file_gro.readlines()[-1].split()
-                # file_gro.close()
-                # if len(new_box) == 3:
-                #     new_box = [float(ii) for ii in new_box] + [0., 0., 0., 0., 0., 0.]
-                # idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
+                file_coord = open(crystal._path + 'PyPol_Temporary_Box.txt')
                 new_box = np.zeros((3, 3))
                 for line in file_coord:
                     if line.startswith("Box-XX"):
@@ -2733,7 +2732,7 @@ project.save()                                                # Save project to 
                     elif line.startswith("Box-ZY"):
                         new_box[1, 2] = float(line.split()[1])
                 file_coord.close()
-                os.remove(crystal._path + 'PyPol_Temporary_Potential.txt')
+                os.remove(crystal._path + 'PyPol_Temporary_Box.txt')
                 crystal._box = new_box
                 crystal._cell_parameters = box2cell(crystal._box)
                 crystal._volume = np.linalg.det(crystal._box)

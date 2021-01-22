@@ -1203,6 +1203,313 @@ project.save()                                                # Save project"""
         bar.finish()
 
 
+class Planes(_CollectiveVariable):
+    """
+    Generates a distribution of the torsional angles of the selected atoms.
+    Attributes:\n
+    - name: name of the CV.
+    - type: Type of the CV.
+    - plumed: Command line for plumed.
+    - clustering_type: How is it treated by clustering algorithms.
+    - kernel: kernel function to use in the histogram generation.
+    - bandwidth: the bandwidths for kernel density estimation.
+    - grid_min: the lower bounds for the grid.
+    - grid_max: the upper bounds for the grid.
+    - grid_bins: the number of bins for the grid.
+    - grid_space: the approximate grid spacing for the grid.
+    - timeinterval: Simulation time interval to generate the distribution.
+    - atoms: the 4 atom index of the molecular forcefield object used to generate the set of torsional angles
+    - molecule: the molecular forcefield object from which atoms are selected
+
+    Methods:\n
+    - help(): Print attributes and methods
+    - set_atoms(atoms, molecule): Select the 4 atom index from the Molecule obj to generate the set of torsional angles
+    - generate_input(simulation, bash_script=True): Generate the plumed input files
+    - get_results(simulation, crystal='all', plot=True): Check if the plumed driver analysis is ended and store results
+    """
+
+    def __init__(self, name: str, plumed: str):
+        """
+        Generates a distribution of the torsional angles of the selected atoms.
+        :param name: str, name of the collective variable. Default output and variables will have this name.
+        :param plumed: command line for the plumed file.
+        """
+        super().__init__(name=name,
+                         cv_type="Planes",
+                         plumed=plumed,
+                         clustering_type="distribution",
+                         kernel="TRIANGULAR",
+                         bandwidth=0.25,
+                         grid_bins=73,
+                         grid_min=-np.pi,
+                         grid_max=np.pi,
+                         grid_space=2 * np.pi / 73,
+                         timeinterval=200)
+
+        self._atoms = list()
+        self._molecule = None
+        
+        self._r_0 = 0.1
+        self._d_0 = 2.0
+        self._d_max = 2.5
+
+    @property
+    def atoms(self):
+        return self._atoms
+
+    @atoms.setter
+    def atoms(self, atoms):
+        if len(atoms) == 4:
+            self._atoms = atoms
+        else:
+            print("Error: Planes needs 4 atoms as input")
+
+    @property
+    def molecule(self):
+        return self._molecule
+
+    @molecule.setter
+    def molecule(self, molecule):
+        self._molecule = molecule
+
+    @staticmethod
+    def help():
+        # TODO Modify from torsions to planes
+        return """
+Calculate the distribution of a set of torsional angles.
+It creates the inputs for plumed and stores the results.
+
+Attributes:
+- name: name of the CV.
+- type: Type of the CV (Torsional Angle).
+- plumed: Command line for plumed.
+- clustering_type: How is it treated by clustering algorithms (distribution). 
+- kernel: kernel function to use in the histogram generation. It can be "TRIANGULAR" or "GAUSSIAN"
+- bandwidth: the bandwidths for kernel density estimation. The bin size must be smaller than half the bandwidth.
+- grid_min: the lower bounds for the grid.
+- grid_max: the upper bounds for the grid.
+- grid_bins: the number of bins for the grid.
+- grid_space: the approximate grid spacing for the grid.
+- timeinterval: Simulation time interval to generate the distribution.
+                If a single value is given, t, frames corresponding to the last "t" picoseconds are used.
+                If two values are given, t1 and t2, frames from time t1 to time t2 are used.
+- atoms: the 4 atom index of the molecular forcefield object used to generate the set of torsional angles.
+                The same torsional angle in each molecule of the crystal will be considered for the distribution.
+- molecule: the molecular forcefield object from which atoms are selected.
+
+Methods:
+- help(): Print attributes and methods
+- set_atoms(atoms, molecule): Select the 4 atom index from the Molecule obj to generate the set of torsional angles. 
+                The atom index in PyPol starts from 0 and can be seen in the
+- generate_input(simulation, bash_script=True): Generate the plumed input files
+- get_results(simulation, crystal='all', plot=True): Check if the plumed driver analysis is ended and store results
+                If crystal="all", results are stored for all crystals. Alternatively, you can select a subset of 
+                crystals by specifying their IDs in an iterable object.
+                If plot=True, a plot of the distribution is created. This could be slow for large sets.
+
+Examples:
+- Select atoms of the torsional angles and create plumed inputs:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Retrieve an existing method
+molecule = gaff.get_molecule("MOL")                           # Use molecular forcefield info for the CV 
+tor = gaff.get_cv("tor")                                      # Retrieve the CV Object
+tor.set_atoms((0, 1, 2, 3), molecule)                         # Use the first four atoms to define the torsional angle
+npt = gaff.get_simulation("npt")                              # Retrieve a completed simulation
+tor.generate_input(npt)                                       # Generate plumed driver input for the selected simulation
+project.save()                                                # Save project
+
+- Import distributions once the plumed driver analysis is finished:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Retrieve an existing method
+molecule = gaff.get_molecule("MOL")                           # Use molecular forcefield info for the CV 
+tor = gaff.get_cv("tor")                                      # Retrieve the CV Object
+npt = gaff.get_simulation("npt")                              # Retrieve a completed simulation
+tor.get_results(npt, plot=False)                              # Generate plumed driver input for the selected simulation
+project.save()                                                # Save project"""
+
+    def set_atoms(self, atoms: Union[list, tuple], molecule: Molecule):
+        """
+        Select atom indices of the reference molecule. This is used to identify the torsions of each molecule in the
+        crystal.
+        :param atoms: list, Atom indices. All atoms indices are available in the project output file after the topology
+        is defined.
+        :param molecule: obj, Reference molecule
+        :return:
+        """
+        self.atoms = atoms
+        self.molecule = molecule
+
+    def generate_input(self,
+                       simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
+                       bash_script=True,
+                       crystals="all",
+                       catt=None,
+                       matt=None):
+        """
+        Generate the plumed input files. If the catt option is used, only crystals with the specified attribute are
+        used. If the matt option is used only molecules with the specified attributes are used. In both cases,
+        attributes must be specified in the form of a python dict, menaning catt={"AttributeLabel": "AttributeValue"}.
+
+        :param simulation: Simulation object
+        :param bash_script: If True, generate a bash script to run simulations
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param matt: Use Molecular attributes to select the molecules list
+        :param catt: Use crystal attributes to select the crystal list
+        :return:
+        """
+
+        if not self._atoms:
+            print("Error: no atoms found. select atoms with the set_atoms module.")
+            exit()
+        print("=" * 100)
+        print(self.__str__())
+
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
+
+        for crystal in list_crystals:
+            print(crystal._name)
+            lines_atoms = generate_atom_list(self._atoms, self._molecule, crystal, keyword="MOL", lines=[],
+                                             attributes=matt)
+            file_plumed = open(crystal._path + "plumed_" + self._name + ".dat", "w")
+            file_plumed.write("PLANES ...\n")
+            for line in lines_atoms:
+                file_plumed.write(line)
+
+            # file_plumed.write("HISTOGRAM={{{{{0._kernel} NBINS={0._grid_bins} BANDWIDTH={0._bandwidth:.3f} "
+            #                   "UPPER={0._grid_max:.3f} LOWER={0._grid_min:.3f}}}}}\n".format(self))
+
+            file_plumed.write("LABEL=planes_{0._name}\n... PLANES\n\n"
+                              "int_tor_{0._name}: INTERMOLECULARTORSIONS MOLS=planes_{0._name} "
+                              "SWITCH={RATIONAL R_0={0._r_0} D_0={0._d_0} D_MAX={0._d_max}}\n"
+                              "hist_{0._name}: HISTOGRAM DATA=int_tor_{0._name} GRID_MIN={0._grid_min:.3f} "
+                              "GRID_MAX={0._grid_max:.3f} BANDWIDTH={0._bandwidth:.3f} "
+                              "GRID_BIN={0._grid_bins} KERNEL={0._kernel}\n"
+                              "DUMPGRID GRID=hist_{0._name} FILE=plumed_{1}_{0._name}.dat\n"
+                              "".format(self, simulation._name))
+            file_plumed.close()
+
+        if bash_script:
+            dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
+
+            file_mdp = open(simulation._path_mdp)
+            for line in file_mdp:
+                if line.startswith('dt '):
+                    dt = float(line.split()[2])
+                elif line.startswith(("nstxout", "nstxout-compressed")):
+                    traj_stride = int(line.split()[2])
+                elif line.startswith('nsteps '):
+                    nsteps = float(line.split()[2])
+            file_mdp.close()
+
+            traj_time = int(nsteps * dt)
+            if traj_time > 0:
+                if isinstance(self._timeinterval, tuple):
+                    traj_start = self._timeinterval[0]
+                    traj_end = self._timeinterval[1]
+                elif isinstance(self._timeinterval, int):
+                    traj_start = traj_time - self._timeinterval
+                    traj_end = traj_time
+                else:
+                    print("Error: No suitable time interval.")
+                    exit()
+
+            file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
+            file_script.write('#!/bin/bash\n\n'
+                              'crystal_paths="\n')
+            for crystal in list_crystals:
+                file_script.write(crystal._path + "\n")
+
+            if isinstance(simulation, Metadynamics):
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '#{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                  '--trajectory-stride {7} --mc mc.dat\n'
+                                  '#rm plumed_{1}.xtc\n'
+                                  'done\n'
+                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                            self._plumed, self._name, dt, traj_stride))
+                file_script.close()
+            else:
+                file_script.write('"\n\n'
+                                  'for crystal in $crystal_paths ; do\n'
+                                  'cd "$crystal" || exit \n'
+                                  '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                  '--trajectory-stride {7} --mc mc.dat\n'
+                                  'rm plumed_{1}.xtc\n'
+                                  'done\n'
+                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                            self._plumed, self._name, dt, traj_stride))
+                file_script.close()
+        print("=" * 100)
+
+    def get_results(self,
+                    simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
+                    crystals: Union[str, list, tuple] = "all",
+                    plot: bool = True, catt=None):
+        """
+        Verify if the distribution has been correctly generated and store the result. If the distribution is taken over
+        different frames, the average is calculated.
+        :param simulation: Simulation object
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param plot: If true, generate a plot of the distribution.
+        :param catt: Use crystal attributes to select the crystal list
+        :return:
+        """
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
+        print("\n" + str(self._name))
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
+        for crystal in list_crystals:
+            path_plumed_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
+            if os.path.exists(path_plumed_output):
+                cv = np.genfromtxt(path_plumed_output, skip_header=1)[:, 1]
+                cv /= cv.sum()
+                crystal._cvs[self._name] = cv
+                # Save output and plot distribution
+                x = np.linspace(self._grid_min, self._grid_max, len(cv))
+                np.savetxt(crystal._path + "plumed_{}_{}_data.dat".format(simulation._name, self._name),
+                           np.column_stack((x, cv)), fmt=("%1.3f", "%1.5f"),
+                           header="Angle ProbabilityDensity")
+                if plot:
+                    plt.plot(x, crystal._cvs[self._name], "-")
+                    plt.xlabel("Intermolecular Angle / rad")
+                    plt.xlim(self._grid_min, self._grid_max)
+                    plt.ylabel("Probability Density")
+                    plt.savefig(crystal._path + "plumed_{}_{}_plot.png".format(simulation._name, self._name), dpi=300)
+                    plt.close("all")
+                bar.update(nbar)
+                nbar += 1
+            else:
+                print("An error has occurred with Plumed. Check file {} in folder {}."
+                      "".format(path_plumed_output, crystal._path))
+        bar.finish()
+
+    def __str__(self):
+        txt = super(Planes, self).__str__()
+        if self._atoms:
+            txt += "\nAtoms:  "
+            for atom in self._atoms:
+                txt += "{}({})  ".format(atom, self._molecule._atoms[atom]._label)
+        else:
+            txt += "No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n".format(self._name)
+        txt += "\n"
+        return txt
+
+    def _write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write(self.__str__())
+        file_output.close()
+
+
 class RDF(_CollectiveVariable):
     """
     Generates a distribution of the intermolecular torsional angles of the selected atoms.
@@ -2092,6 +2399,7 @@ class PotentialEnergy(_MetaCV):
     - grid_bins: the number of bins for the grid.
     - grid_space: the approximate grid spacing for the grid.
     """
+
     def __init__(self, name):
         super(PotentialEnergy, self).__init__(name, "Potential Energy", sigma=2.)
 
@@ -2123,6 +2431,7 @@ class _GG(object):
     - type: Type of the CV.
     - clustering_type: "classification"
     """
+
     def __init__(self, name: str, gtype: str):
         """
         Generate Groups From Distribution
@@ -2534,6 +2843,7 @@ class GGFA(_GG):
     - help(): returns available attributes and methods. (TODO)
     - run(simulation): Creates groups looking at the crystal attributes in the simulation object
     """
+
     def __init__(self, name: str, attribute: str):
         """
         Generate Groups From Attributes
