@@ -2348,8 +2348,8 @@ class Density(_MetaCV):
         if self._use_walls:
             if self._grid_max and self._grid_min:
                 self._walls = [Wall(self._name + "_upper", "UPPER"), Wall(self._name + "_lower", "LOWER")]
-                self.lwall.add_arg(self._name, at=self._grid_min + offset)
-                self.uwall.add_arg(self._name, at=self._grid_max - offset)
+                self.lwall.add_arg(self._name, at=self._grid_min + offset, kappa=1000)
+                self.uwall.add_arg(self._name, at=self._grid_max - offset, kappa=1000)
             else:
                 print("Error: Define grid_max and grid_min before walls.")
                 exit()
