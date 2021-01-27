@@ -1134,8 +1134,8 @@ project.save()
                             rho_max = rho_cry
                         if rho_min > rho_cry:
                             rho_min = rho_cry
-                    rho_min -= 200.
-                    rho_max += 200.
+                    rho_min = round(rho_min, 0) - 250.
+                    rho_max = round(rho_max, 0) + 250.
                     rho_bin = int(rho_max - rho_min)
                     orho = self.new_cv("density", "density")
                     orho._grid_min = rho_min
@@ -1153,8 +1153,8 @@ project.save()
                             energy_max = energy_cry
                         if energy_min > energy_cry:
                             energy_min = energy_cry
-                    energy_min -= 100.
-                    energy_max += 500.
+                    energy_min = round(energy_min, 0) - 100.
+                    energy_max = round(energy_min, 0) + 500.
                     energy_bin = int(energy_max - energy_min) * 10
                     oenergy = self.new_cv("energy", "energy")
                     oenergy._grid_min = energy_min
