@@ -1384,7 +1384,7 @@ project.save()                                                # Save project"""
 
             file_plumed.write("LABEL=planes_{0._name}\n... PLANES\n\n"
                               "int_tor_{0._name}: INTERMOLECULARTORSIONS MOLS=planes_{0._name} "
-                              "SWITCH={RATIONAL R_0={0._r_0} D_0={0._d_0} D_MAX={0._d_max}}\n"
+                              "SWITCH={{RATIONAL R_0={0._r_0} D_0={0._d_0} D_MAX={0._d_max}}}\n"
                               "hist_{0._name}: HISTOGRAM DATA=int_tor_{0._name} GRID_MIN={0._grid_min:.3f} "
                               "GRID_MAX={0._grid_max:.3f} BANDWIDTH={0._bandwidth:.3f} "
                               "GRID_BIN={0._grid_bins} KERNEL={0._kernel}\n"
@@ -2343,7 +2343,7 @@ class Density(_MetaCV):
         return self._use_walls
 
     @use_walls.setter
-    def use_walls(self, value: bool, offset=25.):
+    def use_walls(self, value: bool, offset=50.):
         self._use_walls = value
         if self._use_walls:
             if self._grid_max and self._grid_min:

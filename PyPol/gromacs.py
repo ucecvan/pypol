@@ -1134,8 +1134,8 @@ project.save()
                             rho_max = rho_cry
                         if rho_min > rho_cry:
                             rho_min = rho_cry
-                    rho_min -= 50.
-                    rho_max += 50.
+                    rho_min -= 200.
+                    rho_max += 200.
                     rho_bin = int(rho_max - rho_min)
                     orho = self.new_cv("density", "density")
                     orho._grid_min = rho_min
@@ -1153,7 +1153,7 @@ project.save()
                             energy_max = energy_cry
                         if energy_min > energy_cry:
                             energy_min = energy_cry
-                    energy_min -= 25.
+                    energy_min -= 100.
                     energy_max += 500.
                     energy_bin = int(energy_max - energy_min) * 10
                     oenergy = self.new_cv("energy", "energy")
@@ -1467,7 +1467,6 @@ Simulation Type '{}' not recognized. Choose between:
                     self._clustering_parameters.remove(existing_cm)
                     return
             print("No CV found with name {}".format(clustering_method))
-        pass
 
 
 class _GroSim(_GroDef):
