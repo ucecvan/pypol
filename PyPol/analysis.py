@@ -1205,6 +1205,7 @@ project.save()                                                # Save project"""
 
 class Planes(_CollectiveVariable):
     """
+    TODO Change docstrings of everything!!!
     Generates a distribution of the torsional angles of the selected atoms.
     Attributes:\n
     - name: name of the CV.
@@ -1252,6 +1253,7 @@ class Planes(_CollectiveVariable):
         self._r_0 = 0.1
         self._d_0 = 2.0
         self._d_max = 2.5
+        self._normalization = "false"
 
     @property
     def atoms(self):
@@ -1379,15 +1381,12 @@ project.save()                                                # Save project"""
             for line in lines_atoms:
                 file_plumed.write(line)
 
-            # file_plumed.write("HISTOGRAM={{{{{0._kernel} NBINS={0._grid_bins} BANDWIDTH={0._bandwidth:.3f} "
-            #                   "UPPER={0._grid_max:.3f} LOWER={0._grid_min:.3f}}}}}\n".format(self))
-
             file_plumed.write("LABEL=planes_{0._name}\n... PLANES\n\n"
                               "int_tor_{0._name}: INTERMOLECULARTORSIONS MOLS=planes_{0._name} "
                               "SWITCH={{RATIONAL R_0={0._r_0} D_0={0._d_0} D_MAX={0._d_max}}}\n"
                               "hist_{0._name}: HISTOGRAM DATA=int_tor_{0._name} GRID_MIN={0._grid_min:.3f} "
                               "GRID_MAX={0._grid_max:.3f} BANDWIDTH={0._bandwidth:.3f} "
-                              "GRID_BIN={0._grid_bins} KERNEL={0._kernel}\n"
+                              "GRID_BIN={0._grid_bins} KERNEL={0._kernel} NORMALIZATION={0._normalization}\n"
                               "DUMPGRID GRID=hist_{0._name} FILE=plumed_{1}_{0._name}.dat\n"
                               "".format(self, simulation._name))
             file_plumed.close()

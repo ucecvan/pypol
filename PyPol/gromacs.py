@@ -209,7 +209,7 @@ Atoms:
         new_atom._previous_index = mol_atom._index
         return new_atom
 
-    def _graph_v2f_index_serch(self, molecule, reference):
+    def _graph_v2f_index_search(self, molecule, reference):
         # TODO Not suitable for more than one molecule.
         from networkx.algorithms import isomorphism
 
@@ -824,7 +824,7 @@ project.save()
         new_molecules = list()
         print("Index check...", end="")
         for molecule in crystal._load_coordinates():
-            new_molecule = self._graph_v2f_index_serch(molecule, self._molecules[0])
+            new_molecule = self._graph_v2f_index_search(molecule, self._molecules[0])
             new_molecules.append(new_molecule)
 
         crystal._nmoleculestypes = np.full((len(self._molecules)), 0)
