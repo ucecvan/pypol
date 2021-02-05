@@ -2713,26 +2713,35 @@ project.save()                                                # Save project to 
             if crystal._state == "complete":
                 new_rank[crystal._name] = crystal._energy
                 os.chdir(crystal._path)
-                os.system('{} energy -f {}.edr -b {} <<< "Box" &> PyPol_Temporary_Box.txt'
-                          ''.format(self.gromacs, self.name, traj_start))
-                file_coord = open(crystal._path + 'PyPol_Temporary_Box.txt')
-                new_box = np.zeros((3, 3))
-                for line in file_coord:
-                    if line.startswith("Box-XX"):
-                        new_box[0, 0] = float(line.split()[1])
-                    elif line.startswith("Box-YY"):
-                        new_box[1, 1] = float(line.split()[1])
-                    elif line.startswith("Box-ZZ"):
-                        new_box[2, 2] = float(line.split()[1])
-                    elif line.startswith("Box-YX"):
-                        new_box[0, 1] = float(line.split()[1])
-                    elif line.startswith("Box-ZX"):
-                        new_box[0, 2] = float(line.split()[1])
-                    elif line.startswith("Box-ZY"):
-                        new_box[1, 2] = float(line.split()[1])
-                file_coord.close()
-                os.remove(crystal._path + 'PyPol_Temporary_Box.txt')
-                crystal._box = new_box
+                if "pcoupl" in self._mdp and self._mdp["pcoupl"].lower() != "no":
+                    os.system('{} energy -f {}.edr -b {} <<< "Box" &> PyPol_Temporary_Box.txt'
+                              ''.format(self.gromacs, self.name, traj_start))
+                    file_coord = open(crystal._path + 'PyPol_Temporary_Box.txt')
+                    new_box = np.zeros((3, 3))
+                    for line in file_coord:
+                        if line.startswith("Box-XX"):
+                            new_box[0, 0] = float(line.split()[1])
+                        elif line.startswith("Box-YY"):
+                            new_box[1, 1] = float(line.split()[1])
+                        elif line.startswith("Box-ZZ"):
+                            new_box[2, 2] = float(line.split()[1])
+                        elif line.startswith("Box-YX"):
+                            new_box[0, 1] = float(line.split()[1])
+                        elif line.startswith("Box-ZX"):
+                            new_box[0, 2] = float(line.split()[1])
+                        elif line.startswith("Box-ZY"):
+                            new_box[1, 2] = float(line.split()[1])
+                    file_coord.close()
+                    os.remove(crystal._path + 'PyPol_Temporary_Box.txt')
+                    crystal._box = new_box
+                else:
+                    file_gro = open(crystal._path + self._name + ".gro", "r")
+                    new_box = file_gro.readlines()[-1].split()
+                    file_gro.close()
+                    if len(new_box) == 3:
+                        new_box = [float(ii) for ii in new_box] + [0., 0., 0., 0., 0., 0.]
+                    idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
+                    crystal._box = np.array([float(new_box[ii]) for ii in idx_gromacs]).reshape((3, 3))
                 crystal._cell_parameters = box2cell(crystal._box)
                 crystal._volume = np.linalg.det(crystal._box)
                 crystal._density = crystal._calculate_density()

@@ -365,7 +365,6 @@ Number of Methods: {3}
                 simulation._path_data = method._path_data
                 simulation._path_output = method._path_output
                 simulation._path_input = method._path_input
-                simulation._project = method._project
                 simulation._path_mdp = simulation._path_input + simulation._name + ".mdp"
                 if hasattr(simulation, "_topology"):
                     simulation._topology = simulation._path_input + os.path.basename(simulation._topology)
