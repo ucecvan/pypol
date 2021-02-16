@@ -1,12 +1,12 @@
 ; NPT with Parrinello-Rahman barostat
-integrator                      = md-vv
-nsteps                          = 5000000
-dt                              = 0.001
+integrator                      = md
+nsteps                          = 2500000
+dt                              = 0.002
 
 ; Output
-nstxout-compressed              = 10000
-nstenergy                       = 10000
-nstlog                          = 10000
+nstxout-compressed              = 5000
+nstenergy                       = 5000
+nstlog                          = 5000
 
 ; Neighborsearching
 cutoff-scheme                   = Verlet
@@ -36,9 +36,9 @@ tau_t                           = 0.1
 ref_t                           = 300
 
 ; Pressure coupling is off
-pcoupl                          = Parrinello-Rahman
+pcoupl                          = C-rescale
 pcoupltype                      = anisotropic
-tau_p                           = 10.0
+tau_p                           = 2.0
 ref_p                           = 1.0 1.0 1.0 0.0 0.0 0.0
 compressibility                 = 1.0e-5 1.0e-5 1.0e-5 1.0e-5 1.0e-5 1.0e-5
 

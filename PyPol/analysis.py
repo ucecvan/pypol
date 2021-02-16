@@ -6,6 +6,7 @@ import pandas as pd
 import itertools as its
 import copy
 from typing import Union
+from sklearn.neighbors import KernelDensity as KDE
 
 from PyPol.utilities import get_list_crystals
 from PyPol.crystals import Molecule
@@ -1249,7 +1250,7 @@ class Planes(_CollectiveVariable):
 
         self._atoms = list()
         self._molecule = None
-        
+
         self._r_0 = 0.1
         self._d_0 = 2.0
         self._d_max = 2.5
@@ -1903,6 +1904,494 @@ project.save()                                                # Save project
                 print("An error has occurred with Plumed. Check file {} in folder {}."
                       "".format(path_output, crystal._path))
         bar.finish()
+
+
+class _OwnDistributions(object):  # TODO Change name to Distributions
+    """
+    General Class for Collective Variables.
+    Attributes:\n
+    - name: name of the CV.
+    - type: Type of the CV.
+    - clustering_type: How is it treated by clustering algorithms.
+    - kernel: kernel function to use in the histogram generation.
+    - bandwidth: the bandwidths for kernel density estimation.
+    - grid_min: the lower bounds for the grid.
+    - grid_max: the upper bounds for the grid.
+    - grid_bins: the number of bins for the grid.
+    - grid_space: the approximate grid spacing for the grid.
+    - timeinterval: Simulation time interval to generate the distribution.
+    """
+
+    def __init__(self, name: str, cv_type: str, clustering_type="distribution", kernel="gaussian",
+                 timeinterval: Union[float, tuple] = None):
+        """
+        General Class for Collective Variables.
+        :param name: name of the CV.
+        :param cv_type: Type of the CV.
+        :param clustering_type: How is it treated by clustering algorithms.
+        :param kernel: kernel function to use in the histogram generation.
+        :param timeinterval: Simulation time interval to generate the distribution.
+        """
+        self._name = name
+        self._type = cv_type
+        self._clustering_type = clustering_type
+
+        self._kernel = kernel
+        self._timeinterval = timeinterval
+
+    @property
+    def kernel(self):
+        return self._kernel
+
+    @kernel.setter
+    def kernel(self, kernel: str):
+        if kernel.lower() in ("gaussian", "tophat", "epanechnikov", "exponential", "linear", "cosine"):
+            self._kernel = kernel
+        else:
+            print('Kernel function not recognized. Available formats from sklearn: "gaussian", "tophat", '
+                  '"epanechnikov", "exponential", "linear", "cosine".')
+
+    @property
+    def timeinterval(self):
+        return self._timeinterval
+
+    @timeinterval.setter
+    def timeinterval(self, time: float, time2: float = None):
+        if time2:
+            self._timeinterval = (time, time2)
+        else:
+            self._timeinterval = time
+
+    # Read-only properties
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def clustering_type(self):
+        return self._clustering_type
+
+    def __str__(self):
+        txt = """
+CV: {0._name} ({0._type})
+Clustering Type: {0._clustering_type}""".format(self)
+        return txt
+
+    @staticmethod
+    def _kde_ovect_rvect(ovect, rvect, r_grid_min=0., r_grid_max=4., r_bw=0.05, r_bins=100j,
+                         o_grid_min=0., o_grid_max=np.pi, o_bw=0.05, o_bins=100j, mirror=False):
+        data = []
+        for i in range(207):
+            ax, ay, az = ovect[i, :]
+            for j in range(i + 1, 208):
+                distance = np.linalg.norm(rvect[i, :] - rvect[j, :])
+                if distance > r_grid_max:
+                    continue
+                bx, by, bz = ovect[j, :]
+                angle = np.arccos(
+                    (ax * bx + ay * by + az * bz) / np.sqrt(
+                        (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
+
+                data.append(np.array([angle, distance]))
+
+        data = np.array(data)
+        kde = KDE()
+        data_scaled = data / np.array([o_bw, r_bw])
+        kde.fit(data_scaled)
+        xx, yy = np.mgrid[int(o_grid_min / o_bw):int(o_grid_max / o_bw):o_bins,
+                 int(r_grid_min / r_bw):int(r_grid_max / r_bw): r_bins]
+        zz = np.reshape(np.exp(kde.score_samples(np.vstack([xx.ravel(), yy.ravel()]).T)), xx.shape).T
+        if mirror:
+            zz = (zz + np.flip(zz, axis=1)) / 2.
+
+        # plt.imshow(zz, extent=[o_grid_min, o_grid_max, r_grid_max, r_grid_min], cmap="viridis")
+        # plt.colorbar()
+        # plt.scatter(data[:, 0], data[:, 1], s=1, facecolor=None, edgecolors='white', alpha=0.025)
+        # plt.xlim(o_grid_min, o_grid_max)
+        # plt.ylim(r_grid_min, r_grid_max)
+        # plt.ylabel("RDF / nm")
+        # plt.xlabel("Molecular orientation / rad")
+        # plt.savefig(path, dpi=300)
+        # plt.close("all")
+
+        return zz
+
+
+class RDFPlanes(_OwnDistributions):
+    """
+    TODO Change docstrings of everything!!!
+    TODO Do equivalent for RDFMO once everything is tested.
+    Generates a distribution of the torsional angles of the selected atoms.
+    Attributes:\n
+    - name: name of the CV.
+    - type: Type of the CV.
+    - plumed: Command line for plumed.
+    - clustering_type: How is it treated by clustering algorithms.
+    - kernel: kernel function to use in the histogram generation.
+    - bandwidth: the bandwidths for kernel density estimation.
+    - grid_min: the lower bounds for the grid.
+    - grid_max: the upper bounds for the grid.
+    - grid_bins: the number of bins for the grid.
+    - grid_space: the approximate grid spacing for the grid.
+    - timeinterval: Simulation time interval to generate the distribution.
+    - atoms: the 4 atom index of the molecular forcefield object used to generate the set of torsional angles
+    - molecule: the molecular forcefield object from which atoms are selected
+
+    Methods:\n
+    - help(): Print attributes and methods
+    - set_atoms(atoms, molecule): Select the 4 atom index from the Molecule obj to generate the set of torsional angles
+    - generate_input(simulation, bash_script=True): Generate the plumed input files
+    - get_results(simulation, crystal='all', plot=True): Check if the plumed driver analysis is ended and store results
+    """
+
+    def __init__(self, name: str):
+        """
+        Generates a distribution of the torsional angles of the selected atoms.
+        :param name: str, name of the collective variable. Default output and variables will have this name.
+        """
+        super().__init__(name=name,
+                         cv_type="RDF-Planes",
+                         clustering_type="distribution",
+                         kernel="gaussian",
+                         timeinterval=200)
+
+        self._atoms = list()
+        self._molecule = None
+
+        self._r_grid_min = 0.
+        self._r_grid_max = None
+        self._r_bw = 0.05
+        self._r_bins = 100j
+        self._r_grid_space = 0.01
+        self._o_grid_min = 0.
+        self._o_grid_max = np.pi
+        self._o_bw = 0.05
+        self._o_bins = 100j
+        self._mirror = True
+
+    @property
+    def rdf_grid_min(self):
+        return self._r_grid_min
+
+    @rdf_grid_min.setter
+    def rdf_grid_min(self, value: float):
+        self._r_grid_min = value
+
+    @property
+    def rdf_grid_max(self):
+        return self._r_grid_max
+
+    @rdf_grid_max.setter
+    def rdf_grid_max(self, value: float):
+        self._r_grid_max = value
+
+    @property
+    def rdf_grid_bins(self):
+        return self._r_bins
+
+    @rdf_grid_bins.setter
+    def rdf_grid_bins(self, value: Union[float, int, complex]):
+        if isinstance(value, (float, int)):
+            value = complex(0, value)
+        self._r_bins = value
+
+    @property
+    def rdf_bandwidth(self):
+        return self._r_bw
+
+    @rdf_bandwidth.setter
+    def rdf_bandwidth(self, value: float):
+        self._r_bw = value
+
+    @property
+    def planes_grid_min(self):
+        return self._o_grid_min
+
+    @planes_grid_min.setter
+    def planes_grid_min(self, value: float):
+        self._o_grid_min = value
+
+    @property
+    def planes_grid_max(self):
+        return self._o_grid_max
+
+    @planes_grid_max.setter
+    def planes_grid_max(self, value: float):
+        self._o_grid_max = value
+
+    @property
+    def planes_grid_bins(self):
+        return self._o_bins
+
+    @planes_grid_bins.setter
+    def planes_grid_bins(self, value: Union[float, int, complex]):
+        if isinstance(value, (float, int)):
+            value = complex(0, value)
+        self._o_bins = value
+
+    @property
+    def planes_bandwidth(self):
+        return self._o_bw
+
+    @planes_bandwidth.setter
+    def planes_bandwidth(self, value: float):
+        self._o_bw = value
+
+    @property
+    def atoms(self):
+        return self._atoms
+
+    @atoms.setter
+    def atoms(self, atoms):
+        if len(atoms) == 3:
+            self._atoms = atoms
+        else:
+            print("Error: RDF-Planes needs 3 atoms as input")
+
+    @property
+    def molecule(self):
+        return self._molecule
+
+    @molecule.setter
+    def molecule(self, molecule):
+        self._molecule = molecule
+
+    @staticmethod
+    def help():
+        # TODO Modify from torsions to planes
+        return """
+Calculate the distribution of a set of torsional angles.
+It creates the inputs for plumed and stores the results.
+
+Attributes:
+- name: name of the CV.
+- type: Type of the CV (Torsional Angle).
+- plumed: Command line for plumed.
+- clustering_type: How is it treated by clustering algorithms (distribution). 
+- kernel: kernel function to use in the histogram generation. It can be "TRIANGULAR" or "GAUSSIAN"
+- bandwidth: the bandwidths for kernel density estimation. The bin size must be smaller than half the bandwidth.
+- grid_min: the lower bounds for the grid.
+- grid_max: the upper bounds for the grid.
+- grid_bins: the number of bins for the grid.
+- grid_space: the approximate grid spacing for the grid.
+- timeinterval: Simulation time interval to generate the distribution.
+                If a single value is given, t, frames corresponding to the last "t" picoseconds are used.
+                If two values are given, t1 and t2, frames from time t1 to time t2 are used.
+- atoms: the 4 atom index of the molecular forcefield object used to generate the set of torsional angles.
+                The same torsional angle in each molecule of the crystal will be considered for the distribution.
+- molecule: the molecular forcefield object from which atoms are selected.
+
+Methods:
+- help(): Print attributes and methods
+- set_atoms(atoms, molecule): Select the 4 atom index from the Molecule obj to generate the set of torsional angles. 
+                The atom index in PyPol starts from 0 and can be seen in the
+- generate_input(simulation, bash_script=True): Generate the plumed input files
+- get_results(simulation, crystal='all', plot=True): Check if the plumed driver analysis is ended and store results
+                If crystal="all", results are stored for all crystals. Alternatively, you can select a subset of 
+                crystals by specifying their IDs in an iterable object.
+                If plot=True, a plot of the distribution is created. This could be slow for large sets.
+
+Examples:
+- Select atoms of the torsional angles and create plumed inputs:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Retrieve an existing method
+molecule = gaff.get_molecule("MOL")                           # Use molecular forcefield info for the CV 
+tor = gaff.get_cv("tor")                                      # Retrieve the CV Object
+tor.set_atoms((0, 1, 2, 3), molecule)                         # Use the first four atoms to define the torsional angle
+npt = gaff.get_simulation("npt")                              # Retrieve a completed simulation
+tor.generate_input(npt)                                       # Generate plumed driver input for the selected simulation
+project.save()                                                # Save project
+
+- Import distributions once the plumed driver analysis is finished:
+from PyPol import pypol as pp                                                                                           
+project = pp.load_project(r'/home/Work/Project/')             # Load project from the specified folder                  
+gaff = project.get_method('GAFF')                             # Retrieve an existing method
+molecule = gaff.get_molecule("MOL")                           # Use molecular forcefield info for the CV 
+tor = gaff.get_cv("tor")                                      # Retrieve the CV Object
+npt = gaff.get_simulation("npt")                              # Retrieve a completed simulation
+tor.get_results(npt, plot=False)                              # Generate plumed driver input for the selected simulation
+project.save()                                                # Save project"""
+
+    def set_atoms(self, atoms: Union[list, tuple], molecule: Molecule):
+        """
+        Select atom indices of the reference molecule. This is used to identify the torsions of each molecule in the
+        crystal.
+        :param atoms: list, Atom indices. All atoms indices are available in the project output file after the topology
+        is defined.
+        :param molecule: obj, Reference molecule
+        :return:
+        """
+        self.atoms = atoms
+        self.molecule = molecule
+
+    def run(self,
+            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
+            crystals="all",
+            catt=None,
+            matt=None,
+            mirror=False,
+            plot=True):
+        """
+        Generate the plumed input files. If the catt option is used, only crystals with the specified attribute are
+        used. If the matt option is used only molecules with the specified attributes are used. In both cases,
+        attributes must be specified in the form of a python dict, menaning catt={"AttributeLabel": "AttributeValue"}.
+
+        :param simulation: Simulation object
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param matt: Use Molecular attributes to select the molecules list
+        :param catt: Use crystal attributes to select the crystal list
+        :param mirror:
+        :param plot: Plot the distribution
+        :return:
+        """
+
+        if not self._atoms:
+            print("Error: no atoms found. select atoms with the set_atoms module.")
+            exit()
+        print("=" * 100)
+        print(self.__str__())
+
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
+
+        for crystal in list_crystals:
+            print(crystal._name)
+
+            if matt is None:
+                matt = {}
+
+            mols = []
+            for mol in crystal._load_coordinates():
+                if self._molecule._residue == mol._residue:
+                    if matt:
+                        if matt.items() <= mol._attributes.items():
+                            mols.append(mol._index)
+                    else:
+                        mols.append(mol._index)
+
+            if self._r_grid_max:
+                crystal_grid_max = self._r_grid_max
+                crystal_grid_bins = self._r_bins
+            else:
+                crystal_grid_max = 0.5 * np.min(np.array([crystal._box[0, 0], crystal._box[1, 1], crystal._box[2, 2]]))
+                crystal_grid_bins = complex(0,
+                                            int(round((crystal_grid_max - self._r_grid_min) / self._r_grid_space, 0)))
+
+            file_ndx = open(crystal._path + f"/PYPOL_TMP_{simulation._name}.ndx")
+            file_ndx.write("[ System ] \n")
+            for mol in mols:
+                for atom in self._atoms:
+                    file_ndx.write("{:5} ".format(atom + mol * self._molecule._natoms + 1))
+            file_ndx.close()
+
+            traj_start, traj_end = (None, None)
+            traj_time = float(simulation._mdp["dt"]) * float(simulation._mdp["nsteps"])
+            if isinstance(self._timeinterval, tuple):
+                traj_start = self._timeinterval[0]
+                traj_end = self._timeinterval[1]
+            elif isinstance(self._timeinterval, int):
+                traj_start = traj_time - self._timeinterval
+                traj_end = traj_time
+            else:
+                print("Error: No suitable time interval.")
+                exit()
+            os.chdir(crystal._path)
+            os.system('{0} trjconv -f {1}.xtc -o PYPOL_TMP_{1}.gro -n PYPOL_TMP_{1}.ndx -s {1}.tpr -b {2} -e {3} <<< '
+                      '0\n '.format(simulation._gromacs, simulation._name, traj_start, traj_end))
+
+            planes = {}
+            r_plane = {}
+            file_gro = open(crystal._path + f"/PYPOL_TMP_{simulation._name}.gro")
+            frame, plane = 0, 0
+            for line in file_gro:
+                if "t=" in line:
+                    frame = line.split()[-1]
+                    planes[frame] = np.zeros((len(mols), 3))
+                    r_plane[frame] = np.zeros((len(mols), 3))
+                    plane = 0
+                    next(file_gro)
+                elif line[5:8] == self._molecule._residue:
+                    a1 = np.array([float(line[23:28]), float(line[31:36]), float(line[39:44])])
+                    line = next(file_gro)
+                    a2 = np.array([float(line[23:28]), float(line[31:36]), float(line[39:44])])
+                    line = next(file_gro)
+                    a3 = np.array([float(line[23:28]), float(line[31:36]), float(line[39:44])])
+                    planes[frame][plane, :] = np.cross(a2 - a1, a2 - a3)
+                    r_plane[frame][plane, :] = np.mean([a1, a2, a3], axis=0)
+                    plane += 1
+            file_gro.close()
+            data = np.zeros((int(len(mols) * (len(mols) - 1) / 2), 2))
+            d = 0
+            for frame in planes.keys():
+                for i in range(len(mols) - 1):
+                    ax, ay, az = planes[frame][i, :]
+                    r_i = r_plane[frame][i, :]
+                    for j in range(i + 1, len(mols)):
+                        r_j = r_plane[frame][j, :]
+                        distance = np.linalg.norm(r_i - r_j)
+                        if self._r_grid_min <= distance <= crystal_grid_max:
+                            bx, by, bz = planes[frame][j, :]
+                            angle = np.arccos(
+                                (ax * bx + ay * by + az * bz) / np.sqrt(
+                                    (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
+                            data[d, :] = np.array([angle, distance])
+
+            crystal._cvs[self._name] = super()._kde_ovect_rvect(data[:, 0], data[:, 1],
+                                                                self._r_grid_min, crystal_grid_max,
+                                                                self._r_bw, crystal_grid_bins,
+                                                                self._o_grid_min, self._o_grid_max,
+                                                                self._o_bw, self._o_bins, mirror=mirror)
+
+            # Save output and plot distribution
+            np.savetxt(crystal._path + "pypol_{}_{}_data.dat".format(simulation._name, self._name),
+                       crystal._cvs[self._name],
+                       header="Probability Density Grid.")
+            if plot:
+                extent = [self._o_grid_min, self._o_grid_max, crystal_grid_max, self._r_grid_min]
+                plt.imshow(crystal._cvs[self._name], extent=extent, cmap="viridis")
+                plt.colorbar()
+                # plt.scatter(data[:, 0], data[:, 1], s=1, facecolor=None, edgecolors='white', alpha=0.025)
+                plt.xlim(self._o_grid_min, self._o_grid_max)
+                plt.ylim(self._r_grid_min, crystal_grid_max)
+                plt.ylabel("RDF / nm")
+                plt.xlabel("Molecular orientation / rad")
+                plt.savefig(crystal._path + "pypol_{}_{}_plot.png".format(simulation._name, self._name), dpi=300)
+                plt.close("all")
+
+    def __str__(self):
+        txt = super(RDFPlanes, self).__str__()
+        if self._r_grid_max:
+            txt += f"""
+Grid Parameters:
+RDF: GRID_MAX={self._r_grid_max} GRID_MIN={self._r_grid_min} GRID_BINS={self._r_bins} BANDWIDTH={self._r_bins}
+Planes: GRID_MAX={self._o_grid_max} GRID_MIN={self._o_grid_min} GRID_BINS={self._o_bins} BANDWIDTH={self._o_bw}
+"""
+        else:
+            txt += f"""
+Grid Parameters:
+RDF: GRID_MIN={self._r_grid_min} GRID_SPACING={self._r_grid_space} BANDWIDTH={self._r_bins}
+Planes: GRID_MAX={self._o_grid_max} GRID_MIN={self._o_grid_min} GRID_BINS={self._o_bins} BANDWIDTH={self._o_bw}
+"""
+
+        if self._atoms:
+            txt += "\nAtoms:  "
+            for atom in self._atoms:
+                txt += "{}({})  ".format(atom, self._molecule._atoms[atom]._label)
+        else:
+            txt += "No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n".format(self._name)
+        txt += "\n"
+        return txt
+
+    def _write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write(self.__str__())
+        file_output.close()
 
 
 # Metadynamics Collective Variables and Walls objects
@@ -3183,13 +3672,19 @@ class Clustering(object):
                                 dj = crystals[j]._cvs[cv._name]
                                 bar.update(nbar)
                                 nbar += 1
-                                if cv._type == "Radial Distribution Function":
-                                    if len(di) > len(dj):
-                                        hd = hellinger(di.copy()[:len(dj)], dj.copy(), self._int_type)
-                                    else:
-                                        hd = hellinger(di.copy(), dj.copy()[:len(di)], self._int_type)
-                                else:
-                                    hd = hellinger(di.copy(), dj.copy(), self._int_type)
+                                if di.shape != dj.shape:
+                                    di = di.copy()[tuple(map(slice, dj.shape))]
+                                    dj = dj.copy()[tuple(map(slice, di.shape))]
+
+                                # if cv._type == "Radial Distribution Function":
+                                #     if len(di) > len(dj):
+                                #         hd = hellinger(di.copy()[:len(dj)], dj.copy(), self._int_type)
+                                #     else:
+                                #         hd = hellinger(di.copy(), dj.copy()[:len(di)], self._int_type)
+                                #
+                                # else:
+                                #     hd = hellinger(di.copy(), dj.copy(), self._int_type)
+                                hd = hellinger(di.copy(), dj.copy(), self._int_type)
                                 combinations.loc[index, cv._name][i, j] = combinations.loc[index, cv._name][j, i] = hd
 
                                 if hd > n_factors[cv._name]:

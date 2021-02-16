@@ -883,8 +883,8 @@ project.save()
                       variable to use the defaul mdp file.
             - "cr":   Cell relaxation using LAMMPS. If no input or forcefiled file are specified, a new topology
                       is obtained converting the Gromacs one with InterMol.
-            - "md":   Molecular Dynamics using Gromacs. Use names "nvt", "berendsen", "parrinello", "md" without
-                      specifying path_mdp to use the default ones.
+            - "md":   Molecular Dynamics using Gromacs. Use names "nvt", "md", "mdvvnvt", "mdvvberendsen",
+                      "mdvvparrinello", "mdvvmd" without specifying path_mdp to use the default ones.
                       Check the PyPol/data/Defaults/Gromacs folder to see or modify them.
             - "wtmd": Well-Tempered Metadynamics simulations
         If no path_mdp, path_lmp_in, path_lmp_ff are given, default input files will be used.
@@ -992,22 +992,30 @@ project.save()
                     print("Default file {} will be used".format(path_gromacs_data + "nvt.mdp"))
                     copyfile(path_gromacs_data + "nvt.mdp", self._path_input + "nvt.mdp")
                     path_mdp = self._path_input + "nvt.mdp"
-                elif name == "berendsen" and not path_mdp:
-                    print("Default file {} will be used".format(path_gromacs_data + "berendsen.mdp"))
-                    copyfile(path_gromacs_data + "berendsen.mdp", self._path_input + "berendsen.mdp")
-                    path_mdp = self._path_input + "berendsen.mdp"
-                elif name == "parrinello" and not path_mdp:
-                    print("Default file {} will be used".format(path_gromacs_data + "parrinello.mdp"))
-                    copyfile(path_gromacs_data + "parrinello.mdp", self._path_input + "parrinello.mdp")
-                    path_mdp = self._path_input + "parrinello.mdp"
                 elif name == "md" and not path_mdp:
                     print("Default file {} will be used".format(path_gromacs_data + "md.mdp"))
                     copyfile(path_gromacs_data + "md.mdp", self._path_input + "md.mdp")
                     path_mdp = self._path_input + "md.mdp"
+                elif name == "mdvvnvt" and not path_mdp:
+                    print("Default file {} will be used".format(path_gromacs_data + "mdvvnvt.mdp"))
+                    copyfile(path_gromacs_data + "mdvvnvt.mdp", self._path_input + "mdvvnvt.mdp")
+                    path_mdp = self._path_input + "mdvvnvt.mdp"
+                elif name == "mdvvberendsen" and not path_mdp:
+                    print("Default file {} will be used".format(path_gromacs_data + "mdvvberendsen.mdp"))
+                    copyfile(path_gromacs_data + "mdvvberendsen.mdp", self._path_input + "mdvvberendsen.mdp")
+                    path_mdp = self._path_input + "mdvvberendsen.mdp"
+                elif name == "mdvvparrinello" and not path_mdp:
+                    print("Default file {} will be used".format(path_gromacs_data + "mdvvparrinello.mdp"))
+                    copyfile(path_gromacs_data + "mdvvparrinello.mdp", self._path_input + "mdvvparrinello.mdp")
+                    path_mdp = self._path_input + "mdvvparrinello.mdp"
+                elif name == "mdvvmd" and not path_mdp:
+                    print("Default file {} will be used".format(path_gromacs_data + "mdvvmd.mdp"))
+                    copyfile(path_gromacs_data + "mdvvmd.mdp", self._path_input + "mdvvmd.mdp")
+                    path_mdp = self._path_input + "mdvvmd.mdp"
                 else:
                     print("Error: No mdp file has been found.\n"
                           "You can use the defaults mdp parameters by using the names "
-                          "'nvt', 'berendsen', 'parrinello', 'md'\n"
+                          "'nvt', 'md', 'mdvvnvt', 'mdvvberendsen', 'mdvvparrinello', 'mdvvmd'\n"
                           "You can check the relative mdp files in folder: {}"
                           "".format(path_gromacs_data))
                     exit()
@@ -1018,7 +1026,7 @@ project.save()
                 else:
                     print("Error: No mdp file has been found.\n"
                           "You can use the defaults mdp parameters by using the names "
-                          "'nvt', 'berendsen' or 'parrinello'\n"
+                          "'nvt', 'md', 'mdvvnvt', 'mdvvberendsen', 'mdvvparrinello', 'mdvvmd'\n"
                           "You can check the relative mdp files in folder: {}"
                           "".format(os.path.dirname(self._pypol_directory) + "/data/Defaults/Gromacs/"))
                     exit()
@@ -1274,10 +1282,12 @@ Simulation Type '{}' not recognized. Choose between:
         """
         Add a new Distribution Object or Collective Variable Object to the CV's list.
         Available Distribution types:
-                    - "tor":     Torsional angle.
-                    - "mo":      Intermolecular torsional angle.
-                    - "planes":  Intermolecular torsional angle between planes (useful for planar molecules).
-                    - "rdf":     Radial Distribution Function.
+                    - "tor":        Torsional angle.
+                    - "mo":         Intermolecular torsional angle.
+                    - "planes":     Intermolecular torsional angle between planes (useful for planar molecules).
+                    - "rdf":        Radial Distribution Function.
+                    - "rdf-mo": 2D distribution of the RDF and molecular orientation.
+                    - "rdf-planes": 2D distribution of the RDF and molecular orientation.
         Available Collective Variables:
                     - "density": Density of the crystal.
                     - "energy":  Potential Energy of the crystal.
@@ -1315,6 +1325,15 @@ Simulation Type '{}' not recognized. Choose between:
             cv = als.RDF(name, self._plumed, "com")
             self._cvp.append(cv)
             return cv
+        elif cv_type.lower() == "rdf-planes":
+            cv = als.RDFPlanes(name)
+            self._cvp.append(cv)
+            return cv
+        # TODO rdf-mo
+        # elif cv_type.lower() == "rdf-mo":
+        #     cv = als.RDFMO(name)
+        #     self._cvp.append(cv)
+        #     return cv
         elif cv_type.lower() == "density":
             cv = als.Density(name)
             self._cvp.append(cv)
