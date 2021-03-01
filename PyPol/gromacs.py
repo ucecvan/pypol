@@ -3229,7 +3229,7 @@ COMMITTOR ...
                 os.system("{0._gromacs} trjconv -f {0._name}.{1} -o {0._name}_analysis/{2}/{0._name}.xtc -b {3} -e {4} "
                           "-s ../{0._name}.tpr <<< 0 &> /dev/null"
                           "".format(self, file_ext, str(i), times[i][0], times[i][1]))
-                for cv in clustering_method._cvs:
+                for cv in clustering_method._cvp:
                     # TODO matt can be different from cv to cv ---> putt matt as cv attribute?
                     if issubclass(cv, _OwnDistributions) or issubclass(cv, _GG):
                         continue
@@ -3248,7 +3248,7 @@ COMMITTOR ...
                     file_script.write(path_sim + "\n")
 
         file_script.write('"\n\nfor crystal in $crystal_paths ; do\ncd "$crystal" || exit\n')
-        for cv in clustering_method._cvs:
+        for cv in clustering_method._cvp:
             file_script.write('{0} driver --mf_xtc {1}.xtc --plumed plumed_{2}.dat  --mc mc.dat\n'
                               'done\n'
                               ''.format(cv._plumed, self._name, cv._name))

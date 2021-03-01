@@ -146,7 +146,7 @@ class Clustering(object):
             group_threshold: float = 0.8,
             gen_sim_mat: bool = True,
             catt=None,
-            _cv_name=""):
+            suffix=""):
         self._clusters = {}
         self._cluster_data = {}
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
@@ -171,7 +171,7 @@ class Clustering(object):
             for cv in self._cvp:
                 if cv.clustering_type == "classification":
                     for crystal in list_crystals:
-                        group_options.append(list(crystal._cvs[cv._name].keys()))
+                        group_options.append(list(crystal._cvs[cv._name + suffix].keys()))
                         group_names.append(cv._name)
                         break
             if group_options:
@@ -219,9 +219,9 @@ class Clustering(object):
             distributions = [cv for cv in self._cvp if cv.clustering_type != "classification"]
             n_factors = {}
             for cv in distributions:
-                combinations[cv._name] = pd.Series(copy.deepcopy(combinations["Distance Matrix"].to_dict()),
-                                                   index=combinations.index)
-                n_factors[cv._name] = 0.
+                combinations[cv._name + suffix] = pd.Series(copy.deepcopy(combinations["Distance Matrix"].to_dict()),
+                                                            index=combinations.index)
+                n_factors[cv._name + suffix] = 0.
 
                 for index in combinations.index:
                     if combinations.at[index, "Number of structures"] > 1:
@@ -232,9 +232,9 @@ class Clustering(object):
                         nbar = 1
 
                         for i in range(len(crystals) - 1):
-                            di = crystals[i]._cvs[cv._name]
+                            di = crystals[i]._cvs[cv._name + suffix]
                             for j in range(i + 1, len(crystals)):
-                                dj = crystals[j]._cvs[cv._name]
+                                dj = crystals[j]._cvs[cv._name + suffix]
                                 bar.update(nbar)
                                 nbar += 1
                                 if di.shape != dj.shape:
@@ -243,18 +243,18 @@ class Clustering(object):
                                 hd = hellinger(di.copy(), dj.copy(), self._int_type)
                                 combinations.loc[index, cv._name][i, j] = combinations.loc[index, cv._name][j, i] = hd
 
-                                if hd > n_factors[cv._name]:
-                                    n_factors[cv._name] = hd
+                                if hd > n_factors[cv._name + suffix]:
+                                    n_factors[cv._name + suffix] = hd
                         bar.finish()
 
             # Normalize distances
             print("Normalization...", end="")
             normalization = []
             for cv in distributions:
-                normalization.append(1. / n_factors[cv._name])
+                normalization.append(1. / n_factors[cv._name + suffix])
                 for index in combinations.index:
                     if combinations.at[index, "Number of structures"] > 1:
-                        combinations.at[index, cv._name] /= n_factors[cv._name]
+                        combinations.at[index, cv._name] /= n_factors[cv._name + suffix]
             print("done")
 
             # Generate Distance Matrix

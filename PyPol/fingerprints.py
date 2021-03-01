@@ -291,13 +291,13 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
                 file_script.close()
         print("=" * 100)
 
-    def get_from_file(self, crystal, path, name="", plot=True):
-        print(f"No instructions were given to upload data from file '{path}' of crystal {crystal._name}")
+    def get_from_file(self, crystal, input_file, output_label="", plot=True):
+        print(f"No instructions were given to upload data from file '{input_file}' of crystal {crystal._name}")
 
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                     crystals: Union[str, list, tuple] = "all",
-                    plot: bool = True, catt=None):
+                    plot: bool = True, catt=None, suffix=""):
         """
         Verify if the distribution has been correctly generated and store the result. If the distribution is taken over
         different frames, the average is calculated.
@@ -307,6 +307,7 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
                          a specific subset of crystals by listing crystal names.
         :param plot: If true, generate a plot of the distribution.
         :param catt: Use crystal attributes to select the crystal list
+        :param suffix: suffix to add to the cv name.
         :return:
         """
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
@@ -316,7 +317,7 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
         for crystal in list_crystals:
             path_plumed_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_plumed_output):
-                crystal._cvs[self._name] = self.get_from_file(crystal, path_plumed_output, crystal._name, plot)
+                crystal._cvs[self._name + suffix] = self.get_from_file(crystal, path_plumed_output, crystal._name, plot)
                 bar.update(nbar)
                 nbar += 1
             else:
@@ -490,20 +491,21 @@ project.save()                                                # Save project"""
                           "PRINT ARG={0}.* FILE={1}\n".format(self._name, output_name))
         file_plumed.close()
 
-    def get_from_file(self, crystal, path, name="", plot=True):
-        cv = np.genfromtxt(path, skip_header=1)[:, 1:]
+    def get_from_file(self, crystal, input_file, output_label="", plot=True):
+        cv = np.genfromtxt(input_file, skip_header=1)[:, 1:]
         if np.isnan(cv).any():
             cv = np.nanmean(cv, axis=0)
             if np.isnan(cv).any():
-                print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. Check {path}")
+                print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. "
+                      f"Check {input_file}")
                 exit()
-            print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {path}")
+            print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {input_file}")
         else:
             cv = np.average(cv, axis=0)
         cv /= cv.sum()
         # Save output and plot distribution
         x = np.linspace(self._grid_min, self._grid_max, len(cv))
-        np.savetxt(os.path.dirname(path) + "/plumed_{}_{}_data.dat".format(name, self._name),
+        np.savetxt(os.path.dirname(input_file) + "/plumed_{}_{}_data.dat".format(output_label, self._name),
                    np.column_stack((x, cv)), fmt=("%1.3f", "%1.5f"),
                    header="Angle ProbabilityDensity")
         if plot:
@@ -511,7 +513,8 @@ project.save()                                                # Save project"""
             plt.xlabel("Torsional Angle / rad")
             plt.xlim(self._grid_min, self._grid_max)
             plt.ylabel("Probability Density")
-            plt.savefig(os.path.dirname(path) + "/plumed_{}_{}_plot.png".format(name, self._name), dpi=300)
+            plt.savefig(os.path.dirname(input_file) + "/plumed_{}_{}_plot.png".format(output_label, self._name),
+                        dpi=300)
             plt.close("all")
         return cv
 
@@ -714,19 +717,20 @@ project.save()                                                # Save project"""
                                     self._grid_bins, self._bandwidth, self._kernel, output_name))
         file_plumed.close()
 
-    def get_from_file(self, crystal, path, name="", plot=True):
-        cv = np.genfromtxt(path, skip_header=2)[:, 1:]
+    def get_from_file(self, crystal, input_file, output_label="", plot=True):
+        cv = np.genfromtxt(input_file, skip_header=2)[:, 1:]
         if np.isnan(cv).any():
             cv = np.nanmean(cv, axis=0)
             if np.isnan(cv).any():
-                print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. Check {path} ")
+                print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. "
+                      f"Check {input_file} ")
                 exit()
-            print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {path} ")
+            print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {input_file} ")
         else:
             cv = np.average(cv, axis=0)
             # Save output and plot distribution
         x = np.linspace(self._grid_min, self._grid_max, len(cv))
-        np.savetxt(os.path.dirname(path) + "/plumed_{}_{}_data.dat".format(name, self._name),
+        np.savetxt(os.path.dirname(input_file) + "/plumed_{}_{}_data.dat".format(output_label, self._name),
                    np.column_stack((x, cv)), fmt=("%1.3f", "%1.5f"),
                    header="Angle ProbabilityDensity")
         if plot:
@@ -735,7 +739,8 @@ project.save()                                                # Save project"""
             plt.xlim(self._grid_min, self._grid_max)
             plt.ylabel("Probability Density")
             plt.title(crystal._name)
-            plt.savefig(os.path.dirname(path) + "/plumed_{}_{}_plot.png".format(name, self._name), dpi=300)
+            plt.savefig(os.path.dirname(input_file) + "/plumed_{}_{}_plot.png".format(output_label, self._name),
+                        dpi=300)
             plt.close("all")
         return cv
 
@@ -949,16 +954,16 @@ project.save()                                                # Save project"""
                           "".format(self, output_name))
         file_plumed.close()
 
-    def get_from_file(self, crystal, path, name="", plot=True):
-        cv = np.genfromtxt(path, skip_header=1)[:, 1]
+    def get_from_file(self, crystal, input_file, output_label="", plot=True):
+        cv = np.genfromtxt(input_file, skip_header=1)[:, 1]
         if np.isnan(cv).any():
-            print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. Check {path} ")
+            print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. Check {input_file} ")
             exit()
 
         cv /= cv.sum()
         # Save output and plot distribution
         x = np.linspace(self._grid_min, self._grid_max, len(cv))
-        np.savetxt(os.path.dirname(path) + "/plumed_{}_{}_data.dat".format(name, self._name),
+        np.savetxt(os.path.dirname(input_file) + "/plumed_{}_{}_data.dat".format(output_label, self._name),
                    np.column_stack((x, cv)), fmt=("%1.3f", "%1.5f"),
                    header="Angle ProbabilityDensity")
         if plot:
@@ -967,7 +972,8 @@ project.save()                                                # Save project"""
             plt.xlim(self._grid_min, self._grid_max)
             plt.ylabel("Probability Density")
             plt.title(crystal._name)
-            plt.savefig(os.path.dirname(path) + "/plumed_{}_{}_plot.png".format(name, self._name), dpi=300)
+            plt.savefig(os.path.dirname(input_file) + "/plumed_{}_{}_plot.png".format(output_label, self._name),
+                        dpi=300)
             plt.close("all")
 
         return cv
@@ -1224,14 +1230,15 @@ project.save()                                                # Save project
                                     nbins, self._kernel, output_name))
         file_plumed.close()
 
-    def get_from_file(self, crystal, path, name="", plot=True):
-        dn_r = np.genfromtxt(path, skip_header=1)[:, 2:]
+    def get_from_file(self, crystal, input_file, output_label="", plot=True):
+        dn_r = np.genfromtxt(input_file, skip_header=1)[:, 2:]
         if np.isnan(dn_r).any():
             dn_r = np.nanmean(dn_r, axis=0)
             if np.isnan(dn_r).any():
-                print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. Check {path} ")
+                print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. "
+                      f"Check {input_file} ")
                 exit()
-            print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {path} ")
+            print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {input_file} ")
         else:
             dn_r = np.average(dn_r, axis=0)
 
@@ -1241,17 +1248,17 @@ project.save()                                                # Save project
         rho = crystal._Z / crystal._volume
 
         cv = np.where(r > 0, dn_r / (4 * np.pi * rho * r ** 2 * self._grid_space) / crystal._Z * 2.0, 0.)
-        crystal._cvs[self._name] = cv
         # Save output and plot distribution
-        np.savetxt(os.path.dirname(path) + "/plumed_{}_{}_data.dat".format(name, self._name),
+        np.savetxt(os.path.dirname(input_file) + "/plumed_{}_{}_data.dat".format(output_label, self._name),
                    np.column_stack((r, cv)), fmt=("%1.4f", "%1.5f"),
                    header="r RDF")
         if plot:
-            plt.plot(r, crystal._cvs[self._name], "-")
+            plt.plot(r, cv, "-")
             plt.xlabel("r / nm")
             plt.xlim(self._r_0, d_max)
             plt.ylabel("Probability Density")
-            plt.savefig(os.path.dirname(path) + "/plumed_{}_{}_plot.png".format(name, self._name), dpi=300)
+            plt.savefig(os.path.dirname(input_file) + "/plumed_{}_{}_plot.png".format(output_label, self._name),
+                        dpi=300)
             plt.close("all")
         return cv
 
@@ -1464,8 +1471,8 @@ project.save()                                                # Save project"""
                                         self._str_args))
             file_plumed.close()
 
-    def get_from_file(self, crystal, path, name="", plot=True):
-        cv_dist = np.genfromtxt(path, skip_header=1)[:, 1:]
+    def get_from_file(self, crystal, input_file, output_label="", plot=True):
+        cv_dist = np.genfromtxt(input_file, skip_header=1)[:, 1:]
         if np.isnan(cv_dist).any():
             cv_dist = np.nanmean(cv_dist, axis=0)
             if np.isnan(cv_dist).any():
@@ -1478,7 +1485,7 @@ project.save()                                                # Save project"""
             cv_dist = np.average(cv_dist, axis=0)
         cv_dist = cv_dist.reshape(self._grid_bins)
         if len(self._cvs) == 2:
-            np.savetxt(os.path.dirname(path) + "/plumed_{}_{}_data.dat".format(name, self._name),
+            np.savetxt(os.path.dirname(input_file) + "/plumed_{}_{}_data.dat".format(output_label, self._name),
                        cv_dist,
                        header="Probability Density Grid.")
             if plot:
@@ -1486,11 +1493,12 @@ project.save()                                                # Save project"""
                 plt.imshow(cv_dist, interpolation="nearest", cmap="viridis", extent=extent)
                 plt.xlabel("{} / rad".format(self._cvs[0]._name))
                 plt.ylabel("{} / rad".format(self._cvs[1]._name))
-                plt.savefig(os.path.dirname(path) + "/plumed_{}_{}_plot.png".format(name, self._name),
+                plt.savefig(os.path.dirname(input_file) + "/plumed_{}_{}_plot.png".format(output_label, self._name),
                             dpi=300)
                 plt.close("all")
         else:
-            np.save(os.path.dirname(path) + "/plumed_{}_{}_data.npy".format(name, self._name), crystal._cvs[self._name])
+            np.save(os.path.dirname(input_file) + "/plumed_{}_{}_data.npy".format(output_label, self._name),
+                    crystal._cvs[self._name])
 
         return cv_dist
 
@@ -1583,7 +1591,8 @@ Clustering Type: {0._clustering_type}""".format(self)
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True,
-                    catt=None):
+                    catt=None,
+                    suffix=""):
         """
         Verify if the distribution has been correctly generated and store the result. If the distribution is taken over
         different frames, the average is calculated.
@@ -1593,6 +1602,7 @@ Clustering Type: {0._clustering_type}""".format(self)
                          a specific subset of crystals by listing crystal names.
         :param plot: If true, generate a plot of the distribution.
         :param catt: Use crystal attributes to select the crystal list
+        :param suffix: suffix to add to the cv name.
         :return:
         """
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
@@ -1618,10 +1628,10 @@ Clustering Type: {0._clustering_type}""".format(self)
                       '0 &> /dev/null '.format(simulation._gromacs, simulation._name, traj_start, traj_end))
 
             if os.path.exists(f"PYPOL_TMP_{simulation._name}.xtc"):
-                crystal._cvs[self._name] = self.gen_from_traj(crystal, simulation,
-                                                              f"PYPOL_TMP_{simulation._name}.xtc",
-                                                              simulation._name,
-                                                              plot)
+                crystal._cvs[self._name + suffix] = self.gen_from_traj(crystal, simulation,
+                                                                       f"PYPOL_TMP_{simulation._name}.xtc",
+                                                                       simulation._name,
+                                                                       plot)
                 bar.update(nbar)
                 nbar += 1
             else:
@@ -1632,7 +1642,7 @@ Clustering Type: {0._clustering_type}""".format(self)
     def gen_from_traj(self, crystal, simulation, input_traj, output_name="", plot=True):
         pass
 
-    def get_from_file(self, crystal, path, name="", plot=True):
+    def get_from_file(self, crystal, input_file, output_label="", plot=True):
         print(f"Info: This distribution is generated directly from the trajectory. No plumed output needed")
 
 
