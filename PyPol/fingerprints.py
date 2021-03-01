@@ -80,7 +80,7 @@ class _Distribution(object):  # TODO Change name to Distributions
     def molecular_attributes(self, att: dict):
         self._matt = att
 
-    def add_molecular_attribute(self, att, val):
+    def set_molecular_attribute(self, att, val):
         """
         Create a custom attribute for the Crystal.
         :param att: Attribute label
