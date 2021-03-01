@@ -1395,7 +1395,7 @@ Simulation Type '{}' not recognized. Choose between:
                 print("Error: CV with label {} already present in this method. Remove it or change CV label"
                       "".format(name))
                 exit()
-        from fingerprints import Combine
+        from PyPol.fingerprints import Combine
         if all(cv.type == cvs[0].type for cv in cvs) and cvs[0].type in ("Torsional Angle", "Molecular Orientation"):
             cv = Combine(name, cvs=cvs)
             self._cvp.append(cv)
@@ -3194,7 +3194,7 @@ COMMITTOR ...
 
         return intervals
 
-    def generate_analysis_input(self, clustering_method, crystals="all", catt=None, matt=None,
+    def generate_analysis_input(self, clustering_method, crystals="all", catt=None,
                                 start=0.5, end=None, interval=0.5, timeinterval=50):
         if end is None:
             end = self._energy_cutoff
@@ -3205,6 +3205,7 @@ COMMITTOR ...
             file_ext = "trr"
 
         from PyPol.fingerprints import _OwnDistributions
+        from PyPol.groups import _GG
 
         intervals = self._intervals(start, end, interval)
 
@@ -3230,11 +3231,12 @@ COMMITTOR ...
                           "".format(self, file_ext, str(i), times[i][0], times[i][1]))
                 for cv in clustering_method._cvs:
                     # TODO matt can be different from cv to cv ---> putt matt as cv attribute?
-                    if issubclass(cv, _OwnDistributions):
+                    if issubclass(cv, _OwnDistributions) or issubclass(cv, _GG):
                         continue
                     cv.check_attributes()
-                    cv.generate_input(crystal, matt=matt,
-                                      input_name=f"{self._name}_analysis/{str(i)}/plumed_{cv._name}.dat", output_name=self._name)
+                    cv.generate_input(crystal,
+                                      input_name=f"{self._name}_analysis/{str(i)}/plumed_{cv._name}.dat",
+                                      output_name=self._name)
 
         file_script = open(self._path_data + "/run_plumed_analysis_" + self._name + ".sh", "w")
         file_script.write('#!/bin/bash\n\n'
