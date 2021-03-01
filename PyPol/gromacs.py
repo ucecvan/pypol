@@ -3234,7 +3234,7 @@ COMMITTOR ...
                         continue
                     cv.check_attributes()
                     cv.generate_input(crystal, matt=matt,
-                                      output=f"{self._name}_analysis/{str(i)}/plumed_{cv._name}.dat", name=self._name)
+                                      input_name=f"{self._name}_analysis/{str(i)}/plumed_{cv._name}.dat", output_name=self._name)
 
         file_script = open(self._path_data + "/run_plumed_analysis_" + self._name + ".sh", "w")
         file_script.write('#!/bin/bash\n\n'

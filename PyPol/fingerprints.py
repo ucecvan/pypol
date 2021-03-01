@@ -70,6 +70,27 @@ class _Distribution(object):  # TODO Change name to Distributions
         self._plumed = plumed
         self._plumed_version = plumed_version
 
+        self._matt = None
+
+    @property
+    def molecular_attributes(self):
+        return self._matt
+
+    @molecular_attributes.setter
+    def molecular_attributes(self, att: dict):
+        self._matt = att
+
+    def add_molecular_attribute(self, att, val):
+        """
+        Create a custom attribute for the Crystal.
+        :param att: Attribute label
+        :param val: Attribute value
+        :return:
+        """
+        if self._matt is None:
+            self._matt = {}
+        self._matt[att] = val
+
     @property
     def kernel(self):
         return self._kernel
@@ -179,19 +200,18 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
     def check_attributes(self):
         print(f"No attributes-check set for distribution {self._name}")
 
-    def generate_input(self, crystal, matt=None, output="", name=""):
+    def generate_input(self, crystal, input_name="", output_name=""):
         print(f"No plumed input generation available for distribution {self._name}."
-              f"Cannot create a plumed file '{output}' for crystal {crystal._name}")
+              f"Cannot create a plumed file '{input_name}' for crystal {crystal._name}")
 
     def generate_inputs(self,
                         simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                         bash_script=True,
                         crystals="all",
-                        catt=None,
-                        matt=None):
+                        catt=None):
         """
         Generate the plumed input files. If the catt option is used, only crystals with the specified attribute are
-        used. If the matt option is used only molecules with the specified attributes are used. In both cases,
+        used. In both cases,
         attributes must be specified in the form of a python dict, meaning catt={"AttributeLabel": "AttributeValue"}.
 
         :param simulation: Simulation object
@@ -199,7 +219,6 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
         :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
                          "centers", use only cluster centers from the previous simulation. Alternatively, you can select
                          a specific subset of crystals by listing crystal names.
-        :param matt: Use Molecular attributes to select the molecules list
         :param catt: Use crystal attributes to select the crystal list
         :return:
         """
@@ -211,7 +230,9 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
 
         for crystal in list_crystals:
-            self.generate_input(crystal, matt, crystal._path + f"/plumed_{self._name}.dat", simulation._name)
+            self.generate_input(crystal,
+                                crystal._path + f"/plumed_{self._name}.dat",
+                                crystal._path + f"plumed_{simulation._name}_{self._name}.dat")
 
         if bash_script:
             dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
@@ -453,11 +474,11 @@ project.save()                                                # Save project"""
             print("Error: no atoms found. select atoms with the set_atoms module.")
             exit()
 
-    def generate_input(self, crystal, matt=None, output="", name=""):
+    def generate_input(self, crystal, input_name="", output_name=""):
 
         lines_atoms = generate_atom_list(self._atoms, self._molecule, crystal, keyword="ATOMS", lines=[],
-                                         attributes=matt)
-        file_plumed = open(output, "w")
+                                         attributes=self._matt)
+        file_plumed = open(input_name, "w")
         file_plumed.write("TORSIONS ...\n")
         for line in lines_atoms:
             file_plumed.write(line)
@@ -466,7 +487,7 @@ project.save()                                                # Save project"""
                           "UPPER={0._grid_max:.3f} LOWER={0._grid_min:.3f}}}}}\n".format(self))
 
         file_plumed.write("LABEL={0}\n... TORSIONS\n\n"
-                          "PRINT ARG={0}.* FILE=plumed_{1}_{0}.dat\n".format(self._name, name))
+                          "PRINT ARG={0}.* FILE={1}\n".format(self._name, output_name))
         file_plumed.close()
 
     def get_from_file(self, crystal, path, name="", plot=True):
@@ -669,13 +690,13 @@ project.save()                                                # Save project"""
             print("Error: no atoms found. select atoms with the set_atoms module.")
             exit()
 
-    def generate_input(self, crystal, matt=None, output="", name=""):
+    def generate_input(self, crystal, input_name="", output_name=""):
         # Select atoms and molecules
         lines_atoms = []
         for idx_mol in range(len(self._molecules)):
             lines_atoms = generate_atom_list(self._atoms[idx_mol], self._molecules[idx_mol], crystal,
-                                             keyword="ATOMS", lines=lines_atoms, attributes=matt)
-        file_plumed = open(output, "w")
+                                             keyword="ATOMS", lines=lines_atoms, attributes=self._matt)
+        file_plumed = open(input_name, "w")
 
         file_plumed.write("DISTANCE ...\n")
         for line in lines_atoms:
@@ -688,9 +709,9 @@ project.save()                                                # Save project"""
                           "ang_mat_{0}: MATHEVAL ARG1=dp_mat_{0} FUNC=acos(x) PERIODIC=NO\n"
                           "valg_{0}: KDE ARG1=ang_mat_{0} GRID_MIN={1} GRID_MAX={2} "
                           "GRID_BIN={3} BANDWIDTH={4} KERNEL={5}\n\n"
-                          "PRINT ARG=valg_{0} FILE=plumed_{6}_{0}.dat\n"
+                          "PRINT ARG=valg_{0} FILE={6}\n"
                           "".format(self._name, self._grid_min, self._grid_max,
-                                    self._grid_bins, self._bandwidth, self._kernel, name))
+                                    self._grid_bins, self._bandwidth, self._kernel, output_name))
         file_plumed.close()
 
     def get_from_file(self, crystal, path, name="", plot=True):
@@ -910,10 +931,10 @@ project.save()                                                # Save project"""
             print("Error: no atoms found. select atoms with the set_atoms module.")
             exit()
 
-    def generate_input(self, crystal, matt=None, output="", name=""):
+    def generate_input(self, crystal, input_name="", output_name=""):
         lines_atoms = generate_atom_list(self._atoms, self._molecule, crystal, keyword="MOL", lines=[],
-                                         attributes=matt)
-        file_plumed = open(output, "w")
+                                         attributes=self._matt)
+        file_plumed = open(input_name, "w")
         file_plumed.write("PLANES ...\n")
         for line in lines_atoms:
             file_plumed.write(line)
@@ -924,8 +945,8 @@ project.save()                                                # Save project"""
                           "hist_{0._name}: HISTOGRAM DATA=int_tor_{0._name} GRID_MIN={0._grid_min:.3f} "
                           "GRID_MAX={0._grid_max:.3f} BANDWIDTH={0._bandwidth:.3f} "
                           "GRID_BIN={0._grid_bins} KERNEL={0._kernel} NORMALIZATION={0._normalization}\n"
-                          "DUMPGRID GRID=hist_{0._name} FILE=plumed_{1}_{0._name}.dat\n"
-                          "".format(self, name))
+                          "DUMPGRID GRID=hist_{0._name} FILE={1}\n"
+                          "".format(self, output_name))
         file_plumed.close()
 
     def get_from_file(self, crystal, path, name="", plot=True):
@@ -1170,7 +1191,7 @@ project.save()                                                # Save project
             print("Error: no atoms found. Select atoms with the set_atoms module.")
             exit()
 
-    def generate_input(self, crystal, matt=None, output="", name=""):
+    def generate_input(self, crystal, input_name="", output_name=""):
         d_max = 0.5 * np.min(np.array([crystal._box[0, 0], crystal._box[1, 1], crystal._box[2, 2]]))
         nbins = int(round((d_max - self._r_0) / self._grid_space, 0))
 
@@ -1178,9 +1199,9 @@ project.save()                                                # Save project
         for idx_mol in range(len(self._molecules)):
             lines_atoms = generate_atom_list(self._atoms[idx_mol], self._molecules[idx_mol], crystal,
                                              keyword="ATOMS", lines=lines_atoms, index_lines=False,
-                                             attributes=matt)
+                                             attributes=self._matt)
 
-        file_plumed = open(output, "w")
+        file_plumed = open(input_name, "w")
         idx_com = 1
         str_group = ""
         if self._center == "geometrical":
@@ -1198,9 +1219,9 @@ project.save()                                                # Save project
         file_plumed.write("{0}_g: GROUP ATOMS={1}\n"
                           "{0}_d: DISTANCES GROUP={0}_g MORE_THAN={{RATIONAL R_0={2} D_0={3} D_MAX={3}}} "
                           "HISTOGRAM={{{6} NBINS={5} BANDWIDTH={4} UPPER={3} LOWER={2}}}\n"
-                          "PRINT ARG={0}_d.* FILE=plumed_{7}_{0}.dat\n\n"
+                          "PRINT ARG={0}_d.* FILE={7}\n\n"
                           "".format(self._name, str_group, self._r_0, d_max, self._bandwidth,
-                                    nbins, self._kernel, name))
+                                    nbins, self._kernel, output_name))
         file_plumed.close()
 
     def get_from_file(self, crystal, path, name="", plot=True):
@@ -1394,15 +1415,15 @@ project.save()                                                # Save project"""
                 self._str_args += "ARG{}={} ".format(idx_cv + 1, cv._name)
             idx_cv += 1
 
-    def generate_input(self, crystal, matt=None, output="", name=""):
+    def generate_input(self, crystal, input_name="", output_name=""):
         if self._type.startswith("Molecular Orientation"):
-            file_plumed = open(output, "w")
+            file_plumed = open(input_name, "w")
             for cv in self._cvs:
                 # Select atoms and molecules
                 lines_atoms = []
                 for idx_mol in range(len(cv._molecules)):
                     lines_atoms = generate_atom_list(cv._atoms[idx_mol], cv._molecules[idx_mol], crystal,
-                                                     keyword="ATOMS", lines=lines_atoms, attributes=matt)
+                                                     keyword="ATOMS", lines=lines_atoms, attributes=cv._matt)
 
                 file_plumed.write("DISTANCE ...\n")
                 for line in lines_atoms:
@@ -1417,18 +1438,18 @@ project.save()                                                # Save project"""
 
             file_plumed.write("valg_{0}: KDE {7} GRID_MIN={1} GRID_MAX={2} "
                               "GRID_BIN={3} BANDWIDTH={4} KERNEL={5}\n\n"
-                              "PRINT ARG=valg_{0} FILE=plumed_{6}_{0}.dat\n"
+                              "PRINT ARG=valg_{0} FILE={6}\n"
                               "".format(self._name, self._str_grid_min, self._str_grid_max,
-                                        self._str_grid_bins, self._str_bandwidth, self._kernel, name,
+                                        self._str_grid_bins, self._str_bandwidth, self._kernel, output_name,
                                         self._str_args))
             file_plumed.close()
 
         if self._type.startswith("Torsional Angle"):
-            file_plumed = open(output, "w")
+            file_plumed = open(input_name, "w")
             for cv in self._cvs:
                 # Select atoms and molecules
                 lines_atoms = generate_atom_list(cv._atoms, cv.molecule, crystal, keyword="ATOMS", lines=[],
-                                                 attributes=matt)
+                                                 attributes=cv._matt)
 
                 file_plumed.write("TORSIONS ...\n")
                 for line in lines_atoms:
@@ -1437,9 +1458,9 @@ project.save()                                                # Save project"""
                 file_plumed.write("LABEL={0}\n... TORSIONS\n\n".format(cv._name))
             file_plumed.write("kde_{0}: KDE {7} GRID_MIN={1} GRID_MAX={2} "
                               "GRID_BIN={3} BANDWIDTH={4} KERNEL={5}\n\n"
-                              "PRINT ARG=kde_{0} FILE=plumed_{6}_{0}.dat\n"
+                              "PRINT ARG=kde_{0} FILE={6}\n"
                               "".format(self._name, self._str_grid_min, self._str_grid_max,
-                                        self._str_grid_bins, self._str_bandwidth, self._kernel, name,
+                                        self._str_grid_bins, self._str_bandwidth, self._kernel, output_name,
                                         self._str_args))
             file_plumed.close()
 
@@ -1548,27 +1569,24 @@ Clustering Type: {0._clustering_type}""".format(self)
             zz = (zz + np.flip(zz, axis=1)) / 2.
         return zz
 
-    def generate_input(self, crystal, matt=None, output="", name=""):
+    def generate_input(self, crystal, input_name="", output_label=""):
         pass
 
     def generate_inputs(self,
                         simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                         bash_script=True,
                         crystals="all",
-                        catt=None,
-                        matt=None):
+                        catt=None):
         print("Info: No plumed input needed for to generate this distribution")
 
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
                     crystals: Union[str, list, tuple] = "all",
                     plot: bool = True,
-                    catt=None,
-                    matt=None):
+                    catt=None):
         """
         Verify if the distribution has been correctly generated and store the result. If the distribution is taken over
         different frames, the average is calculated.
-        :param matt:
         :param simulation: Simulation object
         :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
                          "centers", use only cluster centers from the previous simulation. Alternatively, you can select
@@ -1600,8 +1618,10 @@ Clustering Type: {0._clustering_type}""".format(self)
                       '0 &> /dev/null '.format(simulation._gromacs, simulation._name, traj_start, traj_end))
 
             if os.path.exists(f"PYPOL_TMP_{simulation._name}.xtc"):
-                crystal._cvs[self._name] = self.gen_from_traj(crystal, simulation, f"PYPOL_TMP_{simulation._name}.xtc",
-                                                              simulation._name, plot, matt)
+                crystal._cvs[self._name] = self.gen_from_traj(crystal, simulation,
+                                                              f"PYPOL_TMP_{simulation._name}.xtc",
+                                                              simulation._name,
+                                                              plot)
                 bar.update(nbar)
                 nbar += 1
             else:
@@ -1609,7 +1629,7 @@ Clustering Type: {0._clustering_type}""".format(self)
                       "".format(simulation._name, crystal._path))
         bar.finish()
 
-    def gen_from_traj(self, crystal, simulation, path_traj, name="", plot=True, matt=None):
+    def gen_from_traj(self, crystal, simulation, input_traj, output_name="", plot=True):
         pass
 
     def get_from_file(self, crystal, path, name="", plot=True):
@@ -1838,16 +1858,14 @@ project.save()                                                # Save project"""
         self.atoms = atoms
         self.molecule = molecule
 
-    def gen_from_traj(self, crystal, simulation, path, name="", plot=True, matt=None):
-        os.chdir(os.path.dirname(path))
-        if matt is None:
-            matt = {}
+    def gen_from_traj(self, crystal, simulation, input_traj, output_label="cv", plot=True):
+        os.chdir(os.path.dirname(input_traj))
 
         mols = []
         for mol in crystal._load_coordinates():
             if self._molecule._residue == mol._residue:
-                if matt:
-                    if matt.items() <= mol._attributes.items():
+                if self._matt:
+                    if self._matt.items() <= mol._attributes.items():
                         mols.append(mol._index)
                 else:
                     mols.append(mol._index)
@@ -1860,7 +1878,7 @@ project.save()                                                # Save project"""
             crystal_grid_bins = complex(0,
                                         int(round((crystal_grid_max - self._r_grid_min) / self._r_grid_space, 0)))
 
-        file_ndx = open(path + f"/PYPOL_TMP_{name}.ndx", "w")
+        file_ndx = open(input_traj + f"/PYPOL_TMP_{output_label}.ndx", "w")
         file_ndx.write("[ System ] \n")
         for mol in mols:
             for atom in self._atoms:
@@ -1868,11 +1886,11 @@ project.save()                                                # Save project"""
         file_ndx.close()
 
         os.system('{0} trjconv -f {1} -o PYPOL_TMP_{2}.gro -n PYPOL_TMP_{2}.ndx -s {1}.tpr <<< 0  &> /dev/null'
-                  ''.format(simulation._gromacs, path, name, os.path.basename(path)))
+                  ''.format(simulation._gromacs, input_traj, output_label, os.path.basename(input_traj)))
 
         planes = {}
         r_plane = {}
-        file_gro = open(path + f"/PYPOL_TMP_{name}.gro")
+        file_gro = open(input_traj + f"/PYPOL_TMP_{output_label}.gro")
         frame, plane = 0, 0
         for line in file_gro:
             if "t=" in line:
@@ -1914,7 +1932,7 @@ project.save()                                                # Save project"""
                                       self._o_bw, self._o_bins, mirror=self._mirror)
 
         # Save output and plot distribution
-        np.savetxt(os.path.dirname(path) + "/pypol_{}_{}_data.dat".format(name, self._name),
+        np.savetxt(os.path.dirname(input_traj) + "/pypol_{}_{}_data.dat".format(output_label, self._name),
                    cv,
                    header="Probability Density Grid.")
         if plot:
@@ -1926,7 +1944,8 @@ project.save()                                                # Save project"""
             plt.ylim(self._r_grid_min, crystal_grid_max)
             plt.ylabel("RDF / nm")
             plt.xlabel("Molecular orientation / rad")
-            plt.savefig(os.path.dirname(path) + "/pypol_{}_{}_plot.png".format(simulation._name, self._name), dpi=300)
+            plt.savefig(os.path.dirname(input_traj) + "/pypol_{}_{}_plot.png".format(output_label, self._name),
+                        dpi=300)
             plt.close("all")
         return cv
 
