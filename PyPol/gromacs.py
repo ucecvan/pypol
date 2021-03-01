@@ -1312,7 +1312,7 @@ Simulation Type '{}' not recognized. Choose between:
         cv_type = cv_type.lower()
 
         # Import distributions
-        import fingerprints
+        from PyPol import fingerprints
         for _, fingerprint in getmembers(fingerprints, isclass):
             if hasattr(fingerprint, "_short_type") and fingerprint._short_type == cv_type:
                 if fingerprint._plumed_version == "hack-the-tree":
@@ -1324,14 +1324,14 @@ Simulation Type '{}' not recognized. Choose between:
                 self._cvp.append(cv)
                 return cv
 
-        import metad
+        from PyPol import metad
         for _, colvar in getmembers(metad, isclass):
             if hasattr(colvar, "_short_type") and colvar._short_type == cv_type:
                 cv = colvar(name)
                 self._cvp.append(cv)
                 return cv
 
-        import walls
+        from PyPol import walls
         for _, wall in getmembers(walls, isclass):
             if hasattr(wall, "_short_type") and wall._short_type == cv_type:
                 cv = wall(name)
@@ -1409,7 +1409,7 @@ Simulation Type '{}' not recognized. Choose between:
         :param cv: Distribution to be used to define the different groups
         :return: GGFD object
         """
-        from groups import GGFD
+        from PyPol.groups import GGFD
         for existing_cv in self._cvp:
             if existing_cv._name == name:
                 print("Error: CV with label {} already present in this method. Remove it or change CV label"
@@ -1427,7 +1427,7 @@ Simulation Type '{}' not recognized. Choose between:
         :param attribute: dict with the attribute to use for classification
         :return: GGFA object
         """
-        from groups import GGFA
+        from PyPol.groups import GGFA
         for existing_cv in self._cvp:
             if existing_cv._name == name:
                 print("Error: CV with label {} already present in this method. Remove it or change CV label"
