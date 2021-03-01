@@ -3231,12 +3231,13 @@ COMMITTOR ...
                           "".format(self, file_ext, str(i), times[i][0], times[i][1]))
                 for cv in clustering_method._cvp:
                     # TODO matt can be different from cv to cv ---> putt matt as cv attribute?
-                    if issubclass(cv, _OwnDistributions) or issubclass(cv, _GG):
+                    if issubclass(type(cv), _OwnDistributions) or issubclass(type(cv), _GG):
                         continue
                     cv.check_attributes()
+                    wd = crystal.path + f"/{self._name}_analysis/{str(i)}/"
                     cv.generate_input(crystal,
-                                      input_name=f"{self._name}_analysis/{str(i)}/plumed_{cv._name}.dat",
-                                      output_name=self._name)
+                                      input_name=wd + f"plumed_{cv._name}.dat",
+                                      output_name=wd + f"plumed_{self._name}_{cv._name}.dat")
 
         file_script = open(self._path_data + "/run_plumed_analysis_" + self._name + ".sh", "w")
         file_script.write('#!/bin/bash\n\n'
