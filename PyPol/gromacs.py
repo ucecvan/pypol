@@ -3221,11 +3221,16 @@ COMMITTOR ...
                 if file_plumed["rct_mol"][i] > intervals[j]:
                     times[intervals[j]] = (file_plumed["time"][i] - timeinterval, file_plumed["time"][i])
                     j += 1
+                    if j == len(intervals):
+                        break
+
             if not os.path.exists(f"{self._name}_analysis"):
                 os.mkdir(f"{self._name}_analysis")
             for i in intervals:
-                if not os.path.exists(str(i)):
-                    os.mkdir(str(i))
+                if not times[i]:
+                    break
+                if not os.path.exists("{self._name}_analysis/" + str(i)):
+                    os.mkdir(f"{self._name}_analysis/" + str(i))
                 os.system("{0._gromacs} trjconv -f {0._name}.{1} -o {0._name}_analysis/{2}/{0._name}.xtc -b {3} -e {4} "
                           "-s ../{0._name}.tpr <<< 0 &> /dev/null"
                           "".format(self, file_ext, str(i), times[i][0], times[i][1]))
@@ -3250,9 +3255,11 @@ COMMITTOR ...
 
         file_script.write('"\n\nfor crystal in $crystal_paths ; do\ncd "$crystal" || exit\n')
         for cv in clustering_method._cvp:
+            if issubclass(type(cv), _OwnDistributions) or issubclass(type(cv), _GG):
+                continue
             file_script.write('{0} driver --mf_xtc {1}.xtc --plumed plumed_{2}.dat  --mc mc.dat\n'
-                              'done\n'
                               ''.format(cv._plumed, self._name, cv._name))
+        file_script.write("done\n")
         file_script.close()
 
     def get_analysis_results(self, plot_tree=True):
