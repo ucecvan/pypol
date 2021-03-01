@@ -645,6 +645,7 @@ project.save()
             file_format = os.path.splitext(path_crd)[-1]
             if file_format.startswith("."):
                 file_format = file_format[1:]
+
             from openbabel import openbabel
             ob_conversion = openbabel.OBConversion()
             ob_conversion.SetInAndOutFormats(file_format, "mol2")
@@ -1301,54 +1302,86 @@ Simulation Type '{}' not recognized. Choose between:
         :param cv_type: Specify which CV object to use
         :return:
         """
-        import PyPol.analysis as als
 
         for cv in self._cvp:
             if cv._name == name:
                 print("Error: CV with label {} already present in this method. Remove it or change CV label"
                       "".format(name))
                 exit()
+        from inspect import getmembers, isclass
+        cv_type = cv_type.lower()
 
-        if cv_type.lower() in ("torsions", "tor"):
-            cv = als.Torsions(name, self._htt_plumed)
-            self._cvp.append(cv)
-            return cv
-        elif cv_type.lower() in ("molecularorientation", "mo"):
-            cv = als.MolecularOrientation(name, self._htt_plumed)
-            self._cvp.append(cv)
-            return cv
-        elif cv_type.lower() == "planes":
-            cv = als.Planes(name, self._plumed)
-            self._cvp.append(cv)
-            return cv
-        elif cv_type.lower() == "rdf":
-            cv = als.RDF(name, self._plumed, "com")
-            self._cvp.append(cv)
-            return cv
-        elif cv_type.lower() == "rdf-planes":
-            cv = als.RDFPlanes(name)
-            self._cvp.append(cv)
-            return cv
-        # TODO rdf-mo
-        # elif cv_type.lower() == "rdf-mo":
-        #     cv = als.RDFMO(name)
+        # Import distributions
+        import fingerprints
+        for _, fingerprint in getmembers(fingerprints, isclass):
+            if hasattr(fingerprint, "_short_type") and fingerprint._short_type == cv_type:
+                if fingerprint._plumed_version == "hack-the-tree":
+                    cv = fingerprint(name, self._htt_plumed)
+                elif fingerprint._plumed_version == "master":
+                    cv = fingerprint(name, self._plumed)
+                else:
+                    cv = fingerprint(name)
+                self._cvp.append(cv)
+                return cv
+
+        import metad
+        for _, colvar in getmembers(metad, isclass):
+            if hasattr(colvar, "_short_type") and colvar._short_type == cv_type:
+                cv = colvar(name)
+                self._cvp.append(cv)
+                return cv
+
+        import walls
+        for _, wall in getmembers(walls, isclass):
+            if hasattr(wall, "_short_type") and wall._short_type == cv_type:
+                cv = wall(name)
+                self._cvp.append(cv)
+                return cv
+
+        print("Collective Variable Type '{}' not available.".format(cv_type))
+        exit()
+        # TODO REMOVE
+        # import PyPol.analysis as als
+        # if cv_type.lower() in ("torsions", "tor"):
+        #     cv = als.Torsions(name, self._htt_plumed)
         #     self._cvp.append(cv)
         #     return cv
-        elif cv_type.lower() == "density":
-            cv = als.Density(name)
-            self._cvp.append(cv)
-            return cv
-        elif cv_type.lower() == "energy":
-            cv = als.PotentialEnergy(name)
-            self._cvp.append(cv)
-            return cv
-        elif cv_type.lower() in ("asb", "avoidscrewedbox"):
-            cv = als.AvoidScrewedBox(name)
-            self._cvp.append(cv)
-            return cv
-        else:
-            print("Collective Variable Type '{}' not available.".format(cv_type))
-            exit()
+        # elif cv_type.lower() in ("molecularorientation", "mo"):
+        #     cv = als.MolecularOrientation(name, self._htt_plumed)
+        #     self._cvp.append(cv)
+        #     return cv
+        # elif cv_type.lower() == "planes":
+        #     cv = als.Planes(name, self._plumed)
+        #     self._cvp.append(cv)
+        #     return cv
+        # elif cv_type.lower() == "rdf":
+        #     cv = als.RDF(name, self._plumed, "com")
+        #     self._cvp.append(cv)
+        #     return cv
+        # elif cv_type.lower() == "rdf-planes":
+        #     cv = als.RDFPlanes(name)
+        #     self._cvp.append(cv)
+        #     return cv
+        # # TODO rdf-mo
+        # # elif cv_type.lower() == "rdf-mo":
+        # #     cv = als.RDFMO(name)
+        # #     self._cvp.append(cv)
+        # #     return cv
+        # elif cv_type.lower() == "density":
+        #     cv = als.Density(name)
+        #     self._cvp.append(cv)
+        #     return cv
+        # elif cv_type.lower() == "energy":
+        #     cv = als.PotentialEnergy(name)
+        #     self._cvp.append(cv)
+        #     return cv
+        # elif cv_type.lower() in ("asb", "avoidscrewedbox"):
+        #     cv = als.AvoidScrewedBox(name)
+        #     self._cvp.append(cv)
+        #     return cv
+        # else:
+        #     print("Collective Variable Type '{}' not available.".format(cv_type))
+        #     exit()
 
     def combine_cvs(self, name, cvs: Union[tuple, list]):
         """
@@ -1357,12 +1390,12 @@ Simulation Type '{}' not recognized. Choose between:
         :param cvs: Tuple or list of 1-D Distributions (all from the same class) to combine in ND distribution.
         :return: Combine object
         """
-        from PyPol.analysis import Combine
         for cv in self._cvp:
             if cv._name == name:
                 print("Error: CV with label {} already present in this method. Remove it or change CV label"
                       "".format(name))
                 exit()
+        from fingerprints import Combine
         if all(cv.type == cvs[0].type for cv in cvs) and cvs[0].type in ("Torsional Angle", "Molecular Orientation"):
             cv = Combine(name, cvs=cvs)
             self._cvp.append(cv)
@@ -1376,7 +1409,7 @@ Simulation Type '{}' not recognized. Choose between:
         :param cv: Distribution to be used to define the different groups
         :return: GGFD object
         """
-        from PyPol.analysis import GGFD
+        from groups import GGFD
         for existing_cv in self._cvp:
             if existing_cv._name == name:
                 print("Error: CV with label {} already present in this method. Remove it or change CV label"
@@ -1394,7 +1427,7 @@ Simulation Type '{}' not recognized. Choose between:
         :param attribute: dict with the attribute to use for classification
         :return: GGFA object
         """
-        from PyPol.analysis import GGFA
+        from groups import GGFA
         for existing_cv in self._cvp:
             if existing_cv._name == name:
                 print("Error: CV with label {} already present in this method. Remove it or change CV label"
@@ -3113,7 +3146,6 @@ COMMITTOR ...
             split_traj(self._name + ".xtc", traj_end)
             split_hills("HILLS", traj_end)
             return True
-
         return False
 
     def get_results(self, crystals="all", timeinterval=50):
@@ -3150,3 +3182,75 @@ COMMITTOR ...
         for crystal in self.crystals:
             if not crystal._state == "complete":
                 self._completed = False
+
+    @staticmethod
+    def _intervals(start, end, every):
+        intervals = []
+        while start <= end:
+            intervals.append(start)
+            start += every
+        if end % every != 0:
+            intervals.append(end)
+
+        return intervals
+
+    def generate_analysis_input(self, clustering_method, crystals="all", catt=None, matt=None,
+                                start=0.5, end=None, interval=0.5, timeinterval=50):
+        if end is None:
+            end = self._energy_cutoff
+
+        if "nstxout-compressed" in self._mdp:
+            file_ext = "xtc"
+        else:
+            file_ext = "trr"
+
+        from PyPol.fingerprints import _OwnDistributions
+
+        intervals = self._intervals(start, end, interval)
+
+        list_crystals = get_list_crystals(self._crystals, crystals, catt, _include_melted=True)
+        for crystal in list_crystals:
+            os.chdir(crystal._path)
+            times = {k: [] for k in intervals}
+            j = 0
+            # noinspection PyTypeChecker
+            file_plumed = np.genfromtxt(crystal._path + f"plumed_{self._name}_COLVAR", names=True,
+                                        comments="#! FIELDS ")
+            for i in range(file_plumed.shape[0]):
+                if file_plumed["rct_mol"][i] > intervals[j]:
+                    times[intervals[j]] = (file_plumed["time"][i] - timeinterval, file_plumed["time"][i])
+                    j += 1
+            if not os.path.exists(f"{self._name}_analysis"):
+                os.mkdir(f"{self._name}_analysis")
+            for i in intervals:
+                if not os.path.exists(str(i)):
+                    os.mkdir(str(i))
+                os.system("{0._gromacs} trjconv -f {0._name}.{1} -o {0._name}_analysis/{2}/{0._name}.xtc -b {3} -e {4} "
+                          "-s ../{0._name}.tpr <<< 0 &> /dev/null"
+                          "".format(self, file_ext, str(i), times[i][0], times[i][1]))
+                for cv in clustering_method._cvs:
+                    # TODO matt can be different from cv to cv ---> putt matt as cv attribute?
+                    if issubclass(cv, _OwnDistributions):
+                        continue
+                    cv.check_attributes()
+                    cv.generate_input(crystal, matt=matt,
+                                      output=f"{self._name}_analysis/{str(i)}/plumed_{cv._name}.dat", name=self._name)
+
+        file_script = open(self._path_data + "/run_plumed_analysis_" + self._name + ".sh", "w")
+        file_script.write('#!/bin/bash\n\n'
+                          'crystal_paths="\n')
+        for crystal in list_crystals:
+            for i in intervals:
+                path_sim = crystal._path + f"/{self._name}_analysis/{str(i)}/"
+                if os.path.exists(path_sim):
+                    file_script.write(path_sim + "\n")
+
+        file_script.write('"\n\nfor crystal in $crystal_paths ; do\ncd "$crystal" || exit\n')
+        for cv in clustering_method._cvs:
+            file_script.write('{0} driver --mf_xtc {1}.xtc --plumed plumed_{2}.dat  --mc mc.dat\n'
+                              'done\n'
+                              ''.format(cv._plumed, self._name, cv._name))
+        file_script.close()
+
+    def get_analysis_results(self, plot_tree=True):
+        pass

@@ -1,3 +1,8 @@
+from typing import Union
+import numpy as np
+import copy
+
+
 # General
 def create(path, arg_type, backup=True):
     """
@@ -155,7 +160,6 @@ def cell2box(cell):
     :param cell: Iterable obj with 6 cell parameters, [a, b, c, alpha, beta, gamma]
     :return: box matrix
     """
-    import numpy as np
     box = np.full((3, 3), 0.)
     box[0, 0] = cell[0]
     box[0, 1] = cell[1] * np.cos(np.radians(cell[5]))
@@ -172,7 +176,6 @@ def box2cell(box):
     :param box: 3x3 box matrix
     :return: list with the 6 cell parameters [a, b, c, alpha, beta, gamma]
     """
-    import numpy as np
     cell = [None, None, None, None, None, None]
     cell[0] = box[0, 0]
     cell[1] = np.sqrt(box[1, 1] ** 2 + box[0, 1] ** 2)
@@ -185,7 +188,7 @@ def box2cell(box):
 
 # Simulation box variations
 # best_b and best_c select the non-primitive cell that minimize off-diagonal elements of the box matrix.
-def best_c(box, max_replica, toll=0.08):
+def best_c(box, max_replica: int, toll=0.08):
     """
     Return c vector of a non-primitive cell with minimum angle with respect to z axis.
     :param box:
@@ -193,12 +196,11 @@ def best_c(box, max_replica, toll=0.08):
     :param toll:
     :return:
     """
-    import numpy as np
     new_c = box[:, 2]
     distance_min = np.linalg.norm(new_c[:2])
     replica_c = 1
-    for i in sorted([i for i in range(-max_replica, max_replica+1) if i != 0], key=abs):
-        for j in sorted([j for j in range(-max_replica, max_replica+1) if i != 0], key=abs):
+    for i in sorted([i for i in range(-max_replica, max_replica + 1) if i != 0], key=abs):
+        for j in sorted([j for j in range(-max_replica, max_replica + 1) if i != 0], key=abs):
             for k in range(1, max_replica):
                 vz = i * box[:, 0] + j * box[:, 1] + k * box[:, 2]
                 if np.linalg.norm(vz[:2]) < distance_min:
@@ -210,7 +212,7 @@ def best_c(box, max_replica, toll=0.08):
     return new_c, replica_c
 
 
-def best_b(box, max_replica, toll=0.08):
+def best_b(box, max_replica: int, toll=0.08):
     """
     Return b vector of a non-primitive cell with minimum angle with respect to y axis.
     :param box:
@@ -218,7 +220,6 @@ def best_b(box, max_replica, toll=0.08):
     :param toll:
     :return:
     """
-    import numpy as np
     new_b = box[:, 1]
     distance_min = np.absolute(new_b[0])
     replica_b = 1
@@ -241,17 +242,17 @@ def translate_molecule(molecule, box):
     :param box: box matrix
     :return: Molecule object
     """
-    import numpy as np
 
     def translate_atoms(target, vector):
         for atom in target._atoms:
             atom._coordinates += vector
         target._calculate_centroid()
         return target
+
     a = np.round(np.dot(molecule.centroid, np.linalg.inv(box.T)), 3)
     for i in range(3):
         if a[i] < 0.0:
-            molecule = translate_atoms(molecule, (int(a[i])-1) * -box[:, i])
+            molecule = translate_atoms(molecule, (int(a[i]) - 1) * -box[:, i])
         if a[i] == 0.0:
             molecule = translate_atoms(molecule, box[:, i])
         elif a[i] > 1.0:
@@ -266,9 +267,110 @@ def point_in_box(point, box):
     :param box: 3x3 Matrix
     :return: bool
     """
-    import numpy as np
     a = np.dot(point, np.linalg.inv(box.T))
     if (a >= 0.).all() and (a <= 1.).all():
         return True
     else:
         return False
+
+
+def generate_atom_list(atoms, molecule, crystal, keyword="ATOMS", lines=None, index_lines=True, attributes=None):
+    """
+    Generates the atom list used in the plumed input.
+
+    :param atoms: Atoms used by the CV
+    :param molecule: Molecule from which the atoms' index are taken
+    :param crystal: Crystal object from which the molecules are taken
+    :param keyword: String put before the atoms' index
+    :param lines: string to which new lines are appended
+    :param index_lines: starting index for the variable "keyword"
+    :param attributes: Molecular attributes used to select the molecules
+    :return:
+    """
+    if attributes is None:
+        attributes = {}
+    if lines is None:
+        lines = []
+
+    idx_mol = len(lines) + 1
+
+    if attributes:
+        mols = []
+        for mol in crystal._load_coordinates():
+            if attributes.items() <= mol._attributes.items():
+                mols.append(mol)
+    else:
+        mols = crystal._load_coordinates()
+
+    for mol in mols:
+        if molecule._residue == mol._residue:
+            if index_lines:
+                line = "{}{}=".format(keyword, idx_mol)
+            else:
+                line = "{}=".format(keyword)
+            for atom in atoms:
+                atom_idx = atom + mol._index * mol._natoms + 1
+                line += str(atom_idx) + ","
+            line = line[:-1] + "\n"
+            lines.append(line)
+            idx_mol += 1
+    crystal._molecules = list()
+    return lines
+
+
+def hellinger(y1: Union[np.array, list],
+              y2: Union[np.array, list],
+              int_type: str = "discrete"):
+    """
+
+    :param y1:
+    :param y2:
+    :param int_type:
+    :return:
+    """
+    y1 = copy.deepcopy(y1)
+    y2 = copy.deepcopy(y2)
+    if int_type == "discrete":
+        # Normalise Distributions
+        y1 /= np.sum(y1)
+        y2 /= np.sum(y2)
+
+        BC = np.sum(np.sqrt(np.multiply(y1, y2)))
+        HD = round(np.sqrt(1 - BC), 5)
+        return HD
+
+    elif int_type == "simps":
+        from scipy.integrate import simps
+        # Normalise Distributions
+        N1, N2 = (y1, y2)
+        for x in y1.shape:
+            N1 = simps(N1, np.linspace(0, x - 1, x))
+            N2 = simps(N2, np.linspace(0, x - 1, x))
+        y1 /= N1
+        y2 /= N2
+
+        BC = np.sqrt(np.multiply(y1, y2))
+        for x in y1.shape:
+            BC = simps(BC, np.linspace(0, x - 1, x))
+        HD = round(np.sqrt(1 - BC), 5)
+        return HD
+
+    elif int_type == "trapz":
+        from scipy.integrate import trapz
+        # Normalise Distributions
+        N1, N2 = (y1, y2)
+        for x in y1.shape:
+            N1 = trapz(N1, np.linspace(0, x - 1, x))
+            N2 = trapz(N2, np.linspace(0, x - 1, x))
+        y1 /= N1
+        y2 /= N2
+
+        BC = np.sqrt(np.multiply(y1, y2))
+        for x in y1.shape:
+            BC = trapz(BC, np.linspace(0, x - 1, x))
+        HD = round(np.sqrt(1 - BC), 5)
+        return HD
+
+    else:
+        print("Error: choose integration type among 'simps', 'trapz' or 'discrete'.")
+        exit()
