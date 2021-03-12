@@ -173,7 +173,6 @@ class Clustering(object):
         if not path_output:
             path_output = simulation._path_output
             path_output_data = simulation._path_output + str(self._name) + f"{suffix}_data/"
-
         else:
             path_output_data = path_output + str(self._name) + f"{suffix}_data/"
 
@@ -182,7 +181,7 @@ class Clustering(object):
         if not os.path.exists(path_output):
             os.mkdir(path_output)
 
-        d_c = []
+        d_c = np.array([])
 
         # Sort crystals into groups
         group_options = []
@@ -275,9 +274,18 @@ class Clustering(object):
         normalization = np.linalg.norm(np.array(normalization))
         for index in combinations.index:
             if combinations.at[index, "Number of structures"] > 1:
-                combinations.at[index, "Distance Matrix"][:, :] = np.linalg.norm(
-                    np.dstack(set([k for k in combinations.loc[index, [cv._name for cv in distributions]]])),
-                    axis=2) / normalization
+                if len(distributions) > 1:
+                    combinations.at[index, "Distance Matrix"][:, :] = np.linalg.norm(
+                        np.dstack(set([k for k in combinations.loc[index, [cv._name for cv in distributions]]])),
+                        axis=2) / normalization
+                else:
+                    combinations.at[index, "Distance Matrix"][:, :] = combinations.loc[
+                                                                          index, distributions[0]._name] / normalization
+                np.append(d_c, combinations.at[index, "Distance Matrix"])
+
+        # combinations.at[index, "Distance Matrix"][:, :] = np.linalg.norm(
+        #             np.dstack(set([k for k in combinations.loc[index, [cv._name for cv in distributions]]])),
+        #             axis=2) / normalization
             #     for i in range(combinations.at[index, "Number of structures"] - 1):
             #         for j in range(i + 1, combinations.at[index, "Number of structures"]):
             #             dist_ij = np.linalg.norm([k[i, j] for k in

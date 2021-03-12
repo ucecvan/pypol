@@ -1474,6 +1474,10 @@ Simulation Type '{}' not recognized. Choose between:
         """
         from PyPol.cluster import Clustering
         cvp = list()
+
+        if type(cvs) not in [list, tuple]:
+            cvs = [cvs]
+
         if isinstance(cvs[0], str):
             for cv in self._cvp:
                 if cv._name in cvs:
