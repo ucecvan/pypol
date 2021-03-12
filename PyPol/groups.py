@@ -44,7 +44,7 @@ class _GG(object):
     def clustering_type(self):
         return self._clustering_type
 
-    def _run(self, simulation, groups, crystals="all", catt=None):
+    def _run(self, simulation, groups, crystals="all", catt=None, suffix=""):
 
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_rows', None)
@@ -59,10 +59,10 @@ class _GG(object):
             cvg[i] = 0
 
         for crystal in list_crystals:
-            crystal._cvs[self._name] = copy.deepcopy(cvg)
+            crystal._cvs[self._name + suffix] = copy.deepcopy(cvg)
             for group in groups.keys():
                 if crystal._name in groups[group]:
-                    crystal._cvs[self._name][group] += 1
+                    crystal._cvs[self._name + suffix][group] += 1
                     break
 
         file_hd = open("{}/Groups_{}_{}.dat".format(simulation._path_output, self._name, simulation._name), "w")
@@ -329,7 +329,9 @@ project.save()
 
     def run(self,
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
-            crystals="all", catt=None):
+            crystals="all",
+            catt=None,
+            suffix=""):
         """
         Creates groups from the crystal distributions in the simulation object.
         :param simulation: Simulation Object (EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics)
@@ -337,6 +339,7 @@ project.save()
                "centers", use only cluster centers from the previous simulation. Alternatively, you can select
                a specific subset of crystals by listing crystal names.
         :param catt: Use crystal attributes to select the crystal list
+        :param suffix: TODO
         :return:
         """
 
@@ -361,7 +364,7 @@ project.save()
                 crystal = list_crystals[cidx]
 
                 index.append(crystal._name)
-                dist = crystal._cvs[self._dist_cv._name] / np.sum(crystal._cvs[self._dist_cv._name])
+                dist = crystal._cvs[self._dist_cv._name + suffix] / np.sum(crystal._cvs[self._dist_cv._name + suffix])
                 c = 0
                 for i in its.product(*combinations):
                     dataset[cidx, c] = np.sum(dist[np.ix_(self._group_bins[i[0]], self._group_bins[i[1]])])
@@ -388,10 +391,10 @@ project.save()
 
             for i in range(len(list_crystals) - 1):
                 from copy import deepcopy
-                di = deepcopy(list_crystals[i]._cvs[self._dist_cv._name])
+                di = deepcopy(list_crystals[i]._cvs[self._dist_cv._name + suffix])
                 ci = list_crystals[i]._name
                 for j in range(i + 1, len(crystals)):
-                    dj = deepcopy(list_crystals[j]._cvs[self._dist_cv._name])
+                    dj = deepcopy(list_crystals[j]._cvs[self._dist_cv._name + suffix])
                     cj = list_crystals[j]._name
                     bar.update(nbar)
                     nbar += 1
@@ -417,7 +420,7 @@ project.save()
                 removed = removed + group_index
                 groups[group_index[0]] = group_index
 
-        self._run(simulation, groups, crystals)
+        self._run(simulation, groups, crystals, suffix)
 
 
 class GGFA(_GG):
@@ -452,7 +455,9 @@ class GGFA(_GG):
 
     def run(self,
             simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
-            crystals="all", catt=None):
+            crystals="all",
+            catt=None,
+            suffix=""):
         """
         Creates groups from the crystal attributes in the simulation object.
         :param simulation: Simulation Object (EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics)
@@ -460,6 +465,7 @@ class GGFA(_GG):
                "centers", use only cluster centers from the previous simulation. Alternatively, you can select
                a specific subset of crystals by listing crystal names.
         :param catt: Use crystal attributes to select the crystal list
+        :param suffix: TODO
         :return:
         """
 
@@ -483,7 +489,7 @@ class GGFA(_GG):
             else:
                 groups[gatt] = [crystal._name]
 
-        self._run(simulation, groups, crystals)
+        self._run(simulation, groups, crystals, suffix)
 
     def __str__(self):
         return """

@@ -10,6 +10,7 @@ import networkx as nx
 
 from PyPol.crystals import Crystal, Molecule, Atom
 from PyPol.utilities import create, box2cell, cell2box, get_list_crystals
+from PyPol.cluster import Clustering
 
 
 class _GroDef(object):
@@ -916,7 +917,7 @@ project.save()
                                                 atomtype=self._atomtype,
                                                 pypol_directory=self._pypol_directory,
                                                 path_data=self._path_data,
-                                                path_output=self._path_output,
+                                                path_output=self._path_output + name + "/",
                                                 path_input=self._path_input,
                                                 intermol=self._intermol,
                                                 lammps=self._lammps,
@@ -936,7 +937,7 @@ project.save()
                                             atomtype=self._atomtype,
                                             pypol_directory=self._pypol_directory,
                                             path_data=self._path_data,
-                                            path_output=self._path_output,
+                                            path_output=self._path_output + name + "/",
                                             path_input=self._path_input,
                                             intermol=self._intermol,
                                             lammps=self._lammps,
@@ -1037,7 +1038,7 @@ project.save()
                                            atomtype=self._atomtype,
                                            pypol_directory=self._pypol_directory,
                                            path_data=self._path_data,
-                                           path_output=self._path_output,
+                                           path_output=self._path_output + name + "/",
                                            path_input=self._path_input,
                                            intermol=self._intermol,
                                            lammps=self._lammps,
@@ -1070,7 +1071,7 @@ project.save()
             simulation._gromacs = self._gromacs
             simulation._mdrun_options = self._mdrun_options
             simulation._path_data = self._path_data
-            simulation._path_output = self._path_output
+            simulation._path_output = self._path_output + name + "/"
             simulation._path_input = self._path_input
 
             self._simulations.append(simulation)
@@ -1099,7 +1100,7 @@ project.save()
                                       atomtype=self._atomtype,
                                       pypol_directory=self._pypol_directory,
                                       path_data=self._path_data,
-                                      path_output=self._path_output,
+                                      path_output=self._path_output + name + "/",
                                       path_input=self._path_input,
                                       intermol=self._intermol,
                                       lammps=self._lammps,
@@ -1212,7 +1213,7 @@ project.save()
             simulation._gromacs = self._gromacs
             simulation._mdrun_options = self._mdrun_options
             simulation._path_data = self._path_data
-            simulation._path_output = self._path_output
+            simulation._path_output = self._path_output + name + "/"
             simulation._path_input = self._path_input
 
             self._simulations.append(simulation)
@@ -1472,7 +1473,7 @@ Simulation Type '{}' not recognized. Choose between:
         :param cvs: list or tuple of Distribution/Group object to be used for the clustering
         :return:
         """
-        from PyPol.analysis import Clustering
+        from PyPol.cluster import Clustering
         cvp = list()
         if isinstance(cvs[0], str):
             for cv in self._cvp:
@@ -1569,6 +1570,10 @@ class _GroSim(_GroDef):
         self._completed = False
         self._global_minima = None
         self._hide = hide
+
+        # Clustering Parameters
+        self._clusters = {}
+        self._cluster_data = {}
 
     @property
     def molecules(self):
@@ -2814,6 +2819,7 @@ project.save()                                                # Save project to 
 
 
 class Metadynamics(MolecularDynamics):
+    _type = "WTMD"
 
     def __init__(self, name, gromacs, mdrun_options, atomtype, pypol_directory, path_data, path_output,
                  path_input, intermol, lammps, crystals, path_mdp, molecules, index, previous_sim, hide=True,
@@ -2839,7 +2845,6 @@ class Metadynamics(MolecularDynamics):
                          previous_sim, hide)
 
         # MetaD Parameters
-        self._type = "WTMD"
         self._replicas = replicas
         self._biasfactor = biasfactor
         self._pace = pace
@@ -2848,7 +2853,7 @@ class Metadynamics(MolecularDynamics):
         self._stride = stride
 
         # Committor: EnergyCutOff
-        self._energy_cutoff = None
+        self._energy_cutoff = 2.5
         self._energy_cutoff_stride = 100000
 
         # Committor: DRMSD
@@ -2861,6 +2866,28 @@ class Metadynamics(MolecularDynamics):
         # CVS
         self._cvp = list()
         self.restart = True
+
+        # Analysis
+        self._clustering_method = None
+        self._intervals = None
+        self._analysis_clusters = {}
+        self._analysis_clusters_data = {}
+        self._analysis_tree = {}
+
+    @property
+    def analysis_intervals(self):
+        if self._intervals:
+            return self._intervals
+        else:
+            print("Error: Energy steps are generated at when using the module 'generate_analysis_inputs'")
+
+    @property
+    def clustering_method(self):
+        return self._clustering_method
+
+    @clustering_method.setter
+    def clustering_method(self, cm: Clustering):
+        self._clustering_method = cm
 
     @property
     def type(self):
@@ -2965,7 +2992,8 @@ class Metadynamics(MolecularDynamics):
                          - "incomplete": Select crystals whose simulation normal ending has not been detected before.
         """
         # TODO Only 1 replica available ==> no statistical analysis
-        from PyPol.analysis import AvoidScrewedBox, Density, PotentialEnergy, _MetaCV
+        from PyPol.walls import AvoidScrewedBox
+        from PyPol.metad import _MetaCV, Density, PotentialEnergy
         list_crystals = get_list_crystals(self._crystals, crystals, catt)
         imp = self._molecules[0]._potential_energy
         mw = 0
@@ -3184,7 +3212,7 @@ COMMITTOR ...
                 self._completed = False
 
     @staticmethod
-    def _intervals(start, end, every):
+    def _set_intervals(start, end, every):
         intervals = []
         while start <= end:
             intervals.append(start)
@@ -3194,48 +3222,55 @@ COMMITTOR ...
 
         return intervals
 
-    def generate_analysis_input(self, clustering_method, crystals="all", catt=None,
+    def generate_analysis_input(self, clustering_method=None, crystals="all", catt=None,
                                 start=0.5, end=None, interval=0.5, timeinterval=50):
-        if end is None:
-            end = self._energy_cutoff
-
-        if "nstxout-compressed" in self._mdp:
-            file_ext = "xtc"
-        else:
-            file_ext = "trr"
-
         from PyPol.fingerprints import _OwnDistributions
         from PyPol.groups import _GG
 
-        intervals = self._intervals(start, end, interval)
+        if end is None:
+            end = self._energy_cutoff
 
-        list_crystals = get_list_crystals(self._crystals, crystals, catt, _include_melted=True)
+        if clustering_method is None:
+            clustering_method = self._clustering_method
+
+        # TODO check self._mdp for metadynamics
+        # if "nstxout-compressed" in self._mdp:
+        #     file_ext = "xtc"
+        # else:
+        #     file_ext = "trr"
+        file_ext = "xtc"
+
+        self._intervals = self._set_intervals(start, end, interval)
+
+        list_crystals = get_list_crystals(self._crystals, crystals, catt, _include_melted=False)
         for crystal in list_crystals:
+            print(crystal._name)
             os.chdir(crystal._path)
-            times = {k: [] for k in intervals}
+            times = {k: [] for k in self._intervals}
             j = 0
             # noinspection PyTypeChecker
             file_plumed = np.genfromtxt(crystal._path + f"plumed_{self._name}_COLVAR", names=True,
                                         comments="#! FIELDS ")
             for i in range(file_plumed.shape[0]):
-                if file_plumed["rct_mol"][i] > intervals[j]:
-                    times[intervals[j]] = (file_plumed["time"][i] - timeinterval, file_plumed["time"][i])
+                if file_plumed["rct_mol"][i] > self._intervals[j]:
+                    times[self._intervals[j]] = (file_plumed["time"][i] - timeinterval, file_plumed["time"][i])
                     j += 1
-                    if j == len(intervals):
+                    if j == len(self._intervals):
                         break
 
             if not os.path.exists(f"{self._name}_analysis"):
                 os.mkdir(f"{self._name}_analysis")
-            for i in intervals:
+            for i in self._intervals:
                 if not times[i]:
                     break
-                if not os.path.exists("{self._name}_analysis/" + str(i)):
+                if not os.path.exists(f"{self._name}_analysis/" + str(i)):
                     os.mkdir(f"{self._name}_analysis/" + str(i))
+                from shutil import copyfile
+                copyfile(crystal._path + "mc.dat", crystal._path + f"{self._name}_analysis/" + str(i) + "/mc.dat")
                 os.system("{0._gromacs} trjconv -f {0._name}.{1} -o {0._name}_analysis/{2}/{0._name}.xtc -b {3} -e {4} "
-                          "-s ../{0._name}.tpr <<< 0 &> /dev/null"
+                          "-s {0._name}.tpr <<< 0 &> /dev/null"
                           "".format(self, file_ext, str(i), times[i][0], times[i][1]))
                 for cv in clustering_method._cvp:
-                    # TODO matt can be different from cv to cv ---> putt matt as cv attribute?
                     if issubclass(type(cv), _OwnDistributions) or issubclass(type(cv), _GG):
                         continue
                     cv.check_attributes()
@@ -3248,7 +3283,7 @@ COMMITTOR ...
         file_script.write('#!/bin/bash\n\n'
                           'crystal_paths="\n')
         for crystal in list_crystals:
-            for i in intervals:
+            for i in self._intervals:
                 path_sim = crystal._path + f"/{self._name}_analysis/{str(i)}/"
                 if os.path.exists(path_sim):
                     file_script.write(path_sim + "\n")
@@ -3262,5 +3297,116 @@ COMMITTOR ...
         file_script.write("done\n")
         file_script.close()
 
-    def get_analysis_results(self, plot_tree=True):
-        pass
+    def get_analysis_results(self, clustering_method=None, crystals="all", catt=None, plot_tree=True):
+        # TODO change tree data from simple state of the crystal to list [state, work] in order to correcly
+        #      plot the tree ---> identify transition through DRMSD?
+        from PyPol.fingerprints import _OwnDistributions
+        from PyPol.groups import _GG
+
+        if not os.path.exists(self._path_output + "/analysis"):
+            os.mkdir(self._path_output + "/analysis")
+
+        if not self._intervals:
+            print("Error: Run 'generate_analysis_inputs' before this module.")
+
+        if clustering_method is None:
+            clustering_method = self._clustering_method
+
+        list_crystals = get_list_crystals(self._crystals, crystals, catt, _include_melted=False)
+
+        for crystal in list_crystals:
+            self._analysis_tree[crystal._name] = {}
+            for interval in self._intervals:
+                self._analysis_tree[crystal._name][interval] = None
+
+        for i in self._intervals:
+            suffix = "_" + self._name + "_" + str(i)
+
+            # Import and generate Fingerprints
+            for crystal in list_crystals:
+                if not os.path.exists(f"{crystal._path}{self._name}_analysis/{i}"):
+                    self._analysis_tree[crystal._name][i] = "unstable"
+                    list_crystals.remove(crystal)
+                os.chdir(crystal._path)
+                for cv in clustering_method._cvp:
+                    if issubclass(type(cv), _GG):
+                        continue
+                    elif issubclass(type(cv), _OwnDistributions):
+                        crystal._cvs[cv._name + suffix] = cv.gen_from_traj(
+                            crystal=crystal,
+                            simulation=self,
+                            input_traj=f"{crystal._path}{self._name}_analysis/{i}/{self._name}.xtc",
+                            output_label=self._name,
+                            plot=True)
+                    else:
+                        crystal._cvs[cv._name + suffix] = cv.get_from_file(
+                            crystal=crystal,
+                            input_file=f"{crystal._path}{self._name}_analysis/{i}/plumed_{self._name}_{cv._name}.dat",
+                            output_label=self._name,
+                            plot=True)
+
+            # Generate groups
+            for cv in clustering_method._cvp:
+                if not issubclass(type(cv), _GG):
+                    continue
+                cv.run(simulation=self, crystals=list_crystals, catt=catt, suffix=suffix)
+
+            # Cluster
+            clustering_method.run(simulation=self,
+                                  crystals=list_crystals,
+                                  catt=catt,
+                                  suffix=suffix,
+                                  path_output=self._path_output + "/analysis/" + str(i),
+                                  _check=True)  # TODO change to False after test---> simulation must be completed
+
+            # Update list crystals
+            for crystal in list_crystals:
+                self._analysis_tree[crystal._name][i] = crystal._state
+                if crystal._state != crystal._name:
+                    list_crystals.remove(crystal)
+
+        if plot_tree:
+            self._plot_tree(crystals, catt)
+
+    def _plot_tree(self, crystals="all", catt=None, tree=None, output_file=None):
+        if tree is None:
+            tree = self._analysis_tree
+        if output_file is None:
+            output_file = self._path_output + "/analysis/"
+
+        # Initialize figure
+        # fig, ax = plt.figure()
+
+        centers = {}
+        for interval in self._intervals:
+            centers[interval] = {}
+        list_crystals = get_list_crystals(self._crystals, crystals, catt, _include_melted=False)
+        for interval in reversed(range(len(self._intervals))):
+            i = self._intervals[interval]
+            if i != self._intervals[-1]:
+                i_prev = self._intervals[interval+1]
+            centers[i]["unstable"] = []
+            centers[i]["mask"] = []
+            for crystal in list_crystals:
+                if tree[crystal._name][i] is None:
+                    centers[i]["mask"].append(crystal)
+                    continue
+                if tree[crystal._name][i] == "unstable":
+                    centers[i]["unstable"].append(crystal)
+                    continue
+
+                if crystal._state not in centers.keys():
+                    centers[i][crystal._state] = [crystal]
+                else:
+                    centers[i][crystal._state].append(crystal)
+
+            list_crystals = []
+            if i == self._intervals[-1]:
+                for a in sorted(centers[i], key=lambda c:len(centers[i][c]), reverse=True):
+                    if a in ["mask", "unstable"]:
+                        continue
+                    for b in centers[i][a]:
+                        list_crystals.append(b)
+            else:
+                pass
+

@@ -1,4 +1,4 @@
-import numpy as np
+# import numpy as np
 # import os
 # import matplotlib.pyplot as plt
 # import progressbar
@@ -11,11 +11,11 @@ import numpy as np
 # from PyPol.utilities import get_list_crystals
 # from PyPol.crystals import Molecule
 # from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation, Metadynamics
-from PyPol.fingerprints import *
-from PyPol.walls import *
-from PyPol.groups import *
-from PyPol.metad import _MetaCV, Density, PotentialEnergy
-from PyPol.cluster import *
+# from PyPol.fingerprints import *
+# from PyPol.walls import *
+# from PyPol.groups import *
+# from PyPol.metad import _MetaCV, Density, PotentialEnergy
+# from PyPol.cluster import *
 # TODO Remove
 
 
