@@ -10,7 +10,6 @@ import networkx as nx
 
 from PyPol.crystals import Crystal, Molecule, Atom
 from PyPol.utilities import create, box2cell, cell2box, get_list_crystals
-from PyPol.cluster import Clustering
 
 
 class _GroDef(object):
@@ -2886,8 +2885,10 @@ class Metadynamics(MolecularDynamics):
         return self._clustering_method
 
     @clustering_method.setter
-    def clustering_method(self, cm: Clustering):
-        self._clustering_method = cm
+    def clustering_method(self, cm):
+        from PyPol.cluster import Clustering
+        if type(cm) is Clustering:
+            self._clustering_method = cm
 
     @property
     def type(self):
@@ -3226,12 +3227,16 @@ COMMITTOR ...
                                 start=0.5, end=None, interval=0.5, timeinterval=50):
         from PyPol.fingerprints import _OwnDistributions
         from PyPol.groups import _GG
+        from PyPol.cluster import Clustering
 
         if end is None:
             end = self._energy_cutoff
 
         if clustering_method is None:
             clustering_method = self._clustering_method
+
+        if type(clustering_method) is not Clustering:
+            print("Error: no suitable clustering method used")
 
         # TODO check self._mdp for metadynamics
         # if "nstxout-compressed" in self._mdp:
@@ -3402,11 +3407,10 @@ COMMITTOR ...
 
             list_crystals = []
             if i == self._intervals[-1]:
-                for a in sorted(centers[i], key=lambda c:len(centers[i][c]), reverse=True):
+                for a in sorted(centers[i], key=lambda c: len(centers[i][c]), reverse=True):
                     if a in ["mask", "unstable"]:
                         continue
                     for b in centers[i][a]:
                         list_crystals.append(b)
             else:
                 pass
-
