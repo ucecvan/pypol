@@ -1893,9 +1893,14 @@ project.save()                                                # Save project"""
 
         file_ndx = open(os.path.dirname(input_traj) + f"/PYPOL_TMP_{output_label}.ndx", "w")
         file_ndx.write("[ System ] \n")
+        space = 0
         for mol in mols:
             for atom in self._atoms:
                 file_ndx.write("{:5} ".format(atom + mol * self._molecule._natoms + 1))
+                space += 1
+                if space >= 20:
+                    file_ndx.write("\n")
+                    space = 0
         file_ndx.close()
 
         os.system('{0} trjconv -f {1} -o PYPOL_TMP_{2}.gro -n PYPOL_TMP_{2}.ndx -s {3}.tpr <<< 0  &> /dev/null'
@@ -1936,9 +1941,7 @@ project.save()                                                # Save project"""
                         angle = np.arccos(
                             (ax * bx + ay * by + az * bz) / np.sqrt(
                                 (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
-                        print(d, np.array([angle, distance]))
                         data[d, :] = np.array([angle, distance])
-
                     d += 1
 
         data = data[~np.isnan(data).any(axis=1)]
