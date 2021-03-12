@@ -1898,8 +1898,8 @@ project.save()                                                # Save project"""
                 file_ndx.write("{:5} ".format(atom + mol * self._molecule._natoms + 1))
         file_ndx.close()
 
-        os.system('{0} trjconv -f {1} -o PYPOL_TMP_{2}.gro -n PYPOL_TMP_{2}.ndx -s {1}.tpr <<< 0  &> /dev/null'
-                  ''.format(simulation._gromacs, input_traj, output_label, os.path.basename(input_traj)))
+        os.system('{0} trjconv -f {1} -o PYPOL_TMP_{2}.gro -n PYPOL_TMP_{2}.ndx -s {3}.tpr <<< 0  &> /dev/null'
+                  ''.format(simulation._gromacs, input_traj, output_label, simulation._name))
 
         planes = {}
         r_plane = {}

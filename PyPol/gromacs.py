@@ -3271,7 +3271,10 @@ COMMITTOR ...
                 if not os.path.exists(f"{self._name}_analysis/" + str(i)):
                     os.mkdir(f"{self._name}_analysis/" + str(i))
                 from shutil import copyfile
-                copyfile(crystal._path + "mc.dat", crystal._path + f"{self._name}_analysis/" + str(i) + "/mc.dat")
+                copyfile(crystal._path + "mc.dat",
+                         crystal._path + f"{self._name}_analysis/" + str(i) + "/mc.dat")
+                copyfile(crystal._path + f"{self._name}.tpr",
+                         crystal._path + f"{self._name}_analysis/" + str(i) + f"/{self._name}.tpr")
                 os.system("{0._gromacs} trjconv -f {0._name}.{1} -o {0._name}_analysis/{2}/{0._name}.xtc -b {3} -e {4} "
                           "-s {0._name}.tpr <<< 0 &> /dev/null"
                           "".format(self, file_ext, str(i), times[i][0], times[i][1]))
