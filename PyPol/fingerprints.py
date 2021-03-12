@@ -1551,23 +1551,23 @@ Clustering Type: {0._clustering_type}""".format(self)
         return txt
 
     @staticmethod
-    def _kde_ovect_rvect(ovect, rvect, r_grid_min=0., r_grid_max=4., r_bw=0.05, r_bins=100j,
+    def _kde_ovect_rvect(data, r_grid_min=0., r_grid_max=4., r_bw=0.05, r_bins=100j,
                          o_grid_min=0., o_grid_max=np.pi, o_bw=0.05, o_bins=100j, mirror=False):
-        data = []
-        for i in range(207):
-            ax, ay, az = ovect[i, :]
-            for j in range(i + 1, 208):
-                distance = np.linalg.norm(rvect[i, :] - rvect[j, :])
-                if distance > r_grid_max:
-                    continue
-                bx, by, bz = ovect[j, :]
-                angle = np.arccos(
-                    (ax * bx + ay * by + az * bz) / np.sqrt(
-                        (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
-
-                data.append(np.array([angle, distance]))
-
-        data = np.array(data)
+        # data = []
+        # for i in range(207):
+        #     ax, ay, az = ovect[i, :]
+        #     for j in range(i + 1, 208):
+        #         distance = np.linalg.norm(rvect[i, :] - rvect[j, :])
+        #         if distance > r_grid_max:
+        #             continue
+        #         bx, by, bz = ovect[j, :]
+        #         angle = np.arccos(
+        #             (ax * bx + ay * by + az * bz) / np.sqrt(
+        #                 (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
+        #
+        #         data.append(np.array([angle, distance]))
+        #
+        # data = np.array(data)
         kde = KDE()
         data_scaled = data / np.array([o_bw, r_bw])
         kde.fit(data_scaled)
@@ -1938,7 +1938,7 @@ project.save()                                                # Save project"""
                                 (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
                         data[d, :] = np.array([angle, distance])
 
-        cv = super()._kde_ovect_rvect(data[:, 0], data[:, 1],
+        cv = super()._kde_ovect_rvect(data,
                                       self._r_grid_min, crystal_grid_max,
                                       self._r_bw, crystal_grid_bins,
                                       self._o_grid_min, self._o_grid_max,
