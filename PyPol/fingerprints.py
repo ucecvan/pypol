@@ -1891,7 +1891,7 @@ project.save()                                                # Save project"""
             crystal_grid_bins = complex(0,
                                         int(round((crystal_grid_max - self._r_grid_min) / self._r_grid_space, 0)))
 
-        file_ndx = open(input_traj + f"/PYPOL_TMP_{output_label}.ndx", "w")
+        file_ndx = open(os.path.dirname(input_traj) + f"/PYPOL_TMP_{output_label}.ndx", "w")
         file_ndx.write("[ System ] \n")
         for mol in mols:
             for atom in self._atoms:
@@ -1903,7 +1903,7 @@ project.save()                                                # Save project"""
 
         planes = {}
         r_plane = {}
-        file_gro = open(input_traj + f"/PYPOL_TMP_{output_label}.gro")
+        file_gro = open(os.path.dirname(input_traj) + f"/PYPOL_TMP_{output_label}.gro")
         frame, plane = 0, 0
         for line in file_gro:
             if "t=" in line:
