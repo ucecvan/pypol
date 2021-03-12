@@ -1922,7 +1922,7 @@ project.save()                                                # Save project"""
                 r_plane[frame][plane, :] = np.mean([a1, a2, a3], axis=0)
                 plane += 1
         file_gro.close()
-        data = np.full((int(len(mols) * (len(mols) - 1) / 2) + 1, 2), np.nan)
+        data = np.full((int(len(mols) * (len(mols) - 1) / 2), 2), np.nan)
         d = 0
         for frame in planes.keys():
             for i in range(len(mols) - 1):
@@ -1936,6 +1936,7 @@ project.save()                                                # Save project"""
                         angle = np.arccos(
                             (ax * bx + ay * by + az * bz) / np.sqrt(
                                 (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
+                        print(d, np.array([angle, distance]))
                         data[d, :] = np.array([angle, distance])
 
                     d += 1
