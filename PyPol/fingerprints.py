@@ -1922,7 +1922,7 @@ project.save()                                                # Save project"""
                 r_plane[frame][plane, :] = np.mean([a1, a2, a3], axis=0)
                 plane += 1
         file_gro.close()
-        data = np.zeros((int(len(mols) * (len(mols) - 1) / 2), 2))
+        data = np.full((int(len(mols) * (len(mols) - 1) / 2) + 1, 2), np.nan)
         d = 0
         for frame in planes.keys():
             for i in range(len(mols) - 1):
@@ -1938,6 +1938,10 @@ project.save()                                                # Save project"""
                                 (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
                         data[d, :] = np.array([angle, distance])
 
+                    d += 1
+
+        data = data[~np.isnan(data).any(axis=1)]
+
         cv = super()._kde_ovect_rvect(data,
                                       self._r_grid_min, crystal_grid_max,
                                       self._r_bw, crystal_grid_bins,
@@ -1946,6 +1950,9 @@ project.save()                                                # Save project"""
 
         # Save output and plot distribution
         np.savetxt(os.path.dirname(input_traj) + "/pypol_{}_{}_data.dat".format(output_label, self._name),
+                   data,
+                   header="Angle / rad      Distance / nm")
+        np.savetxt(os.path.dirname(input_traj) + "/pypol_{}_{}_data_grid.dat".format(output_label, self._name),
                    cv,
                    header="Probability Density Grid.")
         if plot:
