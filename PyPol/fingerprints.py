@@ -1922,7 +1922,7 @@ project.save()                                                # Save project"""
                 r_plane[frame][plane, :] = np.mean([a1, a2, a3], axis=0)
                 plane += 1
         file_gro.close()
-        data = np.full((int(len(mols) * (len(mols) - 1) / 2), 2), np.nan)
+        data = np.full((int(len(mols) * (len(mols) - 1) / 2) * len(planes.keys()), 2), np.nan)
         d = 0
         for frame in planes.keys():
             for i in range(len(mols) - 1):
