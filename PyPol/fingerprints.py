@@ -39,7 +39,7 @@ class _Distribution(object):  # TODO Change name to Distributions
                  grid_max: Union[float, list, tuple] = None,
                  grid_bins: Union[int, list, tuple] = None,
                  grid_space: Union[float, list, tuple] = None,
-                 timeinterval: Union[float, tuple] = None):
+                 timeinterval: Union[int, float, tuple] = None):
         """
         General Class for Collective Variables.
         :param name: name of the CV.
@@ -1520,7 +1520,7 @@ class _OwnDistributions(_Distribution):
     """
 
     def __init__(self, name: str, cv_type: str, cv_short_type: str, clustering_type="distribution",
-                 kernel="gaussian", timeinterval: Union[float, tuple] = None):
+                 kernel="gaussian", timeinterval: Union[int, float, tuple] = None):
         """
         General Class for Collective Variables.
         :param name: name of the CV.
@@ -1529,7 +1529,8 @@ class _OwnDistributions(_Distribution):
         :param kernel: kernel function to use in the histogram generation.
         :param timeinterval: Simulation time interval to generate the distribution.
         """
-        super().__init__(name, cv_type, cv_short_type, None, None, clustering_type, kernel, timeinterval)
+        super().__init__(name=name, cv_type=cv_type, cv_short_type=cv_short_type, plumed=None, plumed_version=None,
+                         clustering_type=clustering_type, kernel=kernel, timeinterval=timeinterval)
 
     @property
     def kernel(self):
@@ -1613,11 +1614,11 @@ Clustering Type: {0._clustering_type}""".format(self)
             os.chdir(crystal._path)
 
             traj_start, traj_end = (None, None)
-            traj_time = float(simulation._mdp["dt"]) * float(simulation._mdp["nsteps"])
+            traj_time = int(float(simulation._mdp["dt"]) * float(simulation._mdp["nsteps"]))
             if isinstance(self._timeinterval, tuple):
                 traj_start = self._timeinterval[0]
                 traj_end = self._timeinterval[1]
-            elif isinstance(self._timeinterval, int):
+            elif isinstance(self._timeinterval, (int, float)):
                 traj_start = traj_time - self._timeinterval
                 traj_end = traj_time
             else:
@@ -1628,10 +1629,12 @@ Clustering Type: {0._clustering_type}""".format(self)
                       '0 &> /dev/null '.format(simulation._gromacs, simulation._name, traj_start, traj_end))
 
             if os.path.exists(f"PYPOL_TMP_{simulation._name}.xtc"):
-                crystal._cvs[self._name + suffix] = self.gen_from_traj(crystal, simulation,
-                                                                       f"PYPOL_TMP_{simulation._name}.xtc",
-                                                                       simulation._name,
-                                                                       plot)
+                crystal._cvs[self._name + suffix] = self.gen_from_traj(
+                    crystal=crystal,
+                    simulation=simulation,
+                    input_traj=crystal._path + f"PYPOL_TMP_{simulation._name}.xtc",
+                    output_label=simulation._name,
+                    plot=plot)
                 bar.update(nbar)
                 nbar += 1
             else:
@@ -1639,7 +1642,7 @@ Clustering Type: {0._clustering_type}""".format(self)
                       "".format(simulation._name, crystal._path))
         bar.finish()
 
-    def gen_from_traj(self, crystal, simulation, input_traj, output_name="", plot=True):
+    def gen_from_traj(self, crystal, simulation, input_traj, output_label="", plot=True):
         pass
 
     def get_from_file(self, crystal, input_file, output_label="", plot=True):
