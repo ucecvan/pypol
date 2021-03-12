@@ -281,7 +281,8 @@ class Clustering(object):
                 else:
                     combinations.at[index, "Distance Matrix"][:, :] = combinations.loc[
                                                                           index, distributions[0]._name] / normalization
-                np.append(d_c, combinations.at[index, "Distance Matrix"])
+                d_c = np.append(d_c, combinations.at[
+                    index, "Distance Matrix"][np.triu_indices(combinations.at[index, "Distance Matrix"].shape[0], 1)])
 
         # combinations.at[index, "Distance Matrix"][:, :] = np.linalg.norm(
         #             np.dstack(set([k for k in combinations.loc[index, [cv._name for cv in distributions]]])),
@@ -467,8 +468,6 @@ def FSFDP(dmat: Union[pd.DataFrame, np.ndarray],
     else:
         def kernel_function(d_ij):
             return np.exp(-(d_ij / d_c) * (d_ij / d_c))
-
-        print("Kernel Function not recognized, switching to 'gaussian'")
 
     for i in range(dmat.values.shape[0] - 1):
         for j in range(i + 1, dmat.values.shape[0]):
