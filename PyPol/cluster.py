@@ -8,7 +8,6 @@ import copy
 from typing import Union
 
 from PyPol.utilities import get_list_crystals, hellinger
-from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation, Metadynamics
 
 
 class Clustering(object):
@@ -140,13 +139,19 @@ class Clustering(object):
         return combinations
 
     def run(self,
-            simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
+            simulation,
             crystals="all",
             group_threshold: float = 0.8,
             catt=None,
             suffix="",
             path_output="",
             _check=True):
+
+        from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation, Metadynamics
+
+        if type(simulation) not in [EnergyMinimization, MolecularDynamics, CellRelaxation, Metadynamics]:
+            print("Error: simulation object not suitable for clustering analysis")
+
         # TODO Simplify script. Rewrite crystal sorting in groups and clustering
         #      ---> too complicated and probably inefficient to use pandas Dataframe in this context
         #      Use crystal attributes or dict?
