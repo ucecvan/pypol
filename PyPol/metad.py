@@ -298,13 +298,13 @@ class Box(_MetaCV):
             txt = f"""
 # Box Angles
 cell: CELL
-{self._name}: cell.{self._parameter}
+{self._name}: CUSTOM ARG=cell.{self._parameter} FUNC=x PERIODIC=NO
 """
         else:
             txt = f"""
 # Box Angles
 # cell: CELL
-{self._name}: cell.{self._parameter}
+{self._name}: CUSTOM ARG=cell.{self._parameter} FUNC=x PERIODIC=NO
 """
 
         if self._use_walls:
