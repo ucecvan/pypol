@@ -1129,11 +1129,22 @@ project.save()
                 new_crystal._energy = crystal._energy
                 simulation._crystals.append(new_crystal)
 
+            default_cvs_1 = False
+            default_cvs_2 = False
             default_cvs = False
-            while default_cvs not in ("y", "n"):
-                default_cvs = input("Do you want to use the default Collective Variables "
-                                    "(Potential Energy and Density)? [y/n] ")
-            if default_cvs == "y":
+            while default_cvs not in ("1", "2", "0"):
+                default_cvs = input("Default Collective Variables:\n "
+                                    "1) Potential Energy and Density\n"
+                                    "2) Simulation Box Angles\n"
+                                    "0) Custom\n")
+                if default_cvs == "1":
+                    default_cvs_1 = True
+                    break
+                elif default_cvs == "2":
+                    default_cvs_2 = True
+                    break
+
+            if default_cvs_1:
                 def gen_rho():
                     rho_min = list_crystals[0].density
                     rho_max = list_crystals[0].density
@@ -1143,8 +1154,8 @@ project.save()
                             rho_max = rho_cry
                         if rho_min > rho_cry:
                             rho_min = rho_cry
-                    rho_min = round(rho_min, 0) - 250.
-                    rho_max = round(rho_max, 0) + 250.
+                    rho_min = round(rho_min, 0) - 300.
+                    rho_max = round(rho_max, 0) + 300.
                     rho_bin = int(rho_max - rho_min)
                     orho = self.new_cv("density", "density")
                     orho._grid_min = rho_min
@@ -1206,6 +1217,66 @@ project.save()
                     asb = self.new_cv("ASB", "asb")
 
                 simulation.set_cvs(asb, rho, energy)
+
+            if default_cvs_2:
+                def gen_box_angle():
+                    box = list_crystals[0]._box
+                    bp_max = np.max(np.absolute([box[i, j] for i in range(3) for j in range(3) if i != j]))
+                    for ecrystal in list_crystals[1:]:
+                        box = ecrystal._box
+                        bp = np.max(np.absolute([box[i, j] for i in range(3) for j in range(3) if i != j]))
+                        if bp_max < bp:
+                            bp_max = bp
+                    if bp_max < 4.:
+                        bp_max = 4.
+                    bp_min = -round(bp_max, 0) - 2.
+                    bp_max = round(bp_max, 0) + 2.
+                    bp_bins = int((bp_max - bp_min) / 0.05)
+                    bx = self.new_cv("bx", "box")
+                    bx._grid_min = bp_min
+                    bx._grid_max = bp_max
+                    bx._grid_bins = bp_bins
+                    bx._use_walls = True
+                    cx = self.new_cv("cx", "box")
+                    cx._grid_min = bp_min
+                    cx._grid_max = bp_max
+                    cx._grid_bins = bp_bins
+                    cx._use_walls = True
+                    cy = self.new_cv("cy", "box")
+                    cy._grid_min = bp_min
+                    cy._grid_max = bp_max
+                    cy._grid_bins = bp_bins
+                    cy._use_walls = True
+                    return bx, cx, cy
+
+
+                list_cv = [ecv._name for ecv in self._cvp]
+                if "bx" in list_cv or "cx" in list_cv or "cy" in list_cv:
+                    dcv = input("CVs called 'bx', 'cx' or 'cy' already present in the CVs set.\n"
+                                "Do you want to use it (if not, it will be overwritten with a new one)? [y/n] ")
+                    if dcv == "n":
+                        self.del_cv("bx")
+                        self.del_cv("cx")
+                        self.del_cv("cy")
+                        bx, cx, cy = gen_box_angle()
+                    else:
+                        bx = self.get_cv("bx")
+                        cx = self.get_cv("cx")
+                        cy = self.get_cv("cy")
+                else:
+                    bx, cx, cy = gen_box_angle()
+
+                if "ASB" in list_cv:
+                    dcv = input("CV called 'ASB' already present in the CVs set.\n"
+                                "Do you want to use it (if not, it will be overwritten with a new one)? [y/n] ")
+                    if dcv == "n":
+                        self.del_cv("ASB")
+                        asb = self.new_cv("ASB", "asb")
+                    else:
+                        asb = self.get_cv("ASB")
+                else:
+                    asb = self.new_cv("ASB", "asb")
+                simulation.set_cvs(asb, bx, cx, cy)
             else:
                 print("Include custom CV using the command simulation.set_cvs(cv1, cv2, cv3, ...). ")
 
@@ -2975,11 +3046,19 @@ class Metadynamics(MolecularDynamics):
                     colvars.append(colvars.pop(colvars.index(cv)))
             return colvars
 
+        def put_asb_at_the_beginning(colvars):
+            for cv in colvars:
+                if cv._short_type == "asb":
+                    colvars.insert(0, colvars.pop(colvars.index(cv)))
+            return colvars
+
         if isinstance(cvs, list):
             self._cvp = put_energy_at_the_end(cvs)
+            self._cvp = put_asb_at_the_beginning(cvs)
         elif isinstance(cvs, tuple):
             cvs = list(cvs)
             self._cvp = put_energy_at_the_end(cvs)
+            self._cvp = put_asb_at_the_beginning(cvs)
         else:
             self._cvp = [cvs]
 
@@ -2998,7 +3077,7 @@ class Metadynamics(MolecularDynamics):
         """
         # TODO Only 1 replica available ==> no statistical analysis
         from PyPol.walls import AvoidScrewedBox
-        from PyPol.metad import _MetaCV, Density, PotentialEnergy
+        from PyPol.metad import _MetaCV, Density, PotentialEnergy, Box
         list_crystals = get_list_crystals(self._crystals, crystals, catt)
         imp = self._molecules[0]._potential_energy
         mw = 0
@@ -3016,7 +3095,7 @@ class Metadynamics(MolecularDynamics):
 
             if type(cv) is AvoidScrewedBox:
                 walls.append(cv)
-            elif type(cv) is Density:
+            elif type(cv) in [Density, Box]:
                 if cv.use_walls:
                     walls.append(cv.lwall)
                     walls.append(cv.uwall)
@@ -3045,9 +3124,15 @@ class Metadynamics(MolecularDynamics):
             file_plumed = open(crystal._path + f"plumed_{self._name}.dat", "w")
             if self.restart:
                 file_plumed.write("RESTART\n\n")
+
+            print_cell = True
             for cv in self._cvp:
                 if type(cv) is AvoidScrewedBox:
                     file_plumed.write(cv._metad(False))
+                    print_cell = False
+                elif type(cv) is Box:
+                    file_plumed.write(cv._metad(False, print_cell))
+                    print_cell = False
                 elif type(cv) is Density:
                     cf = mw * crystal._Z * 1.66054
                     file_plumed.write(cv._metad(cf, False))

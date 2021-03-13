@@ -117,7 +117,7 @@ class Wall(object):
             print("Error: Position of the wall not recognized, choose between 'upper' and 'lower'.")
             exit()
 
-    def add_arg(self, name, kappa=100000, offset=0.0, exp=2, eps=1, at=0.):
+    def add_arg(self, name, kappa=1000000, offset=0.0, exp=2, eps=1, at=0.):
         """
         Add an argument to the Wall object.
         :param name: Inputs (arg) for the wall
@@ -135,7 +135,7 @@ class Wall(object):
         self._eps.append(eps)
         self._at.append(at)
 
-    def reset_arg(self, name, kappa=100000, offset=0.0, exp=2, eps=1, at=0.):
+    def reset_arg(self, name, kappa=1000000, offset=0.0, exp=2, eps=1, at=0.):
         """
         Modify an existing argument of the Wall object with the default ones, unless they are specified.
         :param name: Inputs (arg) for the wall
@@ -234,13 +234,13 @@ class AvoidScrewedBox(Wall):
         super(AvoidScrewedBox, self).__init__(name, "UPPER")
         self._type = "Avoid Screwed Box (Wall)"
         self._collective_variable_line = """cell: CELL
-bx: MATHEVAL ARG=cell.bx,cell.ax FUNC=abs(x)-0.5*y PERIODIC=NO
-cx: MATHEVAL ARG=cell.cx,cell.ax FUNC=abs(x)-0.5*y PERIODIC=NO
-cy: MATHEVAL ARG=cell.cy,cell.by FUNC=abs(x)-0.5*y PERIODIC=NO"""
+asb_bx: MATHEVAL ARG=cell.bx,cell.ax FUNC=abs(x)-0.5*y PERIODIC=NO
+asb_cx: MATHEVAL ARG=cell.cx,cell.ax FUNC=abs(x)-0.5*y PERIODIC=NO
+asb_cy: MATHEVAL ARG=cell.cy,cell.by FUNC=abs(x)-0.5*y PERIODIC=NO"""
 
-        self.add_arg("bx", offset=0.1)
-        self.add_arg("cx", offset=0.1)
-        self.add_arg("cy", offset=0.1)
+        self.add_arg("asb_bx", offset=0.05)
+        self.add_arg("asb_cx", offset=0.05)
+        self.add_arg("asb_cy", offset=0.05)
 
     def generate_input(self, simulation: Union[MolecularDynamics, Metadynamics],
                        crystals="all",

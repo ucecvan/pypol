@@ -242,3 +242,79 @@ class PotentialEnergy(_MetaCV):
         if print_output:
             txt += f"PRINT ARG={self._name} FILE={self._name}_COLVAR STRIDE={self._stride}\n"
         return txt
+
+
+class Box(_MetaCV):
+    _type = "Box Parameter"
+    _short_type = "box"
+
+    def __init__(self, name):
+        super(Box, self).__init__(name, "Box Parameter", sigma=0.1, grid_space=0.05)
+        self._use_walls = False
+        self._walls = []
+        self._parameter = "ax"
+
+    @property
+    def parameter(self):
+        return self._parameter
+
+    @parameter.setter
+    def parameter(self, value: str):
+        if value in ["ax", "by", "cz", "bx", "cx", "cy"]:
+            self._parameter = value
+
+    @property
+    def use_walls(self):
+        return self._use_walls
+
+    @use_walls.setter
+    def use_walls(self, value: bool, offset=0.25):
+        self._use_walls = value
+        if self._use_walls:
+            if self._grid_max and self._grid_min:
+                self._walls = [Wall(self._name + "_upper", "UPPER"), Wall(self._name + "_lower", "LOWER")]
+                self.lwall.add_arg(self._name, at=self._grid_min + offset, kappa=10000)
+                self.uwall.add_arg(self._name, at=self._grid_max - offset, kappa=10000)
+            else:
+                print("Error: Define grid_max and grid_min before walls.")
+                exit()
+
+    @property
+    def walls(self):
+        return self._walls
+
+    @property
+    def uwall(self):
+        if self._walls:
+            return self._walls[0]
+
+    @property
+    def lwall(self):
+        if self._walls:
+            return self._walls[1]
+
+    def _metad(self, print_output=True, print_cell=True):
+        if print_cell:
+            txt = f"""
+# Box Angles
+cell: CELL
+{self._name}: cell.{self._parameter}
+"""
+        else:
+            txt = f"""
+# Box Angles
+# cell: CELL
+{self._name}: cell.{self._parameter}
+"""
+
+        if self._use_walls:
+            for wall in self._walls:
+                txt += wall._metad(False)
+
+        if print_output:
+            if self._use_walls:
+                args = self._walls[0]._name + ".bias," + self._walls[1]._name + ".bias"
+                txt += f"PRINT ARG={self._name},{args} FILE={self._name}_COLVAR STRIDE={self._stride}"
+            else:
+                txt += f"PRINT ARG={self._name} FILE={self._name}_COLVAR STRIDE={self._stride}"
+        return txt
