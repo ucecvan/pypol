@@ -1237,19 +1237,19 @@ project.save()
                     bx._grid_min = bp_min
                     bx._grid_max = bp_max
                     bx._grid_bins = bp_bins
-                    bx._use_walls = True
+                    bx.use_walls = True
                     cx = self.new_cv("cx", "box")
                     bx._parameter = "cx"
                     cx._grid_min = bp_min
                     cx._grid_max = bp_max
                     cx._grid_bins = bp_bins
-                    cx._use_walls = True
+                    cx.use_walls = True
                     cy = self.new_cv("cy", "box")
                     bx._parameter = "cy"
                     cy._grid_min = bp_min
                     cy._grid_max = bp_max
                     cy._grid_bins = bp_bins
-                    cy._use_walls = True
+                    cy.use_walls = True
                     return bx, cx, cy
 
                 list_cv = [ecv._name for ecv in self._cvp]
