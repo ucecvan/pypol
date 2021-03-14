@@ -3396,8 +3396,8 @@ COMMITTOR ...
         file_script.write("done\n")
         file_script.close()
 
-    def get_analysis_results(self, clustering_method=None, crystals="all", catt=None, plot_tree=True):
-        # TODO change tree data from simple state of the crystal to list [state, work] in order to correcly
+    def get_analysis_results(self, clustering_method=None, crystals="all", catt=None, plot_tree=True, plot=True):
+        # TODO change tree data from simple state of the crystal to list [state, work] in order to correctly
         #      plot the tree ---> identify transition through DRMSD?
         import networkx as nwx
         from PyPol.fingerprints import _OwnDistributions
@@ -3454,13 +3454,13 @@ COMMITTOR ...
                             simulation=self,
                             input_traj=f"{crystal._path}{self._name}_analysis/{i}/{self._name}.xtc",
                             output_label=self._name,
-                            plot=True)
+                            plot=plot)
                     else:
                         crystal._cvs[cv._name + suffix] = cv.get_from_file(
                             crystal=crystal,
                             input_file=f"{crystal._path}{self._name}_analysis/{i}/plumed_{self._name}_{cv._name}.dat",
                             output_label=self._name,
-                            plot=True)
+                            plot=plot)
 
             # Generate groups
             for cv in clustering_method._cvp:
