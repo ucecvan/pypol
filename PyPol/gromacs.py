@@ -3473,6 +3473,10 @@ COMMITTOR ...
                                   path_output=self._path_output + "/analysis/" + str(i),
                                   _check=True)  # TODO change to False after test---> simulation must be completed
 
+            from copy import deepcopy
+            self._analysis_clusters[i] = deepcopy(self._clusters)
+            self._analysis_clusters_data[i] = deepcopy(self._cluster_data)
+
             # Update tree
             for crystal in list_crystals:
                 if c_name + crystal._state not in self._analysis_tree:
