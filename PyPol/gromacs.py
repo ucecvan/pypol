@@ -2948,7 +2948,7 @@ class Metadynamics(MolecularDynamics):
         self._intervals = None
         self._analysis_clusters = {}
         self._analysis_clusters_data = {}
-        self._analysis_tree = {}
+        self._analysis_tree = None
 
     @property
     def analysis_intervals(self):
@@ -3399,6 +3399,7 @@ COMMITTOR ...
     def get_analysis_results(self, clustering_method=None, crystals="all", catt=None, plot_tree=True):
         # TODO change tree data from simple state of the crystal to list [state, work] in order to correcly
         #      plot the tree ---> identify transition through DRMSD?
+        import networkx as nwx
         from PyPol.fingerprints import _OwnDistributions
         from PyPol.groups import _GG
 
@@ -3413,18 +3414,32 @@ COMMITTOR ...
 
         list_crystals = get_list_crystals(self._crystals, crystals, catt, _include_melted=False)
 
+        # for crystal in list_crystals:
+        #     self._analysis_tree[crystal._name] = {}
+        #     for interval in self._intervals:
+        #         self._analysis_tree[crystal._name][interval] = None
+
+        i_prev = 0
+
+        self._analysis_tree = nwx.Graph()
         for crystal in list_crystals:
-            self._analysis_tree[crystal._name] = {}
-            for interval in self._intervals:
-                self._analysis_tree[crystal._name][interval] = None
+            self._analysis_tree.add_node(f"i{round(i_prev, 3)}_{crystal._name}", structures=1)
 
         for i in self._intervals:
+            c_name = f"i{round(i, 3)}_"
+            c_prev = f"i{round(i_prev, 3)}_"
             suffix = "_" + self._name + "_" + str(i)
 
             # Import and generate Fingerprints
             for crystal in list_crystals:
                 if not os.path.exists(f"{crystal._path}{self._name}_analysis/{i}"):
-                    self._analysis_tree[crystal._name][i] = "unstable"
+                    self._analysis_tree.add_node(f"i{round(i, 3)}_{crystal._name}",
+                                                 structures=self._analysis_tree.nodes[
+                                                     f"i{round(i_prev, 3)}_{crystal._name}"][
+                                                     "structures"],
+                                                 energy=i, stable=False)
+                    self._analysis_tree.add_edge(f"i{round(i, 3)}_{crystal._name}",
+                                                 f"i{round(i_prev, 3)}_{crystal._name}")
                     list_crystals.remove(crystal)
                 os.chdir(crystal._path)
                 for cv in clustering_method._cvp:
@@ -3458,53 +3473,72 @@ COMMITTOR ...
                                   path_output=self._path_output + "/analysis/" + str(i),
                                   _check=True)  # TODO change to False after test---> simulation must be completed
 
+            # Update tree
+            for crystal in list_crystals:
+                if c_name + crystal._state not in self._analysis_tree:
+                    self._analysis_tree.add_node(c_name + crystal._state,
+                                                 structures=self._analysis_tree.nodes[
+                                                     c_prev + crystal._state]["structures"],
+                                                 energy=i, stable=True)
+
+                if crystal._state == crystal._name:
+                    self._analysis_tree.add_edge(c_name + crystal._name, c_prev + crystal._name)
+                else:
+                    self._analysis_tree.add_edge(c_name + crystal._state, c_prev + crystal._name)
+                    self._analysis_tree.nodes[c_name + crystal._state]["structures"] += 1
+
             # Update list crystals
             for crystal in list_crystals:
-                self._analysis_tree[crystal._name][i] = crystal._state
                 if crystal._state != crystal._name:
                     list_crystals.remove(crystal)
+            i_prev = i
 
         if plot_tree:
-            self._plot_tree(crystals, catt)
+            self._plot_tree()
 
-    def _plot_tree(self, crystals="all", catt=None, tree=None, output_file=None):
+    def _plot_tree(self, tree=None, output_file=None):
         if tree is None:
             tree = self._analysis_tree
         if output_file is None:
-            output_file = self._path_output + "/analysis/"
+            output_file = self._path_output + f"/analysis/tree_{self._name}.png"
+        pos = {}
+        labels = {}
+        labels_pos = {}
+        nodes = [node for node in tree.nodes.keys() if node.startswith(f"i{round(self._intervals[-1], 3)}_")]
+        nodes = sorted(nodes, key=lambda n: tree.nodes[n]["structures"], reverse=True)
+        for node in nodes:
+            labels[node] = node.replace(f"i{round(self._intervals[-1], 3)}_", "")
+        for layer in reversed(self._intervals[:-1]):
+            tmp_nodes = [node for node in tree.nodes.keys() if node.startswith(f"i{round(layer, 3)}_")]
+            for node in tmp_nodes:
+                if not tree.nodes[node]["stable"]:
+                    nodes.append(node)
+                    labels[node] = node.replace(f"i{round(layer, 3)}_", "")
 
-        # Initialize figure
-        # fig, ax = plt.figure()
+        start = 0.
+        for node in nodes:
+            bfs = list(nx.bfs_edges(tree, node))
+            pos[node] = np.array([start + tree.nodes[node]["structures"] / 2, tree.nodes[node]["energy"]])
+            labels_pos[node] = np.array([start + tree.nodes[node]["structures"] / 2, tree.nodes[node]["energy"] + 0.25])
+            print(bfs)
+            spl = {}
+            for n1, n2 in bfs:
+                if tree.nodes[n2]["energy"] not in spl:
+                    spl[tree.nodes[n2]["energy"]] = 0.
+                pos[n2] = np.array([start + spl[tree.nodes[n2]["energy"]] + tree.nodes[n2]["structures"] / 2.,
+                                    tree.nodes[n2]["energy"]])
 
-        centers = {}
-        for interval in self._intervals:
-            centers[interval] = {}
-        list_crystals = get_list_crystals(self._crystals, crystals, catt, _include_melted=False)
-        for interval in reversed(range(len(self._intervals))):
-            i = self._intervals[interval]
-            if i != self._intervals[-1]:
-                i_prev = self._intervals[interval+1]
-            centers[i]["unstable"] = []
-            centers[i]["mask"] = []
-            for crystal in list_crystals:
-                if tree[crystal._name][i] is None:
-                    centers[i]["mask"].append(crystal)
-                    continue
-                if tree[crystal._name][i] == "unstable":
-                    centers[i]["unstable"].append(crystal)
-                    continue
+                spl[tree.nodes[n2]["energy"]] += tree.nodes[n2]["structures"]
+            start += tree.nodes[node]["structures"] + 1
 
-                if crystal._state not in centers.keys():
-                    centers[i][crystal._state] = [crystal]
-                else:
-                    centers[i][crystal._state].append(crystal)
+        fig, ax = plt.subplots()
+        nx.draw(tree, pos=pos, node_size=10, ax=ax)
+        for node in nodes:
+            x = labels_pos[node][0]
+            y = labels_pos[node][1]
+            ax.text(x, y, labels[node], rotation="vertical", fontsize=8)
+        ax.yaxis.grid(True)
+        ax.tick_params(left=True, bottom=False, labelleft=True, labelbottom=False)
+        ax.set_ylim(0.25 + self._intervals[-1], self._intervals[0] - 0.25)
 
-            list_crystals = []
-            if i == self._intervals[-1]:
-                for a in sorted(centers[i], key=lambda c: len(centers[i][c]), reverse=True):
-                    if a in ["mask", "unstable"]:
-                        continue
-                    for b in centers[i][a]:
-                        list_crystals.append(b)
-            else:
-                pass
+        plt.savefig(output_file, dpi=300)
