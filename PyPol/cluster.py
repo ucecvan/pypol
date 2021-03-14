@@ -253,7 +253,8 @@ class Clustering(object):
                                 di = di.copy()[tuple(map(slice, dj.shape))]
                                 dj = dj.copy()[tuple(map(slice, di.shape))]
                             hd = hellinger(di.copy(), dj.copy(), self._int_type)
-                            combinations.loc[index, cv._name][i, j] = combinations.loc[index, cv._name][j, i] = hd
+                            combinations.loc[index, cv._name + suffix][i, j] = combinations.loc[
+                                index, cv._name + suffix][j, i] = hd
 
                             if hd > n_factors[cv._name + suffix]:
                                 n_factors[cv._name + suffix] = hd
