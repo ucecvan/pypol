@@ -492,16 +492,24 @@ project.save()                                                # Save project"""
         file_plumed.close()
 
     def get_from_file(self, crystal, input_file, output_label="", plot=True):
-        cv = np.genfromtxt(input_file, skip_header=1)[:, 1:]
-        if np.isnan(cv).any():
-            cv = np.nanmean(cv, axis=0)
+        cv = np.genfromtxt(input_file, skip_header=1)
+        if cv.ndim == 2:
+            cv = cv[:, 1:]
+            if np.isnan(cv).any():
+                cv = np.nanmean(cv, axis=0)
+                if np.isnan(cv).any():
+                    print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. "
+                          f"Check {input_file}")
+                    exit()
+                print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {input_file}")
+            else:
+                cv = np.average(cv, axis=0)
+        else:
+            cv = cv[1:]
             if np.isnan(cv).any():
                 print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. "
                       f"Check {input_file}")
                 exit()
-            print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {input_file}")
-        else:
-            cv = np.average(cv, axis=0)
         cv /= cv.sum()
         # Save output and plot distribution
         x = np.linspace(self._grid_min, self._grid_max, len(cv))
@@ -718,16 +726,25 @@ project.save()                                                # Save project"""
         file_plumed.close()
 
     def get_from_file(self, crystal, input_file, output_label="", plot=True):
-        cv = np.genfromtxt(input_file, skip_header=2)[:, 1:]
-        if np.isnan(cv).any():
-            cv = np.nanmean(cv, axis=0)
+        cv = np.genfromtxt(input_file, skip_header=2)
+        if cv.ndim == 2:
+            cv = cv[:, 1:]
+            if np.isnan(cv).any():
+                cv = np.nanmean(cv, axis=0)
+                if np.isnan(cv).any():
+                    print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. "
+                          f"Check {input_file} ")
+                    exit()
+                print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {input_file} ")
+            else:
+                cv = np.average(cv, axis=0)
+        else:
+            cv = cv[1:]
             if np.isnan(cv).any():
                 print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. "
                       f"Check {input_file} ")
                 exit()
-            print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {input_file} ")
-        else:
-            cv = np.average(cv, axis=0)
+
             # Save output and plot distribution
         x = np.linspace(self._grid_min, self._grid_max, len(cv))
         np.savetxt(os.path.dirname(input_file) + "/plumed_{}_{}_data.dat".format(output_label, self._name),
@@ -1231,7 +1248,6 @@ project.save()                                                # Save project
         file_plumed.close()
 
     def get_from_file(self, crystal, input_file, output_label="", plot=True):
-
         dn_r = np.genfromtxt(input_file, skip_header=1)
         if dn_r.ndim == 2:
             dn_r = dn_r[:, 2:]
@@ -1481,17 +1497,25 @@ project.save()                                                # Save project"""
             file_plumed.close()
 
     def get_from_file(self, crystal, input_file, output_label="", plot=True):
-        cv_dist = np.genfromtxt(input_file, skip_header=1)[:, 1:]
-        if np.isnan(cv_dist).any():
-            cv_dist = np.nanmean(cv_dist, axis=0)
+        cv_dist = np.genfromtxt(input_file, skip_header=1)
+        if cv_dist.ndim == 2:
+            cv_dist = cv_dist[:, 1:]
+            if np.isnan(cv_dist).any():
+                cv_dist = np.nanmean(cv_dist, axis=0)
+                if np.isnan(cv_dist).any():
+                    print("\nError: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
+                          "".format(crystal))
+                    exit()
+                print("\nWarning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
+                      "".format(crystal))
+            else:
+                cv_dist = np.average(cv_dist, axis=0)
+        else:
+            cv_dist = cv_dist[1:]
             if np.isnan(cv_dist).any():
                 print("\nError: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
                       "".format(crystal))
                 exit()
-            print("\nWarning: NaN values present in some frames of crystal {0._name}. Check {0._path} "
-                  "".format(crystal))
-        else:
-            cv_dist = np.average(cv_dist, axis=0)
         cv_dist = cv_dist.reshape(self._grid_bins)
         if len(self._cvs) == 2:
             np.savetxt(os.path.dirname(input_file) + "/plumed_{}_{}_data.dat".format(output_label, self._name),
