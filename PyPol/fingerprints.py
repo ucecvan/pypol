@@ -1231,16 +1231,25 @@ project.save()                                                # Save project
         file_plumed.close()
 
     def get_from_file(self, crystal, input_file, output_label="", plot=True):
-        dn_r = np.genfromtxt(input_file, skip_header=1)[:, 2:]
-        if np.isnan(dn_r).any():
-            dn_r = np.nanmean(dn_r, axis=0)
+
+        dn_r = np.genfromtxt(input_file, skip_header=1)
+        if dn_r.ndim == 2:
+            dn_r = dn_r[:, 2:]
+            if np.isnan(dn_r).any():
+                dn_r = np.nanmean(dn_r, axis=0)
+                if np.isnan(dn_r).any():
+                    print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. "
+                          f"Check {input_file} ")
+                    exit()
+                print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {input_file} ")
+            else:
+                dn_r = np.average(dn_r, axis=0)
+        else:
+            dn_r = dn_r[2:]
             if np.isnan(dn_r).any():
                 print(f"\nError: NaN values present in final distribution of crystal {crystal._name}. "
                       f"Check {input_file} ")
                 exit()
-            print(f"\nWarning: NaN values present in some frames of crystal {crystal._name}. Check {input_file} ")
-        else:
-            dn_r = np.average(dn_r, axis=0)
 
         d_max = 0.5 * np.min(np.array([crystal._box[0, 0], crystal._box[1, 1], crystal._box[2, 2]]))
         nbins = int(round((d_max - self._r_0) / self._grid_space, 0))
