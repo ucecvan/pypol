@@ -3430,7 +3430,7 @@ COMMITTOR ...
             c_prev = f"i{round(i_prev, 3)}_"
             suffix = "_" + self._name + "_" + str(i)
 
-            # Import and generate Fingerprints
+            # Remove unfinished structures
             for crystal in list_crystals:
                 if not os.path.exists(f"{crystal._path}{self._name}_analysis/{i}"):
                     self._analysis_tree.add_node(f"i{round(i, 3)}_{crystal._name}",
@@ -3441,6 +3441,9 @@ COMMITTOR ...
                     self._analysis_tree.add_edge(f"i{round(i, 3)}_{crystal._name}",
                                                  f"i{round(i_prev, 3)}_{crystal._name}")
                     list_crystals.remove(crystal)
+                    continue
+            # Import and generate Fingerprints
+            for crystal in list_crystals:
                 os.chdir(crystal._path)
                 for cv in clustering_method._cvp:
                     if issubclass(type(cv), _GG):
