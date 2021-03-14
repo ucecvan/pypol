@@ -3444,6 +3444,7 @@ COMMITTOR ...
                     continue
             # Import and generate Fingerprints
             for crystal in list_crystals:
+                print(i, crystal._name)
                 os.chdir(crystal._path)
                 for cv in clustering_method._cvp:
                     if issubclass(type(cv), _GG):
