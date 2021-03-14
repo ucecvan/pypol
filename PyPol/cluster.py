@@ -268,7 +268,7 @@ class Clustering(object):
             normalization.append(1. / n_factors[cv._name + suffix])
             for index in combinations.index:
                 if combinations.at[index, "Number of structures"] > 1:
-                    combinations.at[index, cv._name] /= n_factors[cv._name + suffix]
+                    combinations.at[index, cv._name + suffix] /= n_factors[cv._name + suffix]
         print("done\nGenerating Distance Matrix...", end="")
 
         # Generate Distance Matrix
@@ -277,8 +277,8 @@ class Clustering(object):
             if combinations.at[index, "Number of structures"] > 1:
                 if len(distributions) > 1:
                     combinations.at[index, "Distance Matrix"][:, :] = np.linalg.norm(
-                        np.dstack(set([k for k in combinations.loc[index, [cv._name for cv in distributions]]])),
-                        axis=2) / normalization
+                        np.dstack(set([k for k in combinations.loc[index, [
+                            cv._name + suffix for cv in distributions]]])), axis=2) / normalization
                 else:
                     combinations.at[index, "Distance Matrix"][:, :] = combinations.loc[
                                                                           index, distributions[0]._name] / normalization
