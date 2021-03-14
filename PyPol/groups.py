@@ -420,7 +420,7 @@ project.save()
                 removed = removed + group_index
                 groups[group_index[0]] = group_index
 
-        self._run(simulation, groups, crystals, suffix)
+        self._run(simulation, groups, crystals, catt, suffix)
 
 
 class GGFA(_GG):
@@ -489,7 +489,7 @@ class GGFA(_GG):
             else:
                 groups[gatt] = [crystal._name]
 
-        self._run(simulation, groups, crystals, suffix)
+        self._run(simulation, groups, crystals, catt, suffix)
 
     def __str__(self):
         return """
