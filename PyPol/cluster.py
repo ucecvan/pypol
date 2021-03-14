@@ -125,14 +125,14 @@ class Clustering(object):
             exit()
 
     @staticmethod
-    def _sort_crystal(crystal, combinations, threshold=0.8):
+    def _sort_crystal(crystal, combinations, threshold=0.8, suffix=""):
         for i in combinations.index[:-1]:
             for j in combinations.columns[:-2]:
-                if crystal._cvs[j][combinations.loc[i, j]] > threshold and j == combinations.columns[-3]:
+                if crystal._cvs[j + suffix][combinations.loc[i, j]] > threshold and j == combinations.columns[-3]:
                     combinations.loc[i, "Structures"].append(crystal)
                     combinations.loc[i, "Number of structures"] += 1
                     return combinations
-                elif crystal._cvs[j][combinations.loc[i, j]] < threshold:
+                elif crystal._cvs[j + suffix][combinations.loc[i, j]] < threshold:
                     break
         combinations.loc["Others", "Structures"].append(crystal)
         combinations.loc["Others", "Number of structures"] += 1
@@ -212,7 +212,7 @@ class Clustering(object):
                                                     index=index)), axis=1)
             combinations.index.name = "Combinations"
             for crystal in list_crystals:
-                combinations = self._sort_crystal(crystal, combinations, group_threshold)
+                combinations = self._sort_crystal(crystal, combinations, group_threshold, suffix)
         else:
             combinations = pd.DataFrame([[len(list_crystals), list_crystals]],
                                         columns=["Number of structures", "Structures"],
