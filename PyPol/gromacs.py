@@ -3441,7 +3441,7 @@ COMMITTOR ...
                     self._analysis_tree.add_edge(f"i{round(i, 3)}_{crystal._name}",
                                                  f"i{round(i_prev, 3)}_{crystal._name}")
                     list_crystals.remove(crystal)
-                    continue
+
             # Import and generate Fingerprints
             for crystal in list_crystals:
                 print(i, crystal._name)
