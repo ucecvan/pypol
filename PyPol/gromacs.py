@@ -1131,9 +1131,9 @@ project.save()
 
             default_cvs_1 = False
             default_cvs_2 = False
-            default_cvs = False
+            default_cvs = None
             while default_cvs not in ("1", "2", "0"):
-                default_cvs = input("Default Collective Variables:\n "
+                default_cvs = input("Default Collective Variables:\n"
                                     "1) Potential Energy and Density\n"
                                     "2) Simulation Box Angles\n"
                                     "0) Custom\n")
@@ -1218,7 +1218,7 @@ project.save()
 
                 simulation.set_cvs(asb, rho, energy)
 
-            if default_cvs_2:
+            elif default_cvs_2:
                 def gen_box_angle():
                     box = list_crystals[0]._box
                     bp_max = np.max(np.absolute([box[i, j] for i in range(3) for j in range(3) if i != j]))
@@ -3434,12 +3434,10 @@ COMMITTOR ...
             for crystal in list_crystals:
                 if not os.path.exists(f"{crystal._path}{self._name}_analysis/{i}"):
                     self._analysis_tree.add_node(f"i{round(i, 3)}_{crystal._name}",
-                                                 structures=self._analysis_tree.nodes[
-                                                     f"i{round(i_prev, 3)}_{crystal._name}"][
+                                                 structures=self._analysis_tree.nodes[c_name + crystal._name][
                                                      "structures"],
                                                  energy=i, stable=False)
-                    self._analysis_tree.add_edge(f"i{round(i, 3)}_{crystal._name}",
-                                                 f"i{round(i_prev, 3)}_{crystal._name}")
+                    self._analysis_tree.add_edge(c_name + crystal._name, c_prev + crystal._name)
                     list_crystals.remove(crystal)
 
             # Import and generate Fingerprints
@@ -3499,6 +3497,7 @@ COMMITTOR ...
             for crystal in list_crystals:
                 if crystal._state != crystal._name:
                     list_crystals.remove(crystal)
+
             i_prev = i
 
         if plot_tree:

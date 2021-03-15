@@ -1342,10 +1342,11 @@ class Combine(_Distribution):
             self._str_grid_max += "{:.3f},".format(cv.grid_max)
             self._str_bandwidth += "{:.3f},".format(cv.bandwidth)
 
-            if self._type.startswith("Molecular Orientation"):
-                self._str_grid_bins += "{},".format(cv.grid_bins + 1)
-            else:
-                self._str_grid_bins += "{},".format(cv.grid_bins)
+            # if self._type.startswith("Molecular Orientation"):
+            #     self._str_grid_bins += "{},".format(cv.grid_bins + 1)
+            # else:
+            #     self._str_grid_bins += "{},".format(cv.grid_bins)
+            self._str_grid_bins += "{},".format(cv.grid_bins)
 
             if self._type.startswith("Molecular Orientation"):
                 self._str_args += "ARG{}=ang_mat_{} ".format(idx_cv + 1, cv._name)
@@ -1436,11 +1437,11 @@ project.save()                                                # Save project"""
             self._str_grid_max += "{:.3f},".format(cv.grid_max)
             self._str_bandwidth += "{:.3f},".format(cv.bandwidth)
 
-            if self._type.startswith("Molecular Orientation"):
-                self._str_grid_bins += "{},".format(cv.grid_bins + 1)
-            else:
-                self._str_grid_bins += "{},".format(cv.grid_bins)
-
+            # if self._type.startswith("Molecular Orientation"):
+            #     self._str_grid_bins += "{},".format(cv.grid_bins + 1)
+            # else:
+            #     self._str_grid_bins += "{},".format(cv.grid_bins)
+            self._str_grid_bins += "{},".format(cv.grid_bins)
             if self._type.startswith("Molecular Orientation"):
                 self._str_args += "ARG{}=ang_mat_{} ".format(idx_cv + 1, cv._name)
             else:
@@ -1516,7 +1517,14 @@ project.save()                                                # Save project"""
                 print("\nError: NaN values present in final distribution of crystal {0._name}. Check {0._path} "
                       "".format(crystal))
                 exit()
-        cv_dist = cv_dist.reshape(self._grid_bins)
+        try:
+            cv_dist = cv_dist.reshape(self._grid_bins)
+        except ValueError:
+            nbins = []
+            for b in self._grid_bins:
+                nbins.append(b + 1)
+            cv_dist = cv_dist.reshape(tuple(nbins))
+
         if len(self._cvs) == 2:
             np.savetxt(os.path.dirname(input_file) + "/plumed_{}_{}_data.dat".format(output_label, self._name),
                        cv_dist,
