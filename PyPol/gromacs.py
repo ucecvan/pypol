@@ -3423,7 +3423,8 @@ COMMITTOR ...
 
         self._analysis_tree = nwx.Graph()
         for crystal in list_crystals:
-            self._analysis_tree.add_node(f"i{round(i_prev, 3)}_{crystal._name}", structures=1)
+            self._analysis_tree.add_node(f"i{round(i_prev, 3)}_{crystal._name}",
+                                         structures=1, energy=i_prev, stable=False)
 
         for i in self._intervals:
             c_name = f"i{round(i, 3)}_"
