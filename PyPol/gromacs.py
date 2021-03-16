@@ -3431,14 +3431,17 @@ COMMITTOR ...
             suffix = "_" + self._name + "_" + str(i)
 
             # Remove unfinished structures
+            new_list_crystals = []
             for crystal in list_crystals:
                 if not os.path.exists(f"{crystal._path}{self._name}_analysis/{i}"):
-                    self._analysis_tree.add_node(f"i{round(i, 3)}_{crystal._name}",
-                                                 structures=self._analysis_tree.nodes[c_name + crystal._name][
+                    self._analysis_tree.add_node(c_name + crystal._name,
+                                                 structures=self._analysis_tree.nodes[c_prev + crystal._name][
                                                      "structures"],
                                                  energy=i, stable=False)
                     self._analysis_tree.add_edge(c_name + crystal._name, c_prev + crystal._name)
-                    list_crystals.remove(crystal)
+                else:
+                    new_list_crystals.append(crystal)
+            list_crystals = new_list_crystals
 
             # Import and generate Fingerprints
             for crystal in list_crystals:
@@ -3494,10 +3497,12 @@ COMMITTOR ...
                     self._analysis_tree.nodes[c_name + crystal._state]["structures"] += 1
 
             # Update list crystals
+            new_list_crystals = []
             for crystal in list_crystals:
-                if crystal._state != crystal._name:
-                    list_crystals.remove(crystal)
+                if crystal._name == crystal._state:
+                    new_list_crystals.append(crystal)
 
+            list_crystals = new_list_crystals
             i_prev = i
 
         if plot_tree:
