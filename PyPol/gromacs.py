@@ -3533,7 +3533,6 @@ COMMITTOR ...
             bfs = list(nx.bfs_edges(tree, node))
             pos[node] = np.array([start + tree.nodes[node]["structures"] / 2, tree.nodes[node]["energy"]])
             labels_pos[node] = np.array([start + tree.nodes[node]["structures"] / 2, tree.nodes[node]["energy"] + 0.25])
-            print(bfs)
             spl = {}
             for n1, n2 in bfs:
                 if tree.nodes[n2]["energy"] not in spl:
@@ -3544,7 +3543,7 @@ COMMITTOR ...
                 spl[tree.nodes[n2]["energy"]] += tree.nodes[n2]["structures"]
             start += tree.nodes[node]["structures"] + 1
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(len(self._crystals), len(self._intervals)))
         nx.draw(tree, pos=pos, node_size=10, ax=ax)
         for node in nodes:
             x = labels_pos[node][0]
@@ -3552,6 +3551,6 @@ COMMITTOR ...
             ax.text(x, y, labels[node], rotation="vertical", fontsize=8)
         ax.yaxis.grid(True)
         ax.tick_params(left=True, bottom=False, labelleft=True, labelbottom=False)
-        ax.set_ylim(0.25 + self._intervals[-1], self._intervals[0] - 0.25)
+        ax.set_ylim(0.25 + self._intervals[-1], -0.25)
 
         plt.savefig(output_file, dpi=300)
