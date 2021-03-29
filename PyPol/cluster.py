@@ -281,7 +281,8 @@ class Clustering(object):
                             cv._name + suffix for cv in distributions]]])), axis=2) / normalization
                 else:
                     combinations.at[index, "Distance Matrix"][:, :] = combinations.loc[
-                                                                          index, distributions[0]._name] / normalization
+                                                                          index, distributions[0]._name + suffix] / \
+                                                                      normalization
                 d_c = np.append(d_c, combinations.at[
                     index, "Distance Matrix"][np.triu_indices(combinations.at[index, "Distance Matrix"].shape[0], 1)])
 
