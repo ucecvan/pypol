@@ -191,7 +191,6 @@ class Clustering(object):
                 crystal = list_crystals[0]
                 group_options.append(list(crystal._cvs[cv._name + suffix].keys()))
                 group_names.append(cv._name)
-                break
         if group_options:
             if len(group_names) == 1:
                 combinations = group_options[0] + [None]

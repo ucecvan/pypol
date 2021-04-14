@@ -3435,6 +3435,7 @@ COMMITTOR ...
             new_list_crystals = []
             for crystal in list_crystals:
                 if not os.path.exists(f"{crystal._path}{self._name}_analysis/{i}"):
+                    print(i, crystal._name, "melted")
                     self._analysis_tree.add_node(c_name + crystal._name,
                                                  structures=self._analysis_tree.nodes[c_prev + crystal._name][
                                                      "structures"],
@@ -3443,6 +3444,9 @@ COMMITTOR ...
                 else:
                     new_list_crystals.append(crystal)
             list_crystals = new_list_crystals
+
+            if not new_list_crystals:
+                continue
 
             # Import and generate Fingerprints
             for crystal in list_crystals:

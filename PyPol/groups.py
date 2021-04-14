@@ -484,7 +484,7 @@ class GGFA(_GG):
 
         for crystal in list_crystals:
             gatt = crystal._attributes[self._attribute]
-            if gatt in groups:
+            if gatt in groups.keys():
                 groups[gatt].append(crystal._name)
             else:
                 groups[gatt] = [crystal._name]
