@@ -2921,12 +2921,12 @@ class Metadynamics(MolecularDynamics):
                          previous_sim, hide)
 
         # MetaD Parameters
-        self._replicas = replicas
         self._biasfactor = biasfactor
         self._pace = pace
         self._height = height
         self._temp = temp
         self._stride = stride
+        #self._replicas = replicas
 
         # Committor: EnergyCutOff
         self._energy_cutoff = 2.5
@@ -3077,7 +3077,7 @@ class Metadynamics(MolecularDynamics):
                          - "all": Select all non-melted structures
                          - "incomplete": Select crystals whose simulation normal ending has not been detected before.
         """
-        # TODO Only 1 replica available ==> no statistical analysis
+        # TODO Only 1 replica available
         from PyPol.walls import AvoidScrewedBox
         from PyPol.metad import _MetaCV, Density, PotentialEnergy, Box
         list_crystals = get_list_crystals(self._crystals, crystals, catt)

@@ -202,7 +202,7 @@ class Clustering(object):
                                                     index=index)), axis=1)
             else:
                 combinations = list(its.product(*group_options)) + \
-                               [tuple([None for _ in range(len(group_options[0]))])]
+                               [tuple([None for _ in range(len(group_names))])]
                 index = [str(i) for i in range(len(combinations) - 1)] + ["Others"]
                 combinations = pd.concat((pd.DataFrame(combinations, columns=group_names, index=index),
                                           pd.Series([0 for _ in range(len(combinations))],
