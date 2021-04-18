@@ -89,6 +89,7 @@ class _GroDef(object):
 class Method(_GroDef):
     # TODO Create module update_crystal_list.
     # TODO Create anchor option to allow non-Sequential simulations list
+    # TODO include more than one molecule
     """
     The Method object defines the forcefield and the simulations to be used in the analysis.
     Gromacs is used for MD simulations.
@@ -97,7 +98,7 @@ class Method(_GroDef):
     - name: Name used to specify the object and print outputs
     - package: The package used for MD.
     - topology: Path to the Gromacs topology file .top.
-    - nmolecules: Number of molecules (or .itp files) in the topology TODO include more than one molecule
+    - nmolecules: Number of molecules (or .itp files) in the topology
     - crystals: list of Crystal objects contained in the method. This refers to the crystals prior to any simulation.
     - gromacs: Gromacs command line
     - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
@@ -412,7 +413,7 @@ Attributes:\n
     - name: Name used to specify the object and print outputs
     - package: The package used for MD. 
     - topology: Path to the Gromacs topology file .top.
-    - nmolecules: Number of molecules (or .itp files) in the topology TODO include more than one molecule
+    - nmolecules: Number of molecules (or .itp files) in the topology 
     - crystals: list of Crystal objects contained in the method. This refers to the crystals prior to any simulation.
     - gromacs: Gromacs command line
     - mdrun_options: Options to be added to Gromacs mdrun command. For example '-v', '-v -nt 1', '-plumed plumed.dat'.
@@ -449,7 +450,7 @@ Methods:\n
                               is obtained converting the Gromacs one with InterMol.
                     - "md":   Molecular Dynamics using Gromacs. If no mdp file is specified the default ones are used.
                               Check the PyPol/data/Defaults/Gromacs folder to see or modify them.
-                    - "wtmd": Well-Tempered Metadynamics simulations (TODO)
+                    - "wtmd": Well-Tempered Metadynamics simulations 
                 If no path_mdp, path_lmp_in, path_lmp_ff are given, default input files will be used.
                 Use the <simulation>.help() method to obtain details on how to use it.
     - get_simulation(name): return the simulation object with the specified name.
@@ -1299,7 +1300,7 @@ Simulation Type '{}' not recognized. Choose between:
           is obtained converting the Gromacs one with InterMol.
 - "md":   Molecular Dynamics using Gromacs. If no mdp file is specified the default ones are used.
           Check the PyPol/data/Defaults/Gromacs folder to see or modify them.
-- "wtmd": Well-Tempered Metadynamics simulations (TODO)""".format(simtype))
+- "wtmd": Well-Tempered Metadynamics simulations""".format(simtype))
             exit()
 
     def get_simulation(self, simulation_name: str):
@@ -1413,48 +1414,6 @@ Simulation Type '{}' not recognized. Choose between:
 
         print("Collective Variable Type '{}' not available.".format(cv_type))
         exit()
-        # TODO REMOVE
-        # import PyPol.analysis as als
-        # if cv_type.lower() in ("torsions", "tor"):
-        #     cv = als.Torsions(name, self._htt_plumed)
-        #     self._cvp.append(cv)
-        #     return cv
-        # elif cv_type.lower() in ("molecularorientation", "mo"):
-        #     cv = als.MolecularOrientation(name, self._htt_plumed)
-        #     self._cvp.append(cv)
-        #     return cv
-        # elif cv_type.lower() == "planes":
-        #     cv = als.Planes(name, self._plumed)
-        #     self._cvp.append(cv)
-        #     return cv
-        # elif cv_type.lower() == "rdf":
-        #     cv = als.RDF(name, self._plumed, "com")
-        #     self._cvp.append(cv)
-        #     return cv
-        # elif cv_type.lower() == "rdf-planes":
-        #     cv = als.RDFPlanes(name)
-        #     self._cvp.append(cv)
-        #     return cv
-        # # TODO rdf-mo
-        # # elif cv_type.lower() == "rdf-mo":
-        # #     cv = als.RDFMO(name)
-        # #     self._cvp.append(cv)
-        # #     return cv
-        # elif cv_type.lower() == "density":
-        #     cv = als.Density(name)
-        #     self._cvp.append(cv)
-        #     return cv
-        # elif cv_type.lower() == "energy":
-        #     cv = als.PotentialEnergy(name)
-        #     self._cvp.append(cv)
-        #     return cv
-        # elif cv_type.lower() in ("asb", "avoidscrewedbox"):
-        #     cv = als.AvoidScrewedBox(name)
-        #     self._cvp.append(cv)
-        #     return cv
-        # else:
-        #     print("Collective Variable Type '{}' not available.".format(cv_type))
-        #     exit()
 
     def combine_cvs(self, name, cvs: Union[tuple, list]):
         """
@@ -2359,7 +2318,7 @@ project.save()                                                # Save project to 
             # Save new lmp file
             file_lmp_ff = open(moleculetype.lmp_forcefield)
             file_lmp_ff_new = open(working_directory + os.path.basename(moleculetype.lmp_forcefield), "w")
-            # write_at, write_vel, write_bon, write_ang, write_dih, write_imp = False, False, False, False, False, False
+
             atoms, velocities, bonds, angles, dihs, imps = [], [], [], [], [], []
             number_of_atoms, number_of_bonds, number_of_angles, number_of_dihedrals, number_of_impropers = 0, 0, 0, 0, 0
             for line in file_lmp_ff:
@@ -2394,7 +2353,6 @@ project.save()                                                # Save project to 
                 # Change body of LAMMPS
                 elif "Atoms" in line:
                     file_lmp_ff_new.write("Atoms\n\n")
-                    # line = next(file_lmp_ff)
                     next(file_lmp_ff)
                     for atom in range(moleculetype._natoms):
                         line = next(file_lmp_ff)
@@ -2410,7 +2368,6 @@ project.save()                                                # Save project to 
 
                 elif "Velocities" in line:
                     file_lmp_ff_new.write("Velocities\n\n")
-                    # line = next(file_lmp_ff)
                     next(file_lmp_ff)
                     for vel in range(moleculetype._natoms):
                         line = next(file_lmp_ff)
@@ -2424,7 +2381,6 @@ project.save()                                                # Save project to 
 
                 elif "Bonds" in line:
                     file_lmp_ff_new.write("Bonds\n\n")
-                    # line = next(file_lmp_ff)
                     next(file_lmp_ff)
                     bonds_in_molecule = int(number_of_bonds / molecules_in_crystal)
                     for bond in range(bonds_in_molecule):
@@ -2443,7 +2399,6 @@ project.save()                                                # Save project to 
 
                 elif "Angles" in line:
                     file_lmp_ff_new.write("Angles\n\n")
-                    # line = next(file_lmp_ff)
                     next(file_lmp_ff)
                     ang_in_molecule = int(number_of_angles / molecules_in_crystal)
                     for angle in range(ang_in_molecule):
@@ -2464,7 +2419,6 @@ project.save()                                                # Save project to 
 
                 elif "Dihedrals" in line:
                     file_lmp_ff_new.write("Dihedrals\n\n")
-                    # line = next(file_lmp_ff)
                     next(file_lmp_ff)
                     dihs_in_molecule = int(number_of_dihedrals / molecules_in_crystal)
                     for dih in range(dihs_in_molecule):
@@ -2484,7 +2438,6 @@ project.save()                                                # Save project to 
 
                 elif "Impropers" in line:
                     file_lmp_ff_new.write("Impropers\n\n")
-                    # line = next(file_lmp_ff)
                     next(file_lmp_ff)
                     imps_in_molecule = int(number_of_impropers / molecules_in_crystal)
                     for imp in range(imps_in_molecule):
@@ -3329,8 +3282,8 @@ COMMITTOR ...
         if type(clustering_method) is not Clustering:
             print("Error: no suitable clustering method used")
 
-        # TODO check self._mdp for metadynamics
-        # if "nstxout-compressed" in self._mdp:
+        # TODO Include trr files. Check self._mdp for metadynamics
+        # if "nstxout-compressed" in self._mdp.keys():
         #     file_ext = "xtc"
         # else:
         #     file_ext = "trr"
@@ -3396,9 +3349,7 @@ COMMITTOR ...
         file_script.write("done\n")
         file_script.close()
 
-    def get_analysis_results(self, clustering_method=None, crystals="all", catt=None, plot_tree=True, plot=True):
-        # TODO change tree data from simple state of the crystal to list [state, work] in order to correctly
-        #      plot the tree ---> identify transition through DRMSD?
+    def get_analysis_results(self, clustering_method=None, crystals="all", catt=None, plot=True):
         import networkx as nwx
         from PyPol.fingerprints import _OwnDistributions
         from PyPol.groups import _GG
@@ -3413,11 +3364,6 @@ COMMITTOR ...
             clustering_method = self._clustering_method
 
         list_crystals = get_list_crystals(self._crystals, crystals, catt, _include_melted=False)
-
-        # for crystal in list_crystals:
-        #     self._analysis_tree[crystal._name] = {}
-        #     for interval in self._intervals:
-        #         self._analysis_tree[crystal._name][interval] = None
 
         i_prev = 0
 
@@ -3481,7 +3427,7 @@ COMMITTOR ...
                                   catt=catt,
                                   suffix=suffix,
                                   path_output=self._path_output + "/analysis/" + str(i),
-                                  _check=True)  # TODO change to False after test---> simulation must be completed
+                                  _check=True)  # TODO TEST, change to False after test--->simulation must be completed
 
             from copy import deepcopy
             self._analysis_clusters[i] = deepcopy(self._clusters)
@@ -3510,10 +3456,10 @@ COMMITTOR ...
             list_crystals = new_list_crystals
             i_prev = i
 
-        if plot_tree:
-            self._plot_tree()
-
     def _plot_tree(self, tree=None, output_file=None):
+        # TODO Move to method including previous step. Define style based on number of molecules.
+        #      Possible styles: Sankey, Circles, Histogram.
+        #      Force Sankey for large number of structures.
         if tree is None:
             tree = self._analysis_tree
         if output_file is None:

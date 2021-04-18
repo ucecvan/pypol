@@ -199,8 +199,10 @@ def best_c(box, max_replica: int, toll=0.08):
     new_c = box[:, 2]
     distance_min = np.linalg.norm(new_c[:2])
     replica_c = 1
-    for i in sorted([i for i in range(-max_replica, max_replica + 1) if i != 0], key=abs):
-        for j in sorted([j for j in range(-max_replica, max_replica + 1) if i != 0], key=abs):
+    # noinspection PyTypeChecker
+    for i in sorted([a for a in range(-max_replica, max_replica + 1) if a != 0], key=abs):
+        # noinspection PyTypeChecker
+        for j in sorted([b for b in range(-max_replica, max_replica + 1) if b != 0], key=abs):
             for k in range(1, max_replica):
                 vz = i * box[:, 0] + j * box[:, 1] + k * box[:, 2]
                 if np.linalg.norm(vz[:2]) < distance_min:
@@ -223,6 +225,7 @@ def best_b(box, max_replica: int, toll=0.08):
     new_b = box[:, 1]
     distance_min = np.absolute(new_b[0])
     replica_b = 1
+    # noinspection PyTypeChecker
     for i in sorted([i for i in range(-max_replica, max_replica + 1) if i != 0], key=abs):
         for j in range(1, max_replica + 1):
             vy = i * box[:, 0] + j * box[:, 1]

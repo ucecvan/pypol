@@ -398,7 +398,7 @@ project.save()
                     cj = list_crystals[j]._name
                     bar.update(nbar)
                     nbar += 1
-                    if self._dist_cv._type == "Radial Distribution Function":  # ?
+                    if self._dist_cv._type == "Radial Distribution Function":
                         if len(di) > len(dj):
                             hd = hellinger(di.copy()[:len(dj)], dj.copy(), self._int_type)
                         else:
@@ -433,7 +433,7 @@ class GGFA(_GG):
     - attribute: Attribute label to be used for classification
 
     Methods:\n
-    - help(): returns available attributes and methods. (TODO)
+    - help(): returns available attributes and methods. TODO
     - run(simulation): Creates groups looking at the crystal attributes in the simulation object
     """
 

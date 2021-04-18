@@ -15,7 +15,7 @@ from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation,
 #
 
 
-class _Distribution(object):  # TODO Change name to Distributions
+class _Distribution(object):
     """
     General Class for Collective Variables.
     Attributes:\n
@@ -803,7 +803,7 @@ project.save()                                                # Save project"""
 
 class Planes(_Distribution):
     """
-    TODO Change docstrings of everything!!!
+    TODO Change docstrings
     Generates a distribution of the torsional angles of the selected atoms.
     Attributes:\n
     - name: name of the CV.
@@ -1594,21 +1594,6 @@ Clustering Type: {0._clustering_type}""".format(self)
     @staticmethod
     def _kde_ovect_rvect(data, r_grid_min=0., r_grid_max=4., r_bw=0.05, r_bins=100j,
                          o_grid_min=0., o_grid_max=np.pi, o_bw=0.05, o_bins=100j, mirror=False):
-        # data = []
-        # for i in range(207):
-        #     ax, ay, az = ovect[i, :]
-        #     for j in range(i + 1, 208):
-        #         distance = np.linalg.norm(rvect[i, :] - rvect[j, :])
-        #         if distance > r_grid_max:
-        #             continue
-        #         bx, by, bz = ovect[j, :]
-        #         angle = np.arccos(
-        #             (ax * bx + ay * by + az * bz) / np.sqrt(
-        #                 (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
-        #
-        #         data.append(np.array([angle, distance]))
-        #
-        # data = np.array(data)
         kde = KDE()
         data_scaled = data / np.array([o_bw, r_bw])
         kde.fit(data_scaled)
@@ -1692,8 +1677,7 @@ Clustering Type: {0._clustering_type}""".format(self)
 
 class RDFPlanes(_OwnDistributions):
     """
-    TODO Change docstrings of everything!!!
-    TODO Do equivalent for RDFMO once everything is tested.
+    TODO Change docstrings
     Generates a distribution of the torsional angles of the selected atoms.
     Attributes:\n
     - name: name of the CV.

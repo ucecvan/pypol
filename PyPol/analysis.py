@@ -1,3 +1,4 @@
+# TODO Remove
 # import numpy as np
 # import os
 # import matplotlib.pyplot as plt
@@ -16,7 +17,6 @@
 # from PyPol.groups import *
 # from PyPol.metad import _MetaCV, Density, PotentialEnergy
 # from PyPol.cluster import *
-# TODO Remove
 
 
 #

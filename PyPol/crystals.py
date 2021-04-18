@@ -381,7 +381,7 @@ Methods:
 
         # Atom types that can be switched by antechamber, especially from experimental data. They are considered
         # equivalent only during the index assignation in the generate_input module but not during the simulation.
-        # (This because the atomtypes are used only for the reindexing and not to generate a force field)
+        # (This is because the atomtypes are used only for the reindexing and not to generate a force field)
         equivalent_atom_types = {
             'cq': 'cp',
             'cd': 'c2',  # Not true but equivalent for the index assignation. It should be 'cd': 'cc'. However,
