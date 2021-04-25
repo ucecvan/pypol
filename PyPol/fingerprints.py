@@ -232,7 +232,7 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
         for crystal in list_crystals:
             self.generate_input(crystal,
                                 crystal._path + f"/plumed_{self._name}.dat",
-                                crystal._path + f"plumed_{simulation._name}_{self._name}.dat")
+                                crystal._path + f"/plumed_{simulation._name}_{self._name}.dat")
 
         if bash_script:
             dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
@@ -317,7 +317,7 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
         for crystal in list_crystals:
             path_plumed_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_plumed_output):
-                crystal._cvs[self._name + suffix] = self.get_from_file(crystal, path_plumed_output, crystal._name, plot)
+                crystal._cvs[self._name + suffix] = self.get_from_file(crystal, path_plumed_output, simulation._name, plot)
                 bar.update(nbar)
                 nbar += 1
             else:
@@ -1456,7 +1456,7 @@ project.save()                                                # Save project"""
                 lines_atoms = []
                 for idx_mol in range(len(cv._molecules)):
                     lines_atoms = generate_atom_list(cv._atoms[idx_mol], cv._molecules[idx_mol], crystal,
-                                                     keyword="ATOMS", lines=lines_atoms, attributes=cv._matt)
+                                                     keyword="ATOMS", lines=lines_atoms, attributes=self._matt)
 
                 file_plumed.write("DISTANCE ...\n")
                 for line in lines_atoms:
