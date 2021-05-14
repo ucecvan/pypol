@@ -346,14 +346,14 @@ def hellinger(y1: Union[np.array, list],
         from scipy.integrate import simps
         # Normalise Distributions
         N1, N2 = (y1, y2)
-        for x in y1.shape:
+        for x in y1.shape[::-1]:
             N1 = simps(N1, np.linspace(0, x, x))
             N2 = simps(N2, np.linspace(0, x, x))
         y1 /= N1
         y2 /= N2
 
         BC = np.sqrt(np.multiply(y1, y2))
-        for x in y1.shape:
+        for x in y1.shape[::-1]:
             BC = simps(BC, np.linspace(0, x, x))
         HD = round(np.sqrt(1 - BC), 5)
         return HD
@@ -362,14 +362,14 @@ def hellinger(y1: Union[np.array, list],
         from scipy.integrate import trapz
         # Normalise Distributions
         N1, N2 = (y1, y2)
-        for x in y1.shape:
+        for x in y1.shape[::-1]:
             N1 = trapz(N1, np.linspace(0, x, x))
             N2 = trapz(N2, np.linspace(0, x, x))
         y1 /= N1
         y2 /= N2
 
         BC = np.sqrt(np.multiply(y1, y2))
-        for x in y1.shape:
+        for x in y1.shape[::-1]:
             BC = trapz(BC, np.linspace(0, x, x))
         HD = round(np.sqrt(1 - BC), 5)
         return HD

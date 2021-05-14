@@ -1676,6 +1676,7 @@ Clustering Type: {0._clustering_type}""".format(self)
         print(f"Info: This distribution is generated directly from the trajectory. No plumed output needed")
 
 
+# Change Name in DistancesPlanes
 class RDFPlanes(_OwnDistributions):
     """
     TODO Change docstrings
@@ -1934,13 +1935,16 @@ project.save()                                                # Save project"""
 
         planes = {}
         r_plane = {}
+        box_param = {}
         file_gro = open(os.path.dirname(input_traj) + f"/PYPOL_TMP_{output_label}.gro")
         frame, plane = 0, 0
         for line in file_gro:
             if "t=" in line:
                 frame = line.split()[-1]
-                planes[frame] = np.zeros((len(mols), 3))
-                r_plane[frame] = np.zeros((len(mols), 3))
+                planes[frame] = {}
+                planes[frame][0] = np.zeros((len(mols), 3))
+                r_plane[frame] = {}
+                r_plane[frame][0] = np.zeros((len(mols), 3))
                 plane = 0
                 next(file_gro)
             elif line[5:8] == self._molecule._residue:
@@ -1949,31 +1953,53 @@ project.save()                                                # Save project"""
                 a2 = np.array([float(line[23:28]), float(line[31:36]), float(line[39:44])])
                 line = next(file_gro)
                 a3 = np.array([float(line[23:28]), float(line[31:36]), float(line[39:44])])
-                planes[frame][plane, :] = np.cross(a2 - a1, a2 - a3)
-                planes[frame][plane, :] /= np.linalg.norm(planes[frame][plane, :])
-                r_plane[frame][plane, :] = np.mean([a1, a2, a3], axis=0)
-                # vmd arrows
+                planes[frame][0][plane, :] = np.cross(a2 - a1, a2 - a3)
+                planes[frame][0][plane, :] /= np.linalg.norm(planes[frame][0][plane, :])
+                r_plane[frame][0][plane, :] = np.mean([a1, a2, a3], axis=0)
+                # vmd arrows:
                 # print(frame, "draw arrow {{ {0[0]} {0[1]} {0[2]} }} {{ {1[0]} {1[1]} {1[2]} }}
-                # ".format(r_plane[frame][plane, :]*10, (planes[frame][plane, :] * 0.2 + r_plane[frame][plane, :])*10))
-
+                # ".format(r_plane[frame][0][plane, :]*10,
+                #          (planes[frame][0][plane, :] * 0.2 + r_plane[frame][0][plane, :])*10))
                 plane += 1
+            else:
+                idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
+                box_param[frame] = np.array([float(line.split()[ii]) for ii in idx_gromacs]).reshape((3, 3))
         file_gro.close()
-        data = np.full((int(len(mols) * (len(mols) - 1) / 2) * len(planes.keys()), 2), np.nan)
+
+        nbox = 0
+        for a in (-1, 0, 1):
+            for b in (-1, 0, 1):
+                for c in (-1, 0, 1):
+                    if (a,b,c) != (0,0,0):
+                        nbox += 1
+                        planes[frame][nbox] = np.zeros((len(mols), 3))
+                        r_plane[frame][nbox] = np.zeros((len(mols), 3))
+                        for frame in planes.keys():
+                            for i in range(len(mols)):
+                                r_i = r_plane[frame][0][i, :]
+                                r_plane[frame][nbox][i, :] = np.sum([r_i,
+                                                                     a * box_param[frame][:, 0],
+                                                                     b * box_param[frame][:, 1],
+                                                                     c * box_param[frame][:, 2],], axis=0)
+                                planes[frame][nbox][i, :] = planes[frame][0][i, :]
+
+        data = np.full((int(len(mols) * (len(mols) - 1) / 2) * len(planes.keys()) * 27, 2), np.nan)
         d = 0
         for frame in planes.keys():
             for i in range(len(mols) - 1):
-                ax, ay, az = planes[frame][i, :]
-                r_i = r_plane[frame][i, :]
+                ax, ay, az = planes[frame][0][i, :]
+                r_i = r_plane[frame][0][i, :]
                 for j in range(i + 1, len(mols)):
-                    r_j = r_plane[frame][j, :]
-                    distance = np.linalg.norm(r_i - r_j)
-                    if self._r_grid_min <= distance <= crystal_grid_max:
-                        bx, by, bz = planes[frame][j, :]
-                        angle = np.arccos(
-                            (ax * bx + ay * by + az * bz) / np.sqrt(
-                                (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
-                        data[d, :] = np.array([angle, distance])
-                    d += 1
+                    for nbox in range(27):
+                        r_j = r_plane[frame][nbox][j, :]
+                        distance = np.linalg.norm(r_i - r_j)
+                        if self._r_grid_min <= distance <= crystal_grid_max:
+                            bx, by, bz = planes[frame][nbox][j, :]
+                            angle = np.arccos(
+                                (ax * bx + ay * by + az * bz) / np.sqrt(
+                                    (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
+                            data[d, :] = np.array([angle, distance])
+                        d += 1
 
         data = data[~np.isnan(data).any(axis=1)]
 
@@ -2009,13 +2035,13 @@ project.save()                                                # Save project"""
         if self._r_grid_max:
             txt += f"""
 Grid Parameters:
-RDF: GRID_MAX={self._r_grid_max} GRID_MIN={self._r_grid_min} GRID_BINS={self._r_bins} BANDWIDTH={self._r_bins}
+Distances: GRID_MAX={self._r_grid_max} GRID_MIN={self._r_grid_min} GRID_BINS={self._r_bins} BANDWIDTH={self._r_bins}
 Planes: GRID_MAX={self._o_grid_max} GRID_MIN={self._o_grid_min} GRID_BINS={self._o_bins} BANDWIDTH={self._o_bw}
 """
         else:
             txt += f"""
 Grid Parameters:
-RDF: GRID_MIN={self._r_grid_min} GRID_SPACING={self._r_grid_space} BANDWIDTH={self._r_bins}
+Distances: GRID_MIN={self._r_grid_min} GRID_SPACING={self._r_grid_space} BANDWIDTH={self._r_bins}
 Planes: GRID_MAX={self._o_grid_max} GRID_MIN={self._o_grid_min} GRID_BINS={self._o_bins} BANDWIDTH={self._o_bw}
 """
 
