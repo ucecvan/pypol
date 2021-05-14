@@ -1483,7 +1483,7 @@ project.save()                                                # Save project"""
             for cv in self._cvs:
                 # Select atoms and molecules
                 lines_atoms = generate_atom_list(cv._atoms, cv.molecule, crystal, keyword="ATOMS", lines=[],
-                                                 attributes=cv._matt)
+                                                 attributes=self._matt)
 
                 file_plumed.write("TORSIONS ...\n")
                 for line in lines_atoms:
@@ -1929,7 +1929,7 @@ project.save()                                                # Save project"""
                     space = 0
         file_ndx.close()
 
-        os.system('{0} trjconv -f {1} -o PYPOL_TMP_{2}.gro -n PYPOL_TMP_{2}.ndx -s {3}.tpr <<< 0  &> /dev/null'
+        os.system('{0} trjconv -f {1} -o PYPOL_TMP_{2}.gro -n PYPOL_TMP_{2}.ndx -s {3}.tpr -pbc mol <<< 0  &> /dev/null'
                   ''.format(simulation._gromacs, input_traj, output_label, simulation._name))
 
         planes = {}
@@ -1950,7 +1950,12 @@ project.save()                                                # Save project"""
                 line = next(file_gro)
                 a3 = np.array([float(line[23:28]), float(line[31:36]), float(line[39:44])])
                 planes[frame][plane, :] = np.cross(a2 - a1, a2 - a3)
+                planes[frame][plane, :] /= np.linalg.norm(planes[frame][plane, :])
                 r_plane[frame][plane, :] = np.mean([a1, a2, a3], axis=0)
+                # vmd arrows
+                # print(frame, "draw arrow {{ {0[0]} {0[1]} {0[2]} }} {{ {1[0]} {1[1]} {1[2]} }}
+                # ".format(r_plane[frame][plane, :]*10, (planes[frame][plane, :] * 0.2 + r_plane[frame][plane, :])*10))
+
                 plane += 1
         file_gro.close()
         data = np.full((int(len(mols) * (len(mols) - 1) / 2) * len(planes.keys()), 2), np.nan)

@@ -3259,12 +3259,13 @@ COMMITTOR ...
     @staticmethod
     def _set_intervals(start, end, every):
         intervals = []
+        if every < 0.1:
+            print("Error: Minimum interval is 0.1 kJ mol-1")
         while start <= end:
-            intervals.append(start)
+            intervals.append(round(start, 1))
             start += every
         if end % every != 0:
             intervals.append(end)
-
         return intervals
 
     def generate_analysis_input(self, clustering_method=None, crystals="all", catt=None,

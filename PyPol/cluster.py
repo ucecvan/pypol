@@ -325,10 +325,9 @@ class Clustering(object):
                 fo.write("{:15}: {:<1.3f}\n".format(n, n_factors[n]))
             fo.write(file_output.__str__())
         d_c = np.sort(np.array(d_c))[int(float(len(d_c)) * self._d_c_fraction)]
-        print("done")
+        print("done\nClustering...", end="")
 
         # Remove structures that are not cluster centers
-        print("Clustering...", end="")
         changes_string = ""
         with open(path_output + str(self._name) + "_FSFDP.dat", 'w') as fo:
             fo.write("# FSFDP parameters for every group:\n")
