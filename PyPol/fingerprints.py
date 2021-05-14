@@ -9,6 +9,7 @@ from PyPol.utilities import get_list_crystals, hellinger, generate_atom_list
 from PyPol.crystals import Molecule
 from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation, Metadynamics
 
+
 # TODO Correct Docstrings
 
 #
@@ -318,7 +319,8 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
         for crystal in list_crystals:
             path_plumed_output = crystal._path + "plumed_{}_{}.dat".format(simulation._name, self._name)
             if os.path.exists(path_plumed_output):
-                crystal._cvs[self._name + suffix] = self.get_from_file(crystal, path_plumed_output, simulation._name, plot)
+                crystal._cvs[self._name + suffix] = self.get_from_file(crystal, path_plumed_output, simulation._name,
+                                                                       plot)
                 bar.update(nbar)
                 nbar += 1
             else:
@@ -1599,7 +1601,7 @@ Clustering Type: {0._clustering_type}""".format(self)
         data_scaled = data / np.array([o_bw, r_bw])
         kde.fit(data_scaled)
         xx, yy = np.mgrid[int(o_grid_min / o_bw):int(o_grid_max / o_bw):o_bins,
-                          int(r_grid_min / r_bw):int(r_grid_max / r_bw): r_bins]
+                 int(r_grid_min / r_bw):int(r_grid_max / r_bw): r_bins]
         zz = np.reshape(np.exp(kde.score_samples(np.vstack([xx.ravel(), yy.ravel()]).T)), xx.shape).T
         if mirror:
             zz = (zz + np.flip(zz, axis=1)) / 2.
@@ -1970,17 +1972,17 @@ project.save()                                                # Save project"""
         for a in (-1, 0, 1):
             for b in (-1, 0, 1):
                 for c in (-1, 0, 1):
-                    if (a,b,c) != (0,0,0):
+                    if (a, b, c) != (0, 0, 0):
                         nbox += 1
-                        planes[frame][nbox] = np.zeros((len(mols), 3))
-                        r_plane[frame][nbox] = np.zeros((len(mols), 3))
                         for frame in planes.keys():
+                            planes[frame][nbox] = np.zeros((len(mols), 3))
+                            r_plane[frame][nbox] = np.zeros((len(mols), 3))
                             for i in range(len(mols)):
                                 r_i = r_plane[frame][0][i, :]
                                 r_plane[frame][nbox][i, :] = np.sum([r_i,
                                                                      a * box_param[frame][:, 0],
                                                                      b * box_param[frame][:, 1],
-                                                                     c * box_param[frame][:, 2],], axis=0)
+                                                                     c * box_param[frame][:, 2], ], axis=0)
                                 planes[frame][nbox][i, :] = planes[frame][0][i, :]
 
         data = np.full((int(len(mols) * (len(mols) - 1) / 2) * len(planes.keys()) * 27, 2), np.nan)
