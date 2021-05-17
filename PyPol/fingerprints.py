@@ -2014,7 +2014,7 @@ project.save()                                                # Save project"""
                                       self._o_bw, self._o_bins, mirror=self._mirror)
 
         r = np.linspace(start=self._r_grid_min, stop=crystal_grid_max, num=int(crystal_grid_bins.imag))
-        N = 4 * np.pi * crystal._density * r ** 2 * crystal._Z * (crystal_grid_max - self._r_grid_min) / crystal_grid_bins / 2.0
+        N = 4 * np.pi * crystal._density * r ** 2 * crystal._Z * (crystal_grid_max - self._r_grid_min) / crystal_grid_bins.imag / 2.0
         cv /= N.reshape(-1, 1)
 
         # Save output and plot distribution
