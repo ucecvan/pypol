@@ -1734,7 +1734,7 @@ class RDFPlanes(_OwnDistributions):
         self._o_grid_min = 0.
         self._o_grid_max = np.pi
         self._o_bw = 0.05
-        self._o_bins = 100j
+        self._o_bins = 72j
         self._mirror = False
 
     @property
@@ -1761,6 +1761,7 @@ class RDFPlanes(_OwnDistributions):
     def rdf_grid_bins(self, value: Union[float, int, complex]):
         if isinstance(value, (float, int)):
             value = complex(0, value)
+        self._r_grid_space = (self._r_grid_max - self._r_grid_max) / value.imag
         self._r_bins = value
 
     @property
@@ -2011,6 +2012,10 @@ project.save()                                                # Save project"""
                                       self._r_bw, crystal_grid_bins,
                                       self._o_grid_min, self._o_grid_max,
                                       self._o_bw, self._o_bins, mirror=self._mirror)
+
+        r = np.linspace(start=self._r_grid_min, stop=crystal_grid_max, num=int(crystal_grid_bins.imag))
+        N = (4 * np.pi * crystal._density * r ** 2 * self._r_grid_space) / crystal._Z * 2.0
+        cv /= N.reshape(-1, 1)
 
         # Save output and plot distribution
         np.savetxt(os.path.dirname(input_traj) + "/pypol_{}_{}_data.dat".format(output_label, self._name),
