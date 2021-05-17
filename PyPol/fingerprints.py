@@ -1273,7 +1273,7 @@ project.save()                                                # Save project
         d_max = 0.5 * np.min(np.array([crystal._box[0, 0], crystal._box[1, 1], crystal._box[2, 2]]))
         nbins = int(round((d_max - self._r_0) / self._grid_space, 0))
         r = np.linspace(self._r_0, d_max, nbins)
-        rho = crystal._Z / crystal._volume
+        rho = crystal._density
 
         cv = np.where(r > 0, dn_r / (4 * np.pi * rho * r ** 2 * self._grid_space) / crystal._Z * 2.0, 0.)
         # Save output and plot distribution
@@ -1933,7 +1933,8 @@ project.save()                                                # Save project"""
                     space = 0
         file_ndx.close()
 
-        os.system('{0} trjconv -f {1} -o PYPOL_TMP_{2}.gro -n PYPOL_TMP_{2}.ndx -s {3}.tpr -pbc mol <<< 0  &> /dev/null'
+        os.system('{0} trjconv -f {1} -o PYPOL_TMP_{2}.gro -n PYPOL_TMP_{2}.ndx -s {3}.tpr '
+                  '-pbc mol -ur tric -center <<< "2 2"  &> /dev/null'
                   ''.format(simulation._gromacs, input_traj, output_label, simulation._name))
 
         planes = {}
