@@ -1604,7 +1604,7 @@ Clustering Type: {0._clustering_type}""".format(self)
                  int(r_grid_min / r_bw):int(r_grid_max / r_bw): r_bins]
         zz = np.reshape(np.exp(kde.score_samples(np.vstack([xx.ravel(), yy.ravel()]).T)), xx.shape).T
         if mirror:
-            zz = (zz + np.flip(zz, axis=1)) / 2.
+            zz = (zz + np.flip(zz, axis=1))
             zz = zz[:, :int(zz.shape[1] / 2)]
         return zz
 
@@ -1616,7 +1616,7 @@ Clustering Type: {0._clustering_type}""".format(self)
                         bash_script=True,
                         crystals="all",
                         catt=None):
-        print("Info: No plumed input needed for to generate this distribution")
+        print("Info: No plumed input needed to generate this distribution")
 
     def get_results(self,
                     simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
@@ -2019,8 +2019,10 @@ project.save()                                                # Save project"""
                    cv,
                    header="Probability Density Grid.")
         if plot:
-
-            extent = [self._o_grid_min, self._o_grid_max, crystal_grid_max, self._r_grid_min]
+            if self._mirror:
+                extent = [self._o_grid_min, self._o_grid_max / 2, crystal_grid_max, self._r_grid_min]
+            else:
+                extent = [self._o_grid_min, self._o_grid_max, crystal_grid_max, self._r_grid_min]
             plt.imshow(cv, extent=extent, cmap="viridis")
             plt.colorbar()
             # plt.scatter(data[:, 0], data[:, 1], s=1, facecolor=None, edgecolors='white', alpha=0.025)
