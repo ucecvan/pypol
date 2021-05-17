@@ -1984,7 +1984,6 @@ project.save()                                                # Save project"""
                                                                      b * box_param[frame][:, 1],
                                                                      c * box_param[frame][:, 2], ], axis=0)
                                 planes[frame][nbox][i, :] = planes[frame][0][i, :]
-
         data = np.full((int(len(mols) * (len(mols) - 1) / 2) * len(planes.keys()) * 27, 2), np.nan)
         d = 0
         for frame in planes.keys():
@@ -2019,6 +2018,7 @@ project.save()                                                # Save project"""
                    cv,
                    header="Probability Density Grid.")
         if plot:
+
             extent = [self._o_grid_min, self._o_grid_max, crystal_grid_max, self._r_grid_min]
             plt.imshow(cv, extent=extent, cmap="viridis")
             plt.colorbar()
