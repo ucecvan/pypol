@@ -1605,6 +1605,7 @@ Clustering Type: {0._clustering_type}""".format(self)
         zz = np.reshape(np.exp(kde.score_samples(np.vstack([xx.ravel(), yy.ravel()]).T)), xx.shape).T
         if mirror:
             zz = (zz + np.flip(zz, axis=1)) / 2.
+            zz = zz[:, :int(zz.shape[1] / 2)]
         return zz
 
     def generate_input(self, crystal, input_name="", output_label=""):
@@ -1734,7 +1735,7 @@ class RDFPlanes(_OwnDistributions):
         self._o_grid_max = np.pi
         self._o_bw = 0.05
         self._o_bins = 100j
-        self._mirror = True
+        self._mirror = False
 
     @property
     def rdf_grid_min(self):
