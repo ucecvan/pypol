@@ -1953,11 +1953,11 @@ project.save()                                                # Save project"""
                 plane = 0
                 next(file_gro)
             elif line[5:8] == self._molecule._residue:
-                a1 = np.array([float(line[23:28]), float(line[31:36]), float(line[39:44])])
+                a1 = np.array([float(line[20:28].strip()), float(line[28:36].strip()), float(line[36:44].strip())])
                 line = next(file_gro)
-                a2 = np.array([float(line[23:28]), float(line[31:36]), float(line[39:44])])
+                a2 = np.array([float(line[20:28].strip()), float(line[28:36].strip()), float(line[36:44].strip())])
                 line = next(file_gro)
-                a3 = np.array([float(line[23:28]), float(line[31:36]), float(line[39:44])])
+                a3 = np.array([float(line[20:28].strip()), float(line[28:36].strip()), float(line[36:44].strip())])
                 planes[frame][0][plane, :] = np.cross(a2 - a1, a2 - a3)
                 planes[frame][0][plane, :] /= np.linalg.norm(planes[frame][0][plane, :])
                 r_plane[frame][0][plane, :] = np.mean([a1, a2, a3], axis=0)
