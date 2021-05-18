@@ -1961,10 +1961,10 @@ project.save()                                                # Save project"""
                 planes[frame][0][plane, :] = np.cross(a2 - a1, a2 - a3)
                 planes[frame][0][plane, :] /= np.linalg.norm(planes[frame][0][plane, :])
                 r_plane[frame][0][plane, :] = np.mean([a1, a2, a3], axis=0)
-                # vmd arrows:
-                # print(frame, "draw arrow {{ {0[0]} {0[1]} {0[2]} }} {{ {1[0]} {1[1]} {1[2]} }}
-                # ".format(r_plane[frame][0][plane, :]*10,
-                #          (planes[frame][0][plane, :] * 0.2 + r_plane[frame][0][plane, :])*10))
+                # VMD arrows:
+                # print(frame, "draw arrow {{ {0[0]} {0[1]} {0[2]} }} {{ {1[0]} {1[1]} {1[2]} }}"
+                #              "".format(r_plane[frame][0][plane, :]*10,
+                #                        (planes[frame][0][plane, :] * 0.2 + r_plane[frame][0][plane, :])*10))
                 plane += 1
             else:
                 idx_gromacs = [0, 5, 7, 3, 1, 8, 4, 6, 2]
