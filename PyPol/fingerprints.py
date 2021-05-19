@@ -283,6 +283,7 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
                                   ''.format(self._plumed, simulation._name, self._name))
                 file_script.close()
 
+
             else:
                 dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
 
