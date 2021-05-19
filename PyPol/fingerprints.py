@@ -231,31 +231,44 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
 
         list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
 
+        print("Generating plumed inputs for {}:".format(self.name))
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
         for crystal in list_crystals:
             self.generate_input(crystal,
                                 crystal._path + f"/plumed_{self._name}.dat",
                                 crystal._path + f"/plumed_{simulation._name}_{self._name}.dat")
+            bar.update(nbar)
+            nbar += 1
 
+        bar.finish()
         if bash_script:
             if isinstance(simulation, EnergyMinimization):
+                print("Generating fake trajectories of EM simulation {}:".format(simulation.name))
+                bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+                nbar = 1
                 for crystal in list_crystals:
+                    if os.path.exists(crystal._path + f'PYPOL_TMP_plumed_{simulation.name}.xtc'):
+                        bar.update(nbar)
+                        nbar += 1
+                        continue
                     os.chdir(crystal._path)
                     if os.path.exists(crystal._path + simulation.name + ".xtc"):
                         file_check = sbp.getoutput("{} check -f {}.xtc".format(simulation._gromacs,
                                                                                crystal._path + simulation.name))
                         for line in file_check.split(sep="\n"):
-                            if "Step" in line:
+                            if line.startswith("Step"):
                                 steps = float(line.split()[1])
                                 if steps > 5:
                                     os.system('{0} trjconv -f {1}.xtc -o PYPOL_TMP_plumed_{1}.xtc '
-                                              '-s {1}.tpr -b {2} -timestep 1 <<< 0'
+                                              '-s {1}.tpr -b {2} -timestep 1 <<< 0 &> /dev/null '
                                               ''.format(simulation.gromacs, simulation.name, steps - 5))
                                 else:
                                     os.system('{0} trjconv -f {1}.gro -o PTS_{1}.xtc '
-                                              '-s {1}.tpr <<< 0'
+                                              '-s {1}.tpr <<< 0 &> /dev/null '
                                               ''.format(simulation.gromacs, simulation.name))
                                     os.system("{0} trjcat -f PTS_{1}.xtc PTS_{1}.xtc PTS_{1}.xtc PTS_{1}.xtc "
-                                              "-o PYPOL_TMP_plumed_{1}.xtc -cat"
+                                              "-o PYPOL_TMP_plumed_{1}.xtc -cat &> /dev/null "
                                               "".format(simulation.gromacs, simulation.name))
                                     os.system(f"rm PTS_{simulation.name}.xtc")
                     else:
@@ -266,9 +279,11 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
                                   "-o PYPOL_TMP_plumed_{1}.xtc -cat"
                                   "".format(simulation.gromacs, simulation.name))
                         os.system(f"rm PTS_{simulation.name}.xtc")
-                else:
-                    print("Error: No suitable time interval.")
-                    exit()
+                    bar.update(nbar)
+                    nbar += 1
+
+                bar.finish()
+
                 file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
                 file_script.write('#!/bin/bash\n\n'
                                   'crystal_paths="\n')
@@ -282,7 +297,6 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
                                   'done\n'
                                   ''.format(self._plumed, simulation._name, self._name))
                 file_script.close()
-
 
             else:
                 dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
