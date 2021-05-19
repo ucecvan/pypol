@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import progressbar
 from typing import Union
 from sklearn.neighbors import KernelDensity as KDE
-
+import subprocess as sbp
 from PyPol.utilities import get_list_crystals, hellinger, generate_atom_list
 from PyPol.crystals import Molecule
 from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation, Metadynamics
@@ -237,60 +237,107 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
                                 crystal._path + f"/plumed_{simulation._name}_{self._name}.dat")
 
         if bash_script:
-            dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
-
-            file_mdp = open(simulation._path_mdp)
-            for line in file_mdp:
-                if line.startswith('dt '):
-                    dt = float(line.split()[2])
-                elif line.startswith(("nstxout", "nstxout-compressed")):
-                    traj_stride = int(line.split()[2])
-                elif line.startswith('nsteps '):
-                    nsteps = float(line.split()[2])
-            file_mdp.close()
-
-            traj_time = int(nsteps * dt)
-            if traj_time > 0:
-                if isinstance(self._timeinterval, tuple):
-                    traj_start = self._timeinterval[0]
-                    traj_end = self._timeinterval[1]
-                elif isinstance(self._timeinterval, int):
-                    traj_start = traj_time - self._timeinterval
-                    traj_end = traj_time
+            if isinstance(simulation, EnergyMinimization):
+                for crystal in list_crystals:
+                    os.chdir(crystal._path)
+                    if os.path.exists(crystal._path + simulation.name + ".xtc"):
+                        file_check = sbp.getoutput("{} check -f {}.xtc".format(simulation._gromacs,
+                                                                               crystal._path + simulation.name))
+                        for line in file_check.split(sep="\n"):
+                            if "Step" in line:
+                                steps = float(line.split()[1])
+                                if steps > 5:
+                                    os.system('{0} trjconv -f {1}.xtc -o PYPOL_TMP_plumed_{1}.xtc '
+                                              '-s {1}.tpr -b {2} -timestep 1 <<< 0'
+                                              ''.format(simulation.gromacs, simulation.name, steps - 5))
+                                else:
+                                    os.system('{0} trjconv -f {1}.gro -o PTS_{1}.xtc '
+                                              '-s {1}.tpr <<< 0'
+                                              ''.format(simulation.gromacs, simulation.name))
+                                    os.system("{0} trjcat -f PTS_{1}.xtc PTS_{1}.xtc PTS_{1}.xtc PTS_{1}.xtc "
+                                              "-o PYPOL_TMP_plumed_{1}.xtc -cat"
+                                              "".format(simulation.gromacs, simulation.name))
+                                    os.system(f"rm PTS_{simulation.name}.xtc")
+                    else:
+                        os.system('{0} trjconv -f {1}.gro -o PTS_{1}.xtc '
+                                  '-s {1}.tpr <<< 0'
+                                  ''.format(simulation.gromacs, simulation.name))
+                        os.system("{0} trjcat -f PTS_{1}.xtc PTS_{1}.xtc PTS_{1}.xtc PTS_{1}.xtc "
+                                  "-o PYPOL_TMP_plumed_{1}.xtc -cat"
+                                  "".format(simulation.gromacs, simulation.name))
+                        os.system(f"rm PTS_{simulation.name}.xtc")
                 else:
                     print("Error: No suitable time interval.")
                     exit()
-
-            file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
-            file_script.write('#!/bin/bash\n\n'
-                              'crystal_paths="\n')
-            for crystal in list_crystals:
-                file_script.write(crystal._path + "\n")
-
-            if isinstance(simulation, Metadynamics):
+                file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
+                file_script.write('#!/bin/bash\n\n'
+                                  'crystal_paths="\n')
+                for crystal in list_crystals:
+                    file_script.write(crystal._path + "\n")
                 file_script.write('"\n\n'
                                   'for crystal in $crystal_paths ; do\n'
                                   'cd "$crystal" || exit \n'
-                                  '#{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
-                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
-                                  '--trajectory-stride {7} --mc mc.dat\n'
-                                  '#rm plumed_{1}.xtc\n'
+                                  '{0} driver --mf_xtc PYPOL_TMP_plumed_{1}.xtc --plumed plumed_{2}.dat --mc mc.dat\n'
+                                  'rm PYPOL_TMP_plumed_{1}.xtc\n'
                                   'done\n'
-                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
-                                            self._plumed, self._name, dt, traj_stride))
+                                  ''.format(self._plumed, simulation._name, self._name))
                 file_script.close()
+
             else:
-                file_script.write('"\n\n'
-                                  'for crystal in $crystal_paths ; do\n'
-                                  'cd "$crystal" || exit \n'
-                                  '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
-                                  '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
-                                  '--trajectory-stride {7} --mc mc.dat\n'
-                                  'rm plumed_{1}.xtc\n'
-                                  'done\n'
-                                  ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
-                                            self._plumed, self._name, dt, traj_stride))
-                file_script.close()
+                dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
+
+                file_mdp = open(simulation._path_mdp)
+                for line in file_mdp:
+                    if line.startswith('dt '):
+                        dt = float(line.split()[2])
+                    elif line.startswith(("nstxout", "nstxout-compressed")):
+                        traj_stride = int(line.split()[2])
+                    elif line.startswith('nsteps '):
+                        nsteps = float(line.split()[2])
+                file_mdp.close()
+
+                traj_time = int(nsteps * dt)
+                if traj_time > 0:
+                    if isinstance(self._timeinterval, tuple):
+                        traj_start = self._timeinterval[0]
+                        traj_end = self._timeinterval[1]
+                    elif isinstance(self._timeinterval, int):
+                        traj_start = traj_time - self._timeinterval
+                        traj_end = traj_time
+                    else:
+                        print("Error: No suitable time interval.")
+                        exit()
+
+                file_script = open(simulation._path_data + "/run_plumed_" + self._name + ".sh", "w")
+                file_script.write('#!/bin/bash\n\n'
+                                  'crystal_paths="\n')
+                for crystal in list_crystals:
+                    file_script.write(crystal._path + "\n")
+
+                if isinstance(simulation, Metadynamics):
+                    file_script.write('"\n\n'
+                                      'for crystal in $crystal_paths ; do\n'
+                                      'cd "$crystal" || exit \n'
+                                      '#{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                      '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                      '--trajectory-stride {7} --mc mc.dat\n'
+                                      '#rm plumed_{1}.xtc\n'
+                                      'done\n'
+                                      ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                                self._plumed, self._name, dt, traj_stride))
+                    file_script.close()
+                else:
+                    file_script.write('"\n\n'
+                                      'for crystal in $crystal_paths ; do\n'
+                                      'cd "$crystal" || exit \n'
+                                      '{0} trjconv -f {1}.xtc -o plumed_{1}.xtc -s {1}.tpr -b {2} -e {3} <<< 0\n'
+                                      '{4} driver --mf_xtc plumed_{1}.xtc --plumed plumed_{5}.dat --timestep {6} '
+                                      '--trajectory-stride {7} --mc mc.dat\n'
+                                      'rm plumed_{1}.xtc\n'
+                                      'done\n'
+                                      ''.format(simulation._gromacs, simulation._name, traj_start, traj_end,
+                                                self._plumed, self._name, dt, traj_stride))
+                    file_script.close()
         print("=" * 100)
 
     def get_from_file(self, crystal, input_file, output_label="", plot=True):
