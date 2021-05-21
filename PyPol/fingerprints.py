@@ -11,6 +11,7 @@ from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation,
 
 
 # TODO Correct Docstrings
+#      Correct Descriptors outputs when used and in progress file
 
 #
 # Distributions
@@ -293,7 +294,7 @@ KERNEL={0._kernel} BANDWIDTH={0._bandwidth:.3f} GRIDSPACE={0._grid_space:.3f}"""
                                   'for crystal in $crystal_paths ; do\n'
                                   'cd "$crystal" || exit \n'
                                   '{0} driver --mf_xtc PYPOL_TMP_plumed_{1}.xtc --plumed plumed_{2}.dat --mc mc.dat\n'
-                                  'rm PYPOL_TMP_plumed_{1}.xtc\n'
+                                  '# rm PYPOL_TMP_plumed_{1}.xtc\n'
                                   'done\n'
                                   ''.format(self._plumed, simulation._name, self._name))
                 file_script.close()
@@ -2076,8 +2077,13 @@ project.save()                                                # Save project"""
                                       self._o_bw, self._o_bins, mirror=self._mirror)
 
         r = np.linspace(start=self._r_grid_min, stop=crystal_grid_max, num=int(crystal_grid_bins.imag))
-        N = 4 * np.pi * crystal._density * r ** 2 * crystal._Z * (crystal_grid_max - self._r_grid_min) / \
-            (crystal_grid_bins.imag * 2.0)
+        try:
+            N = 4 * np.pi * crystal._density * r ** 2 * crystal._Z * (crystal_grid_max - self._r_grid_min) / \
+                (crystal_grid_bins.imag * 2.0)
+        except:
+            print(f"density: {crystal._density}\nZ: {crystal._Z}\n"
+                  f"Grid Min, Max, Bins:{crystal_grid_max}, {self._r_grid_min}, {crystal_grid_bins.imag}")
+            exit()
         cv /= N.reshape(-1, 1)
         cv /= np.sum(cv)
 
