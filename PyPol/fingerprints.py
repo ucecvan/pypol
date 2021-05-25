@@ -12,6 +12,8 @@ from PyPol.gromacs import EnergyMinimization, MolecularDynamics, CellRelaxation,
 
 # TODO Correct Docstrings
 #      Correct Descriptors outputs when used and in progress file
+#      Introduce assert in all modules
+#
 
 #
 # Distributions
@@ -1336,7 +1338,7 @@ project.save()                                                # Save project
         d_max = 0.5 * np.min(np.array([crystal._box[0, 0], crystal._box[1, 1], crystal._box[2, 2]]))
         nbins = int(round((d_max - self._r_0) / self._grid_space, 0))
         r = np.linspace(self._r_0, d_max, nbins)
-        rho = crystal._density
+        rho = crystal._density / 1000.0
 
         cv = np.where(r > 0, dn_r / (4 * np.pi * rho * r ** 2 * self._grid_space) / crystal._Z * 2.0, 0.)
         # Save output and plot distribution
@@ -1502,12 +1504,8 @@ project.save()                                                # Save project"""
             self._str_grid_min += "{:.3f},".format(cv.grid_min)
             self._str_grid_max += "{:.3f},".format(cv.grid_max)
             self._str_bandwidth += "{:.3f},".format(cv.bandwidth)
-
-            # if self._type.startswith("Molecular Orientation"):
-            #     self._str_grid_bins += "{},".format(cv.grid_bins + 1)
-            # else:
-            #     self._str_grid_bins += "{},".format(cv.grid_bins)
             self._str_grid_bins += "{},".format(cv.grid_bins)
+
             if self._type.startswith("Molecular Orientation"):
                 self._str_args += "ARG{}=ang_mat_{} ".format(idx_cv + 1, cv._name)
             else:
@@ -1968,6 +1966,10 @@ project.save()                                                # Save project"""
     def gen_from_traj(self, crystal, simulation, input_traj, output_label="cv", plot=True):
         os.chdir(os.path.dirname(input_traj))
 
+        assert crystal._box, "Crystal Box is not defined"
+        assert crystal._density, "Crystal Density has not been defined"
+        assert crystal._Z, "Z is not defined"
+
         mols = []
         for mol in crystal._load_coordinates():
             if self._molecule._residue == mol._residue:
@@ -1983,7 +1985,7 @@ project.save()                                                # Save project"""
         else:
             crystal_grid_max = 0.5 * np.min(np.array([crystal._box[0, 0], crystal._box[1, 1], crystal._box[2, 2]]))
             crystal_grid_bins = complex(0,
-                                        int(round((crystal_grid_max - self._r_grid_min) / self._r_grid_space, 0)))
+                                        int(round((crystal_grid_max - self._r_grid_min) / self._r_grid_space, 0))+1)
 
         file_ndx = open(os.path.dirname(input_traj) + f"/PYPOL_TMP_{output_label}.ndx", "w")
         file_ndx.write("[ System ] \n")
@@ -2077,13 +2079,9 @@ project.save()                                                # Save project"""
                                       self._o_bw, self._o_bins, mirror=self._mirror)
 
         r = np.linspace(start=self._r_grid_min, stop=crystal_grid_max, num=int(crystal_grid_bins.imag))
-        try:
-            N = 4 * np.pi * crystal._density * r ** 2 * crystal._Z * (crystal_grid_max - self._r_grid_min) / \
-                (crystal_grid_bins.imag * 2.0)
-        except:
-            print(f"density: {crystal._density}\nZ: {crystal._Z}\n"
-                  f"Grid Min, Max, Bins:{crystal_grid_max}, {self._r_grid_min}, {crystal_grid_bins.imag}")
-            exit()
+        N = 4 * np.pi * crystal._density * r ** 2 * crystal._Z * (crystal_grid_max - self._r_grid_min) / \
+            (crystal_grid_bins.imag * 2.0)
+
         cv /= N.reshape(-1, 1)
         cv /= np.sum(cv)
 
