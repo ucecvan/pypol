@@ -476,7 +476,6 @@ Number of Methods: {3}
             self._initial_crystals.append(new_crystal)
             bar.update(nbar)
             nbar += 1
-            print(new_crystal._path)
         bar.finish()
         print("=" * 100)
 

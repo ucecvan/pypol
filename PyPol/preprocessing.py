@@ -20,7 +20,7 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
     path_parmchk = path_ambertools + "/parmchk2"
     path_antechamber = path_ambertools + "/antechamber"
     path_gromacs = package_paths["gromacs"]
-
+    path_mdp = package_paths["data"] + "/Defaults/Gromacs/em.mdp"
     atomtype = 'gaff'
 
     # Antechamber extensions and charge methods availability
@@ -83,7 +83,7 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
     # Generate MOL2 file with charges
     print("Generate MOL2 molecule file")
     os.system(
-        path_antechamber + " -i {0} -fi {4} -o {1}/{2}.mol2 -fo mol2 -c {3} -rn {2} -pf y -at {5} -nc 0".format(
+        path_antechamber + " -i {0} -fi {4} -o {1}/{2}.mol2 -fo mol2 -c {3} -rn {2} -pf y -at {5} -nc 0 ".format(#-dr no
             path_coord,
             path_wd,
             res_name,
@@ -183,15 +183,8 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
     os.rename(path_wd + "/{}_GMX.top".format(res_name), path_wd + "/files/{}_GMX.top".format(res_name))
 
     # Create .mdp file for energy minimization
-    file_em = open(path_wd + "/em.mdp", "w")
-    file_em.write("integrator      = steep   \n"
-                  "nsteps          = 100000  \n"
-                  "pbc             = no      \n"
-                  "emtol           = 1e-12   \n"
-                  "emstep          = 0.01    \n"
-                  "cutoff-scheme   = Verlet  \n"
-                  "comm-mode       = Angular \n")
-    file_em.close()
+    from shutil import copyfile
+    copyfile(path_mdp, path_wd + "/em.mdp")
 
     os.system(path_gromacs + " grompp -f em.mdp -c {0}.gro -p topol.top -o em".format(res_name))
     os.system(path_gromacs + " mdrun -v -deffnm em")

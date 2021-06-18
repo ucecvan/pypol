@@ -26,6 +26,19 @@ class Clustering(object):
         self._d_c_fraction = 0.01
         self._sigma_cutoff = False
 
+    def __str__(self):
+        cvs_list = ", ".join([cv.name for cv in self._cvp])
+        txt = f"""
+Clustering Name:  {self._name}
+CVs:              {cvs_list}
+Algorithm:        {self._algorithm.upper()}
+Kernel:           {self._kernel}
+Center Selection: {self._centers}
+d_c:              {self._d_c_fraction}
+Sigma Cutoff:     {self._sigma_cutoff}
+"""
+        return txt
+
     # Read-only Properties
     # @property
     # def d_c(self):

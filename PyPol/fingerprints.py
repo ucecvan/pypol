@@ -1798,6 +1798,16 @@ class RDFPlanes(_OwnDistributions):
         self._o_bins = 72j
         self._mirror = False
 
+        self._overwrite = True
+
+    @property
+    def overwrite(self):
+        return self._overwrite
+
+    @overwrite.setter
+    def overwrite(self, value: bool):
+        self._overwrite = value
+
     @property
     def rdf_grid_min(self):
         return self._r_grid_min
@@ -1966,8 +1976,17 @@ project.save()                                                # Save project"""
     def gen_from_traj(self, crystal, simulation, input_traj, output_label="cv", plot=True):
         os.chdir(os.path.dirname(input_traj))
 
-        assert crystal._box, "Crystal Box is not defined"
-        assert crystal._density, "Crystal Density has not been defined"
+        if not self._overwrite and os.path.exists(os.path.dirname(input_traj) +
+                                                  "/pypol_{}_{}_data_grid.dat".format(output_label, self._name)):
+            cv = np.genfromtxt(os.path.dirname(input_traj) +
+                               "/pypol_{}_{}_data_grid.dat".format(output_label, self._name))
+            return cv
+
+        assert isinstance(crystal._box, np.ndarray) , "Crystal Box is not defined"
+        try:
+            assert crystal._density
+        except AssertionError:
+            crystal._density = crystal._calculate_density()
         assert crystal._Z, "Z is not defined"
 
         mols = []
@@ -2056,17 +2075,15 @@ project.save()                                                # Save project"""
         d = 0
         for frame in planes.keys():
             for i in range(len(mols) - 1):
-                ax, ay, az = planes[frame][0][i, :]
+                a_i = planes[frame][0][i, :]
                 r_i = r_plane[frame][0][i, :]
                 for j in range(i + 1, len(mols)):
                     for nbox in range(27):
                         r_j = r_plane[frame][nbox][j, :]
                         distance = np.linalg.norm(r_i - r_j)
                         if self._r_grid_min <= distance <= crystal_grid_max:
-                            bx, by, bz = planes[frame][nbox][j, :]
-                            angle = np.arccos(
-                                (ax * bx + ay * by + az * bz) / np.sqrt(
-                                    (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)))
+                            a_j = planes[frame][nbox][j, :]
+                            angle = np.arccos(np.clip(np.dot(a_i, a_j), -1., 1.))
                             data[d, :] = np.array([angle, distance])
                         d += 1
 
