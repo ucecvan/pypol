@@ -551,12 +551,11 @@ project.save()                                                # Save project"""
         file_plumed.write("TORSIONS ...\n")
         for line in lines_atoms:
             file_plumed.write(line)
-
-        file_plumed.write("HISTOGRAM={{{{{0._kernel} NBINS={0._grid_bins} BANDWIDTH={0._bandwidth:.3f} "
-                          "UPPER={0._grid_max:.3f} LOWER={0._grid_min:.3f}}}}}\n".format(self))
-
-        file_plumed.write("LABEL={0}\n... TORSIONS\n\n"
-                          "PRINT ARG={0}.* FILE={1}\n".format(self._name, output_name))
+        file_plumed.write("LABEL={0}\n... TORSIONS\n\n".format(self._name))
+        file_plumed.write("kde_{0}: KDE ARG1={0} GRID_MIN={1} GRID_MAX={2} GRID_BIN={3} BANDWIDTH={4} KERNEL={5}\n\n"
+                          "PRINT ARG=kde_{0} FILE={6}\n"
+                          "".format(self._name, self._grid_min, self._grid_max,
+                                    self._grid_bins, self._bandwidth, self._kernel, output_name))
         file_plumed.close()
 
     def get_from_file(self, crystal, input_file, output_label="", plot=True):
@@ -1982,7 +1981,7 @@ project.save()                                                # Save project"""
                                "/pypol_{}_{}_data_grid.dat".format(output_label, self._name))
             return cv
 
-        assert isinstance(crystal._box, np.ndarray) , "Crystal Box is not defined"
+        assert isinstance(crystal._box, np.ndarray), "Crystal Box is not defined"
         try:
             assert crystal._density
         except AssertionError:
@@ -2004,7 +2003,7 @@ project.save()                                                # Save project"""
         else:
             crystal_grid_max = 0.5 * np.min(np.array([crystal._box[0, 0], crystal._box[1, 1], crystal._box[2, 2]]))
             crystal_grid_bins = complex(0,
-                                        int(round((crystal_grid_max - self._r_grid_min) / self._r_grid_space, 0))+1)
+                                        int(round((crystal_grid_max - self._r_grid_min) / self._r_grid_space, 0)) + 1)
 
         file_ndx = open(os.path.dirname(input_traj) + f"/PYPOL_TMP_{output_label}.ndx", "w")
         file_ndx.write("[ System ] \n")
