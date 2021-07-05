@@ -984,6 +984,8 @@ project.save()
                 simulation._lammps = self._lammps
                 simulation._intermol = self._intermol
 
+            os.mkdir(simulation._path_output)
+
             self._simulations.append(simulation)
             return simulation
 
@@ -1073,6 +1075,8 @@ project.save()
             simulation._path_data = self._path_data
             simulation._path_output = self._path_output + name + "/"
             simulation._path_input = self._path_input
+
+            os.mkdir(simulation._path_output)
 
             self._simulations.append(simulation)
             return simulation
@@ -1288,6 +1292,8 @@ project.save()
             simulation._path_data = self._path_data
             simulation._path_output = self._path_output + name + "/"
             simulation._path_input = self._path_input
+
+            os.mkdir(simulation._path_output)
 
             self._simulations.append(simulation)
             return simulation
