@@ -850,19 +850,17 @@ project.save()
 
         crystal._save_pdb(crystal._path + "pc.pdb")
         crystal._save_gro(crystal._path + "pc.gro")
-        print("done", end="\n")
         if orthogonalize:
-            print("Othogonalize...", end="")
+            print("done\nOthogonalize...", end="")
             crystal = self._orthogonalize(crystal, (box[1], box[2]))
             print("done", end="\n")
-        print("Supercell...", end="")
+        print("done\nSupercell...", end="")
         crystal = self._supercell_generator(crystal, box)
         crystal._save_pdb(crystal._path + "sc.pdb")
         crystal._save_gro(crystal._path + "sc.gro")
-        print("done", end="\n")
         self._generate_masscharge(crystal)
 
-        print("Import topology...", end="")
+        print("done\nImport topology...", end="")
         for molecule in self._molecules:
             copyfile(molecule._forcefield, crystal._path + os.path.basename(molecule._forcefield))
         if not self._topology:
