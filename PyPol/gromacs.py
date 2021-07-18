@@ -310,8 +310,14 @@ Atoms:
 
         if box != (0, 0, 0):
             replica_a = int(round(box[0] / (crystal._cell_parameters[0] * 10), 0))
+            if replica_a == 0:
+                replica_a = 1
             replica_b = int(round(box[1] / (crystal._cell_parameters[1] * 10), 0))
+            if replica_b == 0:
+                replica_b = 1
             replica_c = int(round(box[2] / (crystal._cell_parameters[2] * 10), 0))
+            if replica_c == 0:
+                replica_c = 1
         else:
             replica_a, replica_b, replica_c = replica
 
@@ -845,7 +851,6 @@ project.save()
         crystal._save_pdb(crystal._path + "pc.pdb")
         crystal._save_gro(crystal._path + "pc.gro")
         print("done", end="\n")
-
         if orthogonalize:
             print("Othogonalize...", end="")
             crystal = self._orthogonalize(crystal, (box[1], box[2]))
