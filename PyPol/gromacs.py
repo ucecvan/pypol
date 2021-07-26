@@ -1772,7 +1772,7 @@ class _GroSim(_GroDef):
             else:
                 s[crystal._name] = 1
 
-        list_crystals = sorted(list_crystals, key=lambda x: x.label, reverse=True)
+        list_crystals = sorted(list_crystals, key=lambda x: x.label)
 
         data = pd.DataFrame(np.full((len(s.keys()), 2), pd.NA), index=list(s.keys()), columns=["Density", "Energy"])
         c = 1
