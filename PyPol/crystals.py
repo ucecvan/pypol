@@ -392,6 +392,8 @@ Methods:
             'nf': 'ne',
             'pd': 'pc',
             'pf': 'pe',
+            # 'hs': 'ha', # remove!
+            # 's6': 'Si'
         }
 
         if include_atomtype:

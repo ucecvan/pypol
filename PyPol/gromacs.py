@@ -248,6 +248,13 @@ Atoms:
             return new_molecule
         else:
             print("An error occurred during the index assignation:\n{}\n{}".format(new_molecule, molecule))
+
+            print("-" * 50)
+            for atom in reference.atoms:
+                print(atom._type)
+            print("-" * 50)
+            for atom in molecule.atoms:
+                print(atom._type)
             exit()
 
     def _orthogonalize(self, crystal: Crystal, target_lengths=(60., 60.)):
@@ -617,6 +624,8 @@ project.save()
             'nf': 'ne',
             'pd': 'pc',
             'pf': 'pe',
+            # 'hs': 'ha', # remove!
+            # 's6': 'Si'
         }
 
         name = ""
@@ -1762,6 +1771,8 @@ class _GroSim(_GroDef):
                     s[crystal._state] += 1
             else:
                 s[crystal._name] = 1
+
+        list_crystals = sorted(list_crystals, key=lambda x: x.label, reverse=True)
 
         data = pd.DataFrame(np.full((len(s.keys()), 2), pd.NA), index=list(s.keys()), columns=["Density", "Energy"])
         c = 1
