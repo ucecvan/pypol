@@ -1926,17 +1926,19 @@ project.save()                                                # Save project to 
 
         for crystal in list_crystals:
             copyfile(self._path_mdp, crystal._path + self._name + ".mdp")
-
         if bash_script:
             if split == -1:
                 split = len(list_crystals) + 1
 
             file_script = open(self._path_data + "/run_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
-                              'crystal_paths="\n')
+                                  'crystal_paths="\n')
+            print("Generating gromacs inputs for '{}' simulations:".format(self._name))
+            bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
 
             a = 1
             for crystal in list_crystals:
+                print(a)
                 file_script.write(crystal._path + "\n")
                 if not a % split or crystal is list_crystals[-1]:
                     file_script.write('"\n\n'
@@ -1950,7 +1952,10 @@ project.save()                                                # Save project to 
                     file_script = open(self._path_data + "/run_" + self._name + f"_{a}.sh", "w")
                     file_script.write('#!/bin/bash\n\n'
                                       'crystal_paths="\n')
+                bar.update(a)
                 a += 1
+            bar.finish()
+
 
     def get_results(self, crystals="all"):
         """
