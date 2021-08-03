@@ -1915,7 +1915,7 @@ for crystal in em.crystals:                                   # Print the lattic
 project.save()                                                # Save project to be used later
 """
 
-    def generate_input(self, bash_script=False, crystals="all", split=-1):
+    def generate_input(self, bash_script=True, crystals="all", split=-1):
         """
         Copy the Gromacs .mdp file to each crystal path.
         :param bash_script: If bash_script=True, a bash script is generated to run all simulations
