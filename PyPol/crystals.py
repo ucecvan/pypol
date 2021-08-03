@@ -148,11 +148,11 @@ Methods:
 
     @property
     def energy(self):
-        return "{:.3f} kJ/mol".format(self._energy)
+        return round(self._energy, 3)
 
     @property
     def energy_long(self):
-        return "{} kJ/mol".format(self._energy)
+        return self._energy
 
     @property
     def rank(self):
@@ -270,7 +270,8 @@ Methods:
         new_crystal._box = copy.deepcopy(crystal._box)
         new_crystal._state = "incomplete"
         new_crystal._cvs = dict()
-        new_crystal._attributes = crystal._attributes
+        if hasattr(crystal, "_attributes"):
+            new_crystal._attributes = crystal._attributes
         return new_crystal
 
     @staticmethod

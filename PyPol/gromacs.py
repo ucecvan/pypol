@@ -860,9 +860,8 @@ project.save()
         crystal._save_pdb(crystal._path + "pc.pdb")
         crystal._save_gro(crystal._path + "pc.gro")
         if orthogonalize:
-            print("done\nOthogonalize...", end="")
+            print("done\nOrthogonalize...", end="")
             crystal = self._orthogonalize(crystal, (box[1], box[2]))
-            print("done", end="\n")
         print("done\nSupercell...", end="")
         crystal = self._supercell_generator(crystal, box)
         crystal._save_pdb(crystal._path + "sc.pdb")
@@ -3290,7 +3289,7 @@ COMMITTOR ...
 
     def generate_analysis_input(self, clustering_method=None, crystals="all", catt=None,
                                 start=0.5, end=None, interval=0.5, timeinterval=50):
-        from PyPol.fingerprints import _OwnDistributions
+        from PyPol.fingerprints import _OwnDistributions, _Property
         from PyPol.groups import _GG
         from PyPol.cluster import Clustering
 
@@ -3344,7 +3343,7 @@ COMMITTOR ...
                           "-s {0._name}.tpr <<< 0 &> /dev/null"
                           "".format(self, file_ext, str(i), times[i][0], times[i][1]))
                 for cv in clustering_method._cvp:
-                    if issubclass(type(cv), _OwnDistributions) or issubclass(type(cv), _GG):
+                    if issubclass(type(cv), _OwnDistributions) or issubclass(type(cv), _GG) or issubclass(type(cv), _Property):
                         continue
                     cv.check_attributes()
                     wd = crystal.path + f"/{self._name}_analysis/{str(i)}/"

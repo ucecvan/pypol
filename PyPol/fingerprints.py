@@ -2148,3 +2148,206 @@ Planes: GRID_MAX={self._o_grid_max} GRID_MIN={self._o_grid_min} GRID_BINS={self.
             txt += "No atoms found in CV {}. Select atoms with the 'set_atoms' module.\n".format(self._name)
         txt += "\n"
         return txt
+
+
+class _Property(object):
+    """
+    General Class for Collective Variables.
+    Attributes:\n
+    - name: name of the CV.
+    - type: Type of the CV.
+    - clustering_type: How is it treated by clustering algorithms.
+    - kernel: kernel function to use in the histogram generation.
+    - bandwidth: the bandwidths for kernel density estimation.
+    - grid_min: the lower bounds for the grid.
+    - grid_max: the upper bounds for the grid.
+    - grid_bins: the number of bins for the grid.
+    - grid_space: the approximate grid spacing for the grid.
+    - timeinterval: Simulation time interval to generate the distribution.
+    """
+
+    def __init__(self, name: str, cv_type: str, cv_short_type: str, clustering_type="property",
+                 timeinterval: Union[int, float, tuple] = None):
+        """
+        General Class for Collective Variables.
+        :param name: name of the CV.
+        :param cv_type: Type of the CV.
+        :param clustering_type: How is it treated by clustering algorithms.
+        :param timeinterval: Simulation time interval to generate the distribution.
+        """
+        self._name = name
+        self._type = cv_type
+        self._short_type = cv_short_type
+        self._clustering_type = clustering_type
+        self._timeinterval = timeinterval
+
+    @property
+    def timeinterval(self):
+        return self._timeinterval
+
+    @timeinterval.setter
+    def timeinterval(self, time: float, time2: float = None):
+        if time2:
+            self._timeinterval = (time, time2)
+        else:
+            self._timeinterval = time
+
+    # Read-only properties
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def clustering_type(self):
+        return self._clustering_type
+
+    def __str__(self):
+        txt = """
+CV: {0._name} ({0._type})
+Clustering Type: {0._clustering_type}""".format(self)
+        return txt
+
+    @staticmethod
+    def generate_inputs():
+        print("Info: No plumed input needed to generate this descriptor")
+
+    def get_results(self,
+                    simulation: Union[EnergyMinimization, CellRelaxation, MolecularDynamics, Metadynamics],
+                    crystals: Union[str, list, tuple] = "all",
+                    catt=None,
+                    suffix=""):
+        """
+        Verify if the distribution has been correctly generated and store the result. If the distribution is taken over
+        different frames, the average is calculated.
+        :param simulation: Simulation object
+        :param crystals: It can be either "all", use all non-melted Crystal objects from the previous simulation or
+                         "centers", use only cluster centers from the previous simulation. Alternatively, you can select
+                         a specific subset of crystals by listing crystal names.
+        :param catt: Use crystal attributes to select the crystal list
+        :param suffix: suffix to add to the cv name.
+        :return:
+        """
+        list_crystals = get_list_crystals(simulation._crystals, crystals, catt)
+        print("\n" + str(self._name))
+        bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+        nbar = 1
+        for crystal in list_crystals:
+            os.chdir(crystal._path)
+            crystal._cvs[self._name + suffix] = self.gen_from_data(crystal=crystal, simulation=simulation)
+            bar.update(nbar)
+            nbar += 1
+        bar.finish()
+
+    def gen_from_data(self, crystal, simulation):
+        pass
+
+
+class CrystalProperty(_Property):
+    """
+    General Class for Collective Variables.
+    Attributes:\n
+    - name: name of the CV.
+    - type: Type of the CV.
+    - clustering_type: How is it treated by clustering algorithms.
+    - kernel: kernel function to use in the histogram generation.
+    - bandwidth: the bandwidths for kernel density estimation.
+    - grid_min: the lower bounds for the grid.
+    - grid_max: the upper bounds for the grid.
+    - grid_bins: the number of bins for the grid.
+    - grid_space: the approximate grid spacing for the grid.
+    - timeinterval: Simulation time interval to generate the distribution.
+    """
+
+    def __init__(self, name: str):
+        """
+        General Class for Collective Variables.
+        :param name: name of the CV.
+        """
+        super().__init__(name=name,
+                         cv_type="Crystal Property",
+                         cv_short_type="cp",
+                         timeinterval=200)
+
+        self._property = None
+
+    @property
+    def crystal_property(self):
+        return self._property
+
+    @crystal_property.setter
+    def crystal_property(self, prop: str):
+        avalable_edr_prop = ("Bond",
+                             "Angle",
+                             "Proper Dih.",
+                             "Improper Dih.",
+                             "LJ-14",
+                             "Coulomb-14",
+                             "LJ (SR)",
+                             "Coulomb (SR)",
+                             "Coul. recip.",
+                             "LJ recip.",
+                             "Potential",
+                             "Kinetic En.",
+                             "Total Energy",
+                             "Conserved En.",
+                             "Temperature",
+                             "Pressure",
+                             "Constr. rmsd",
+                             "Box-XX",
+                             "Box-YY",
+                             "Box-ZZ",
+                             "Box-YX",
+                             "Box-ZX",
+                             "Box-ZY",
+                             "Volume",
+                             "Density",
+                             "pV   ",
+                             "Enthalpy",
+                             "Vir-XX",
+                             "Vir-XY",
+                             "Vir-XZ",
+                             "Vir-YX",
+                             "Vir-YY",
+                             "Vir-YZ",
+                             "Vir-ZX",
+                             "Vir-ZY",
+                             "Vir-ZZ",
+                             "Pres-XX",
+                             "Pres-XY",
+                             "Pres-XZ",
+                             "Pres-YX",
+                             "Pres-YY",
+                             "Pres-YZ",
+                             "Pres-ZX",
+                             "Pres-ZY",
+                             "Pres-ZZ",
+                             "#Surf*SurfTen",
+                             "T-System       "
+                             )
+        if prop in avalable_edr_prop:
+            self._property = prop
+        else:
+            print("Error: Property not available in gromacs .edr file.\nChoose among the following keywords:")
+            for i in avalable_edr_prop:
+                print(i)
+            exit()
+
+    def __str__(self):
+        txt = """
+CV: {0._name} ({0._type})"""
+        return txt
+
+    def check_attributes(self):
+        print(f"No attributes-check set for distribution {self._name}")
+
+    def gen_from_data(self, crystal, simulation):
+        pass
+
+    def _write_output(self, path_output):
+        file_output = open(path_output, "a")
+        file_output.write(self.__str__())
+        file_output.close()
