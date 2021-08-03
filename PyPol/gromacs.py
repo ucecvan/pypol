@@ -1915,7 +1915,7 @@ for crystal in em.crystals:                                   # Print the lattic
 project.save()                                                # Save project to be used later
 """
 
-    def generate_input(self, bash_script=False, crystals="all"):
+    def generate_input(self, bash_script=False, crystals="all", split=-1):
         """
         Copy the Gromacs .mdp file to each crystal path.
         :param bash_script: If bash_script=True, a bash script is generated to run all simulations
@@ -1928,19 +1928,29 @@ project.save()                                                # Save project to 
             copyfile(self._path_mdp, crystal._path + self._name + ".mdp")
 
         if bash_script:
+            if split == -1:
+                split = len(list_crystals) + 1
+
             file_script = open(self._path_data + "/run_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
+
+            a = 1
             for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
-            file_script.write('"\n\n'
-                              'for crystal in $crystal_paths ; do\n'
-                              'cd "$crystal" || exit \n'
-                              '{0} grompp -f {1}.mdp -c {2}.gro -o {1}.tpr -p topol.top -maxwarn 1 \n'
-                              '{0} mdrun {3} -deffnm {1} \n'
-                              'done \n'
-                              ''.format(self._gromacs, self._name, self._previous_sim, self._mdrun_options))
-            file_script.close()
+                if not a % split or crystal is list_crystals[-1]:
+                    file_script.write('"\n\n'
+                                      'for crystal in $crystal_paths ; do\n'
+                                      'cd "$crystal" || exit \n'
+                                      '{0} grompp -f {1}.mdp -c {2}.gro -o {1}.tpr -p topol.top -maxwarn 1 \n'
+                                      '{0} mdrun {3} -deffnm {1} \n'
+                                      'done \n'
+                                      ''.format(self._gromacs, self._name, self._previous_sim, self._mdrun_options))
+                    file_script.close()
+                    file_script = open(self._path_data + "/run_" + self._name + f"_{a}.sh", "w")
+                    file_script.write('#!/bin/bash\n\n'
+                                      'crystal_paths="\n')
+                a += 1
 
     def get_results(self, crystals="all"):
         """
