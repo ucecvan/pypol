@@ -1920,6 +1920,7 @@ project.save()                                                # Save project to 
         Copy the Gromacs .mdp file to each crystal path.
         :param bash_script: If bash_script=True, a bash script is generated to run all simulations
         :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
+        :param split: Use multiple scripts to run simulations. A new file is created every "split" number of structures
         :return:
         """
         list_crystals = get_list_crystals(self._crystals, crystals)
@@ -1938,7 +1939,6 @@ project.save()                                                # Save project to 
 
             a = 1
             for crystal in list_crystals:
-                print(a)
                 file_script.write(crystal._path + "\n")
                 if not a % split or crystal is list_crystals[-1]:
                     file_script.write('"\n\n'
@@ -1949,9 +1949,10 @@ project.save()                                                # Save project to 
                                       'done \n'
                                       ''.format(self._gromacs, self._name, self._previous_sim, self._mdrun_options))
                     file_script.close()
-                    file_script = open(self._path_data + "/run_" + self._name + f"_{a}.sh", "w")
-                    file_script.write('#!/bin/bash\n\n'
-                                      'crystal_paths="\n')
+                    if not crystal is list_crystals[-1]:
+                        file_script = open(self._path_data + "/run_" + self._name + f"_{a}.sh", "w")
+                        file_script.write('#!/bin/bash\n\n'
+                                          'crystal_paths="\n')
                 bar.update(a)
                 a += 1
             bar.finish()
@@ -2494,12 +2495,11 @@ project.save()                                                # Save project to 
             file_lmp_ff_new.close()
             file_lmp_ff.close()
 
-    def generate_input(self, bash_script=False, crystals="all"):
+    def generate_input(self, bash_script=False, crystals="all", split=-1):
         """
         Generate LAMMPS inputs. If no topology is given, a LAMMPS topology is generated from the gromacs one
         using Intermol. The latter is applied to a single molecule and then replicated for each molecule of the crystal.
-
-
+        :param split: Use multiple scripts to run simulations. A new file is created every "split" number of structures.
         :param bash_script: If bash_script=True, a bash script is generated to run all simulations
         :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
         :return:
@@ -2568,18 +2568,33 @@ project.save()                                                # Save project to 
             self._generate_lammps_topology(crystal)
 
         if bash_script:
+            if split == -1:
+                split = len(list_crystals) + 1
+
             file_script = open(self._path_data + "/run_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
+            print("Generating gromacs inputs for '{}' simulations:".format(self._name))
+            bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+
+            a = 1
             for crystal in list_crystals:
                 file_script.write(crystal._path + "lammps/\n")
-            file_script.write('"\n\n'
-                              'for crystal in $crystal_paths ; do\n'
-                              'cd "$crystal" || exit \n'
-                              '{0} < {1} \n'
-                              'done \n'
-                              ''.format(self._lammps, "input.in"))
-            file_script.close()
+                if not a % split or crystal is list_crystals[-1]:
+                    file_script.write('"\n\n'
+                                      'for crystal in $crystal_paths ; do\n'
+                                      'cd "$crystal" || exit \n'
+                                      '{0} < {1} \n'
+                                      'done \n'
+                                      ''.format(self._lammps, "input.in"))
+                    file_script.close()
+                    if not crystal is list_crystals[-1]:
+                        file_script = open(self._path_data + "/run_" + self._name + f"_{a}.sh", "w")
+                        file_script.write('#!/bin/bash\n\n'
+                                          'crystal_paths="\n')
+                bar.update(a)
+                a += 1
+            bar.finish()
 
     def get_results(self, crystals="all"):
         """
@@ -2749,12 +2764,13 @@ nvt = gaff.get_simulation("nvt")                              # Retrieve an exis
 nvt.get_results()                                             # Check normal termination and import potential energy
 project.save()                                                # Save project to be used later"""
 
-    def generate_input(self, bash_script=False, crystals="all", catt=None):
+    def generate_input(self, bash_script=False, crystals="all", catt=None, split=-1):
         """
         Copy the Gromacs .mdp file to each crystal path.
         :param bash_script: If bash_script=True, a bash script is generated to run all simulations
         :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter
         :param catt: Use crystal attributes to select the crystal list
+        :param split: Use multiple scripts to run simulations. A new file is created every "split" number of structures.
         """
 
         list_crystals = get_list_crystals(self._crystals, crystals, catt)
@@ -2763,29 +2779,47 @@ project.save()                                                # Save project to 
             copyfile(self.path_mdp, crystal._path + self.name + ".mdp")
 
         if bash_script:
-            file_script = open(self.path_data + "/run_" + self.name + ".sh", "w")
+
+            if split == -1:
+                split = len(list_crystals) + 1
+
+            file_script = open(self._path_data + "/run_" + self._name + ".sh", "w")
             file_script.write('#!/bin/bash\n\n'
                               'crystal_paths="\n')
+            print("Generating gromacs inputs for '{}' simulations:".format(self._name))
+            bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+
+            a = 1
             for crystal in list_crystals:
                 file_script.write(crystal._path + "\n")
+                if not a % split or crystal is list_crystals[-1]:
+                    if os.path.exists(self.crystals[0]._path + self._previous_sim + "cpt"):
+                        file_script.write('"\n\n'
+                                          'for crystal in $crystal_paths ; do\n'
+                                          'cd "$crystal" || exit \n'
+                                          '{0} grompp -f {1}.mdp -c {2}.gro -t {2}.cpt -o {1}.tpr '
+                                          '-p topol.top -maxwarn 1 \n'
+                                          '{0} mdrun {3} -deffnm {1} \n'
+                                          'done \n'
+                                          ''.format(self.gromacs, self.name, self._previous_sim, self.mdrun_options))
+                        file_script.close()
+                    else:
+                        file_script.write('"\n\n'
+                                          'for crystal in $crystal_paths ; do\n'
+                                          'cd "$crystal" || exit \n'
+                                          '{0} grompp -f {1}.mdp -c {2}.gro -o {1}.tpr -p topol.top -maxwarn 1 \n'
+                                          '{0} mdrun {3} -deffnm {1} \n'
+                                          'done \n'
+                                          ''.format(self.gromacs, self.name, self._previous_sim, self.mdrun_options))
+                        file_script.close()
 
-            if os.path.exists(self.crystals[0]._path + self._previous_sim + "cpt"):
-                file_script.write('"\n\n'
-                                  'for crystal in $crystal_paths ; do\n'
-                                  'cd "$crystal" || exit \n'
-                                  '{0} grompp -f {1}.mdp -c {2}.gro -t {2}.cpt -o {1}.tpr -p topol.top -maxwarn 1 \n'
-                                  '{0} mdrun {3} -deffnm {1} \n'
-                                  'done \n'
-                                  ''.format(self.gromacs, self.name, self._previous_sim, self.mdrun_options))
-            else:
-                file_script.write('"\n\n'
-                                  'for crystal in $crystal_paths ; do\n'
-                                  'cd "$crystal" || exit \n'
-                                  '{0} grompp -f {1}.mdp -c {2}.gro -o {1}.tpr -p topol.top -maxwarn 1 \n'
-                                  '{0} mdrun {3} -deffnm {1} \n'
-                                  'done \n'
-                                  ''.format(self.gromacs, self.name, self._previous_sim, self.mdrun_options))
-            file_script.close()
+                    if not crystal is list_crystals[-1]:
+                        file_script = open(self._path_data + "/run_" + self._name + f"_{a}.sh", "w")
+                        file_script.write('#!/bin/bash\n\n'
+                                          'crystal_paths="\n')
+                bar.update(a)
+                a += 1
+            bar.finish()
 
     def get_results(self, crystals="all", timeinterval=200):
         """
@@ -3054,9 +3088,10 @@ class Metadynamics(MolecularDynamics):
     def set_cvs(self, *cvs):
         self.collective_variables = list(cvs)
 
-    def generate_input(self, bash_script=True, crystals="all", catt=None):
+    def generate_input(self, bash_script=True, crystals="all", catt=None, split=-1):
         """
         Copy the Gromacs .mdp file to each crystal path and produce plumed file for Metadynamics.
+        :param split: Use multiple scripts to run simulations. A new file is created every "split" number of structures.
         :param catt: Use crystal attributes to select the crystal list.
         :param bash_script: If bash_script=True, a bash script is generated to run all simulations.
         :param crystals: You can select a specific subset of crystals by listing crystal names in the crystal parameter.
@@ -3201,7 +3236,7 @@ COMMITTOR ...
 
         self._mdrun_options = f" -plumed plumed_{self._name}.dat"
 
-        super(Metadynamics, self).generate_input(bash_script, crystals, catt)
+        super(Metadynamics, self).generate_input(bash_script, crystals, catt, split)
 
     def _check_committor(self, crystal, timeinterval):
         os.chdir(crystal._path)
