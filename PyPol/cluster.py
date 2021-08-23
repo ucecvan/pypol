@@ -241,7 +241,7 @@ Sigma Cutoff:     {self._sigma_cutoff}
         for cv in distributions:
             if cv.clustering_type == "property":
                 list_cp = np.array([crystal._cvs[cv._name + suffix] for crystal in list_crystals])
-
+                print(list_cp)
                 def min_max_scale(X):
                     return (X - np.min(list_cp)) / (np.max(list_cp) - np.min(list_cp))
 

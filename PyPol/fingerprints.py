@@ -2278,7 +2278,7 @@ class CrystalProperty(_Property):
         self._property = None
 
         try:
-            self.property = name
+            self.crystal_property = name
         except AssertionError:
             print(f"Property label '{name}' not available among 'gmx energy' options. "
                   f"Set crystal properties with the 'crystal_property' setter.")
@@ -2314,8 +2314,8 @@ CV: {0._name} ({0._type})
         :param simulation:
         :return:
         """
-        assert self._property, ""
-        assert crystal._state == "complete", f"The simulation for crystal {crystal.name} is not completed"
+        assert self._property, f"No property available. {self._property} not found."
+        assert crystal._state != "incomplete", f"The simulation for crystal {crystal.name} is not completed"
         cp = None
         npt_only = ["Volume", "Density", "Box-XX", "Box-YY", "Box-ZZ", "Box-YX", "Box-ZX", "Box-ZY", "pV", "Enthalpy"]
 
@@ -2345,7 +2345,7 @@ CV: {0._name} ({0._type})
                     exit()
 
             os.system('{} energy -f {}.edr -b {} -e {} -nmol {} <<< "{}" &> PyPol_Temporary_CP.txt'
-                      ''.format(simulation.gromacs, self.name, traj_start, traj_end, crystal._Z, self._property))
+                      ''.format(simulation.gromacs, simulation.name, traj_start, traj_end, crystal._Z, self._property))
             file_coord = open(crystal._path + 'PyPol_Temporary_CP.txt')
             for line in file_coord:
                 if line.startswith(self._property):
