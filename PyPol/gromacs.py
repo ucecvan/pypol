@@ -1406,13 +1406,17 @@ Simulation Type '{}' not recognized. Choose between:
         from PyPol import fingerprints
         for _, fingerprint in getmembers(fingerprints, isclass):
             if hasattr(fingerprint, "_short_type") and fingerprint._short_type == cv_type:
-                if fingerprint._plumed_version == "hack-the-tree":
-                    cv = fingerprint(name, self._htt_plumed)
-                elif fingerprint._plumed_version == "master":
-                    cv = fingerprint(name, self._plumed)
-                else:
+                if fingerprint._short_type == "cp":
                     cv = fingerprint(name)
-                self._cvp.append(cv)
+                    self._cvp.append(cv)
+                else:
+                    if fingerprint._plumed_version == "hack-the-tree":
+                        cv = fingerprint(name, self._htt_plumed)
+                    elif fingerprint._plumed_version == "master":
+                        cv = fingerprint(name, self._plumed)
+                    else:
+                        cv = fingerprint(name)
+                    self._cvp.append(cv)
                 return cv
 
         from PyPol import metad
