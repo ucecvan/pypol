@@ -2262,6 +2262,9 @@ class CrystalProperty(_Property):
     - timeinterval: Simulation time interval to generate the distribution.
     """
 
+    _cv_type="Crystal Property"
+    _cv_short_type="cp"
+
     def __init__(self, name: str):
         """
         General Class for Collective Variables.
