@@ -195,6 +195,7 @@ Sigma Cutoff:     {self._sigma_cutoff}
             os.mkdir(path_output)
 
         d_c = np.array([])
+        n_factors = {}
 
         # Sort crystals into groups
         group_options = []
@@ -214,8 +215,7 @@ Sigma Cutoff:     {self._sigma_cutoff}
                                           pd.Series([[] for _ in range(len(combinations))], name="Structures",
                                                     index=index)), axis=1)
             else:
-                combinations = list(its.product(*group_options)) + \
-                               [tuple([None for _ in range(len(group_names))])]
+                combinations = list(its.product(*group_options)) + [tuple([None for _ in range(len(group_names))])]
                 index = [str(i) for i in range(len(combinations) - 1)] + ["Others"]
                 combinations = pd.concat((pd.DataFrame(combinations, columns=group_names, index=index),
                                           pd.Series([0 for _ in range(len(combinations))],
@@ -230,54 +230,81 @@ Sigma Cutoff:     {self._sigma_cutoff}
                                         columns=["Number of structures", "Structures"],
                                         dtype=None, index=["all"])
             combinations.index.name = "Combinations"
-            # for crystal in list_crystals:
-            #     combinations.loc["all", "Structures"].append(crystal)
-            #     combinations.loc["all", "Number of structures"] += 1
 
         slist = [np.full((combinations.loc[i, "Number of structures"],
                           combinations.loc[i, "Number of structures"]), 0.0) for i in combinations.index]
         combinations = pd.concat((combinations,
                                   pd.Series(slist, name="Distance Matrix", index=combinations.index)), axis=1)
 
-        # Generate Distance Matrix of each set of distributions
+        # Generate Distance Matrix of each set of property and distribution
         distributions = [cv for cv in self._cvp if cv.clustering_type != "classification"]
-        n_factors = {}
         for cv in distributions:
-            combinations[cv._name + suffix] = pd.Series(copy.deepcopy(combinations["Distance Matrix"].to_dict()),
-                                                        index=combinations.index)
-            n_factors[cv._name + suffix] = 0.
+            if cv.clustering_type == "property":
+                list_cp = np.array([crystal._cvs[cv._name + suffix] for crystal in list_crystals])
 
-            print("\nCV: {}".format(cv._name))
-            bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
-            nbar = 1
+                def min_max_scale(X):
+                    return (X - np.min(list_cp)) / (np.max(list_cp) - np.min(list_cp))
 
-            for index in combinations.index:
-                if combinations.at[index, "Number of structures"] > 1:
-                    crystals = combinations.at[index, "Structures"]
+                for crystal in list_crystals:
+                    crystal._cvs[cv._name + "_r" + suffix] = min_max_scale(crystal._cvs[cv._name + suffix])
 
-                    for i in range(len(crystals) - 1):
-                        di = crystals[i]._cvs[cv._name + suffix]
-                        bar.update(nbar)
-                        nbar += 1
-                        for j in range(i + 1, len(crystals)):
-                            dj = crystals[j]._cvs[cv._name + suffix]
-                            if di.shape != dj.shape:
-                                di = di.copy()[tuple(map(slice, dj.shape))]
-                                dj = dj.copy()[tuple(map(slice, di.shape))]
-                            hd = hellinger(di.copy(), dj.copy(), self._int_type)
-                            combinations.loc[index, cv._name + suffix][i, j] = combinations.loc[
-                                index, cv._name + suffix][j, i] = hd
+                combinations[cv._name + suffix] = pd.Series(copy.deepcopy(combinations["Distance Matrix"].to_dict()),
+                                                            index=combinations.index)
+                n_factors[cv._name + suffix] = 1.
 
-                            if hd > n_factors[cv._name + suffix]:
-                                n_factors[cv._name + suffix] = hd
+                print("\nCV: {}".format(cv._name))
+                bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+                nbar = 1
 
-            bar.finish()
+                for index in combinations.index:
+                    if combinations.at[index, "Number of structures"] > 1:
+                        crystals = combinations.at[index, "Structures"]
+                        for i in range(len(crystals) - 1):
+                            di = crystals[i]._cvs[cv._name + suffix + "_r"]
+                            for j in range(i + 1, len(crystals)):
+                                dj = crystals[j]._cvs[cv._name + suffix + "_r"]
+                                combinations.loc[index, cv._name + suffix][i, j] = combinations.loc[
+                                    index, cv._name + suffix][j, i] = abs(di-dj)
+                            bar.update(nbar)
+                            nbar += 1
+                bar.finish()
+
+            else:
+                combinations[cv._name + suffix] = pd.Series(copy.deepcopy(combinations["Distance Matrix"].to_dict()),
+                                                            index=combinations.index)
+                n_factors[cv._name + suffix] = 0.
+
+                print("\nCV: {}".format(cv._name))
+                bar = progressbar.ProgressBar(maxval=len(list_crystals)).start()
+                nbar = 1
+
+                for index in combinations.index:
+                    if combinations.at[index, "Number of structures"] > 1:
+                        crystals = combinations.at[index, "Structures"]
+                        for i in range(len(crystals) - 1):
+                            di = crystals[i]._cvs[cv._name + suffix]
+                            for j in range(i + 1, len(crystals)):
+                                dj = crystals[j]._cvs[cv._name + suffix]
+                                if di.shape != dj.shape:
+                                    di = di.copy()[tuple(map(slice, dj.shape))]
+                                    dj = dj.copy()[tuple(map(slice, di.shape))]
+                                hd = hellinger(di.copy(), dj.copy(), self._int_type)
+                                combinations.loc[index, cv._name + suffix][i, j] = combinations.loc[
+                                    index, cv._name + suffix][j, i] = hd
+
+                                if hd > n_factors[cv._name + suffix]:
+                                    n_factors[cv._name + suffix] = hd
+                            bar.update(nbar)
+                            nbar += 1
+                bar.finish()
 
         # Normalize distances
         print("Normalization...", end="")
         normalization = []
         for cv in distributions:
             normalization.append(1. / n_factors[cv._name + suffix])
+            if cv.clustering_type == "property":
+                continue
             for index in combinations.index:
                 if combinations.at[index, "Number of structures"] > 1:
                     combinations.at[index, cv._name + suffix] /= n_factors[cv._name + suffix]
@@ -298,25 +325,12 @@ Sigma Cutoff:     {self._sigma_cutoff}
                 d_c = np.append(d_c, combinations.at[
                     index, "Distance Matrix"][np.triu_indices(combinations.at[index, "Distance Matrix"].shape[0], 1)])
 
-        # combinations.at[index, "Distance Matrix"][:, :] = np.linalg.norm(
-        #             np.dstack(set([k for k in combinations.loc[index, [cv._name for cv in distributions]]])),
-        #             axis=2) / normalization
-            #     for i in range(combinations.at[index, "Number of structures"] - 1):
-            #         for j in range(i + 1, combinations.at[index, "Number of structures"]):
-            #             dist_ij = np.linalg.norm([k[i, j] for k in
-            #                                       combinations.loc[index, [cv._name for cv in distributions]]])
-            #             combinations.at[index, "Distance Matrix"][i, j] = \
-            #                 combinations.at[index, "Distance Matrix"][j, i] = dist_ij / normalization
-            #             d_c.append(dist_ij)
-
         for index in combinations.index:
             if combinations.at[index, "Number of structures"] > 1:
                 idx = [i._name for i in combinations.at[index, "Structures"]]
                 for mat in combinations.loc[index, "Distance Matrix":].index:
                     combinations.at[index, mat] = pd.DataFrame(combinations.at[index, mat], index=idx, columns=idx)
                     combinations.at[index, mat].to_csv(path_output_data + mat.replace(" ", "") + "_" + index + ".dat")
-                    # with open(path_output + mat.replace(" ", "") + "_" + index + ".dat", 'w') as fo:
-                    #     fo.write(combinations.loc[index, mat].__str__())
 
         print("done\nSaving Distance Matrix...", end="")
         for i in combinations.loc[:, "Distance Matrix":].columns:

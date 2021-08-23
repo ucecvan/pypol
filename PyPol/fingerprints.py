@@ -2274,78 +2274,103 @@ class CrystalProperty(_Property):
 
         self._property = None
 
+        try:
+            self.property = name
+        except AssertionError:
+            print(f"Property label '{name}' not available among 'gmx energy' options. "
+                  f"Set crystal properties with the 'crystal_property' setter.")
+
     @property
     def crystal_property(self):
         return self._property
 
     @crystal_property.setter
     def crystal_property(self, prop: str):
-        avalable_edr_prop = ("Bond",
-                             "Angle",
-                             "Proper Dih.",
-                             "Improper Dih.",
-                             "LJ-14",
-                             "Coulomb-14",
-                             "LJ (SR)",
-                             "Coulomb (SR)",
-                             "Coul. recip.",
-                             "LJ recip.",
-                             "Potential",
-                             "Kinetic En.",
-                             "Total Energy",
-                             "Conserved En.",
-                             "Temperature",
-                             "Pressure",
-                             "Constr. rmsd",
-                             "Box-XX",
-                             "Box-YY",
-                             "Box-ZZ",
-                             "Box-YX",
-                             "Box-ZX",
-                             "Box-ZY",
-                             "Volume",
-                             "Density",
-                             "pV   ",
-                             "Enthalpy",
-                             "Vir-XX",
-                             "Vir-XY",
-                             "Vir-XZ",
-                             "Vir-YX",
-                             "Vir-YY",
-                             "Vir-YZ",
-                             "Vir-ZX",
-                             "Vir-ZY",
-                             "Vir-ZZ",
-                             "Pres-XX",
-                             "Pres-XY",
-                             "Pres-XZ",
-                             "Pres-YX",
-                             "Pres-YY",
-                             "Pres-YZ",
-                             "Pres-ZX",
-                             "Pres-ZY",
-                             "Pres-ZZ",
-                             "#Surf*SurfTen",
-                             "T-System       "
-                             )
-        if prop in avalable_edr_prop:
-            self._property = prop
-        else:
-            print("Error: Property not available in gromacs .edr file.\nChoose among the following keywords:")
-            for i in avalable_edr_prop:
-                print(i)
-            exit()
+        edr_prop = ("Bond", "Angle", "Proper Dih.", "Improper Dih.",
+                    "LJ-14", "Coulomb-14", "LJ (SR)", "Coulomb (SR)", "Coul. recip.", "LJ recip.",
+                    "Potential", "Kinetic En.", "Total Energy", "Conserved En.",
+                    "Temperature", "Pressure", "Constr. rmsd", "T-System",
+                    "Volume", "Density", "Box-XX", "Box-YY", "Box-ZZ", "Box-YX", "Box-ZX", "Box-ZY", "pV", "Enthalpy",
+                    "Vir-XX", "Vir-XY", "Vir-XZ", "Vir-YX", "Vir-YY", "Vir-YZ", "Vir-ZX", "Vir-ZY", "Vir-ZZ",
+                    "Pres-XX", "Pres-XY", "Pres-XZ", "Pres-YX", "Pres-YY", "Pres-YZ", "Pres-ZX", "Pres-ZY", "Pres-ZZ")
+
+        assert prop in edr_prop, "Error: Property not available in gromacs .edr file."
+
+        self._property = prop
 
     def __str__(self):
         txt = """
-CV: {0._name} ({0._type})"""
+CV: {0._name} ({0._type})
+"""
         return txt
 
-    def check_attributes(self):
-        print(f"No attributes-check set for distribution {self._name}")
-
     def gen_from_data(self, crystal, simulation):
-        pass
+        """
+
+        :param crystal:
+        :param simulation:
+        :return:
+        """
+        assert self._property, ""
+        assert crystal._state == "complete", f"The simulation for crystal {crystal.name} is not completed"
+        cp = None
+        npt_only = ["Volume", "Density", "Box-XX", "Box-YY", "Box-ZZ", "Box-YX", "Box-ZX", "Box-ZY", "pV", "Enthalpy"]
+
+        os.chdir(crystal._path)
+        if self._property not in npt_only or (
+                "pcoupl" in simulation._mdp and simulation._mdp["pcoupl"].lower() != "no"):
+            dt, nsteps, traj_stride, traj_start, traj_end = (None, None, None, None, None)
+
+            file_mdp = open(simulation._path_mdp)
+            for line in file_mdp:
+                if line.startswith('dt '):
+                    dt = float(line.split()[2])
+                elif line.startswith('nsteps '):
+                    nsteps = float(line.split()[2])
+            file_mdp.close()
+
+            traj_time = int(nsteps * dt)
+            if traj_time > 0:
+                if isinstance(self._timeinterval, tuple):
+                    traj_start = self._timeinterval[0]
+                    traj_end = self._timeinterval[1]
+                elif isinstance(self._timeinterval, int):
+                    traj_start = traj_time - self._timeinterval
+                    traj_end = traj_time
+                else:
+                    print("Error: No suitable time interval.")
+                    exit()
+
+            os.system('{} energy -f {}.edr -b {} -e {} -nmol {} <<< "{}" &> PyPol_Temporary_CP.txt'
+                      ''.format(simulation.gromacs, self.name, traj_start, traj_end, crystal._Z, self._property))
+            file_coord = open(crystal._path + 'PyPol_Temporary_CP.txt')
+            for line in file_coord:
+                if line.startswith(self._property):
+                    cp = float(line.split()[1])
+            file_coord.close()
+            os.remove(crystal._path + 'PyPol_Temporary_CP.txt')
+        else:
+            if self._property in ("pV", "Enthalpy"):
+                print("Error: Property not available for NVT simulations.")
+                exit()
+            elif self._property == "Volume":
+                cp = crystal._volume
+            elif self._property == "Density":
+                cp = crystal._density
+            elif self._property == "Box-XX":
+                cp = crystal._box[0, 0]
+            elif self._property == "Box-YY":
+                cp = crystal._box[1, 1]
+            elif self._property == "Box-ZZ":
+                cp = crystal._box[2, 2]
+            elif self._property == "Box-YX":
+                cp = crystal._box[0, 1]
+            elif self._property == "Box-ZX":
+                cp = crystal._box[0, 2]
+            elif self._property == "Box-ZY":
+                cp = crystal._box[1, 2]
+
+        return cp
 
     def _write_output(self, path_output):
         file_output = open(path_output, "a")
