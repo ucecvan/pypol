@@ -108,6 +108,7 @@ def check_attributes(list_crystals: list, attributes: dict):
 def get_list_crystals(scrystals, crystals, attributes=None, _include_melted=False):
     """
     TODO Set list crystals as all, crystals(non-melted), incomplete, centers
+
     Select a subgroup of crystal from a list. This can be done by specifying the state of the crystal, a list of crystal
     objects or identifier and by including crystal attributes
     :param scrystals: Simulation Crystals, list of crystals from a specific simulation object.
