@@ -23,7 +23,8 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
 
     path_ambertools = os.path.dirname(package_paths["atomtype"])
     #path_acpype = input("Enter path for acpype.py program: ")  # https://pypi.org/project/acpype/
-    path_acpype = "/home/alex/anaconda3/pkgs/acpype-2021.02.05.22.15-pyhd8ed1ab_0/site-packages/acpype_lib"  # https://pypi.org/project/acpype/
+    path_acpype = "acpype"
+    #path_acpype = "/home/alex/anaconda3/pkgs/acpype-2021.02.05.22.15-pyhd8ed1ab_0/site-packages/acpype_lib"  # https://pypi.org/project/acpype/
     path_tleap = "tleap"
     path_parmchk = "parmchk2"
     path_antechamber = "antechamber"
@@ -142,7 +143,9 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
         return
 
     # Convert topology and coordinates to Gromacs format
-    os.system("python " + path_acpype + " -p {0}.prmtop -x {0}.inpcrd -a 'gaff'".format(res_name))
+    #os.system("python " + path_acpype + " -p {0}.prmtop -x {0}.inpcrd -a 'gaff'".format(res_name))
+    os.system(path_acpype + " -p {0}.prmtop -x {0}.inpcrd -a 'gaff'".format(res_name))
+
 
     # Generate .itp and .top files from acpype output
     file_acpype = open(path_wd + "/{}_GMX.top".format(res_name), "r")
@@ -159,7 +162,7 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
                 file_top.write(line)
                 file_top.write(next(file_acpype))
                 file_top.write(next(file_acpype))
-                file_top.write('#include "{0}.itp\n\n'.format(res_name))
+                file_top.write('#include "{0}.itp"\n\n'.format(res_name))
             elif line.rstrip().startswith("[ system ]"):
                 file_top.write(line)
                 file_top.write(next(file_acpype))
@@ -177,6 +180,7 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
             file_itp.write(line)
     file_itp.close()
     file_acpype.close()
+    file_top.close()
 
     os.rename(path_wd + "/{}_GMX.gro".format(res_name), path_wd + "/{}.gro".format(res_name))
 
@@ -194,8 +198,8 @@ def gaff(path_coord, path_output, res_name="UNK", generate_charges='bcc'):
     from shutil import copyfile
     copyfile(path_mdp, path_wd + "/em.mdp")
 
-    os.system(path_gromacs + " grompp -f em.mdp -c {0}.gro -p topol.top -o em".format(res_name))
-    os.system(path_gromacs + " mdrun -v -deffnm em")
+    #os.system(path_gromacs + " grompp -f em.mdp -c {0}.gro -p topol.top -o em".format(res_name))
+    #os.system(path_gromacs + " mdrun -v -deffnm em")
 
 
 # =============================================================================
